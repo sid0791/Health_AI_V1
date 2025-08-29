@@ -1,7 +1,7 @@
 HealthCoachAI — Ultimate Product & Engineering Prompt
 This is the single source of truth (SSOT) for building HealthCoachAI: a production-grade, launch-ready, security-first, AI-powered health, diet, and fitness application. It consolidates all business requirements, functional and non-functional specs, AI selection policies, data/privacy rules, UI/UX, QA, and delivery standards. No placeholders or demos; everything must be production-ready.
 
-This prompt governs all code and documentation produced in this repository and must remain fully aligned with APPLICATION_PHASES.md.
+This prompt governs all code and documentation produced in this repo and must remain fully aligned with APPLICATION_PHASES.md.
 
 0) Non-Negotiables
 End-to-end production-ready application with full frontend (Android, iOS, Web), backend, AI, data, security, cloud, DevOps, and QA.
@@ -295,7 +295,7 @@ AI policy tables (accuracy, cost, tiers X/Y/Z) are centrally configured (JSON/DB
 Vendor toggles for no-retention modes must be ON.
 Feature flags for experimental features (e.g., photo meal recognition).
 
-17) Deliverables in This Repository
+17) Deliverables in This Repo
 Full backend code (API, workers, RAG, AI policy, nutrition engine, fitness engine).
 Full mobile apps (Android, iOS) and web app; shared design system where feasible.
 n8n workflow definitions (JSON) for all pipelines.
