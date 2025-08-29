@@ -1,0 +1,49 @@
+# Code Owners
+# Global owners for the repository
+* @coronis/healthcoachai-leads
+
+# Documentation
+*.md @coronis/healthcoachai-leads @coronis/documentation-team
+docs/ @coronis/healthcoachai-leads @coronis/documentation-team
+
+# Backend services
+services/ @coronis/backend-leads @coronis/healthcoachai-leads
+services/backend/ @coronis/backend-leads
+libs/common/ @coronis/backend-leads @coronis/frontend-leads
+
+# Mobile applications
+apps/mobile/ @coronis/mobile-leads @coronis/healthcoachai-leads
+apps/mobile/ios/ @coronis/ios-leads
+apps/mobile/android/ @coronis/android-leads
+
+# Infrastructure and CI/CD
+.github/ @coronis/devops-leads @coronis/healthcoachai-leads
+infra/ @coronis/devops-leads @coronis/cloud-leads
+*.yml @coronis/devops-leads
+*.yaml @coronis/devops-leads
+
+# Security and compliance
+SECURITY_PRIVACY.md @coronis/security-leads @coronis/healthcoachai-leads
+.gitleaks.toml @coronis/security-leads
+**/security/ @coronis/security-leads
+
+# AI and ML components
+**/ai/ @coronis/ai-leads @coronis/healthcoachai-leads
+**/ml/ @coronis/ai-leads
+n8n/ @coronis/ai-leads @coronis/backend-leads
+
+# Design system and UI
+packages/design-system/ @coronis/design-leads @coronis/frontend-leads
+**/components/ @coronis/frontend-leads
+**/ui/ @coronis/frontend-leads
+
+# Configuration files
+package.json @coronis/healthcoachai-leads
+tsconfig*.json @coronis/backend-leads @coronis/frontend-leads
+.eslintrc* @coronis/healthcoachai-leads
+.prettierrc* @coronis/healthcoachai-leads
+
+# Critical application files
+APPLICATION_PHASES.md @coronis/healthcoachai-leads @coronis/product-leads
+PROMPT_README.md @coronis/healthcoachai-leads @coronis/product-leads
+IMPLEMENTATION_PLAN.md @coronis/healthcoachai-leads

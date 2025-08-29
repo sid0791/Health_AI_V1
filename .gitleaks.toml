@@ -1,0 +1,44 @@
+[extend]
+# useDefault will extend the base configuration with the default gitleaks config:
+# https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
+useDefault = true
+
+[allowlist]
+description = "Allowlist for false positives and demo keys in local development"
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.local\.example$''',
+  '''docs/''',
+  '''README\.md$''',
+  '''CONTRIBUTING\.md$''',
+]
+
+# Allow demo keys only in specific local development files
+regexes = [
+  '''demo-key-[a-zA-Z0-9]+''',  # Demo keys with demo-key- prefix
+  '''sk-demo[a-zA-Z0-9]+''',    # Demo OpenAI keys
+  '''demo_[a-zA-Z0-9_]+''',     # Demo credentials with demo_ prefix
+  '''gitleaks:allow''',         # Allow inline gitleaks:allow comments
+]
+
+[rules.generic-api-key]
+description = "Generic API Key"
+regex = '''(?i)(?:key|api|token|secret|password)(?:[0-9a-z\-_\t .]{0,20})(?:[\s|']|[\s|"]){0,3}(?:=|>|:{1,3}=|\|\|:|<=|=>|:|\?=)(?:'|\"|\s|=|\x60){0,5}([0-9a-z\-_.=]{10,150})(?:['|\"|\n|\r|\s|\x60|;]|$)'''
+secretGroup = 1
+
+[rules.aws-access-key-id]
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+
+[rules.aws-secret-access-key]
+description = "AWS Secret Access Key"
+regex = '''(?i)aws.{0,20}(?:['|\"|\n|\r|\s|\x60|;]|^)([0-9a-zA-Z\/+]{40})(?:['|\"|\n|\r|\s|\x60|;]|$)'''
+secretGroup = 1
+
+[rules.openai-api-key]
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{48}'''
+
+[rules.anthropic-api-key]
+description = "Anthropic API Key"
+regex = '''sk-ant-[a-zA-Z0-9\-_]{95,}'''

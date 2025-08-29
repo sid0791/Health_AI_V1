@@ -1,0 +1,25 @@
+{
+  "name": "@healthcoachai/design-system",
+  "version": "0.1.0",
+  "description": "HealthCoachAI Design System - Shared design tokens and components",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/ --ext .ts,.tsx",
+    "lint:fix": "eslint src/ --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.0"
+  },
+  "files": [
+    "dist",
+    "tokens"
+  ]
+}
