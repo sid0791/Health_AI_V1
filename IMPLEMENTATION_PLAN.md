@@ -1,23 +1,23 @@
 # HealthAICoach Implementation Plan
 
 ## Overview
-End-to-end, production-ready mobile application (iOS + Android) with AI coaching capabilities for health and wellness. Complete monorepo implementation with Flutter frontend, FastAPI backend, and comprehensive AI integration.
+End-to-end, production-ready mobile application (iOS + Android) with AI coaching capabilities for health and wellness. Monorepo implementation with native mobile apps, NestJS backend, and n8n orchestration aligned to SSOT.
 
 ## Architecture Overview
 
 ### Technology Stack
-- **Frontend**: Flutter (Dart) with Material 3 + custom design tokens
-- **Backend**: FastAPI (Python) with PostgreSQL and Redis
-- **AI Integration**: OpenAI GPT + Anthropic Claude (server-side only)
-- **Infrastructure**: Docker, GitHub Actions CI/CD
-- **Mobile Platforms**: iOS (App Store) + Android (Play Store)
+- Mobile: iOS (SwiftUI + Combine), Android (Kotlin + Jetpack Compose)
+- Backend: Node.js (NestJS + TypeScript), PostgreSQL, Redis, Object Storage (S3/GCS), Vector Store (pgvector)
+- AI Integration: Multi-vendor via AI Router (OpenAI, Anthropic, Google Vertex, OpenRouter/Together), DLP, zero-retention flags
+- Orchestration: n8n (workflows for AI routing, pipelines, schedulers)
+- Infrastructure: Docker, Terraform/Kubernetes (optional), GitHub Actions CI/CD
 
 ### Design System
-- **Primary Brand**: #14b8a6 (turquoise/teal)
-- **Secondary Brand**: #f0653e (coral/orange)
-- **Grid System**: 4px modular grid
-- **Themes**: Light/Dark mode support
-- **Accessibility**: WCAG 2.1 AA compliance
+- Primary Brand: #14b8a6 (turquoise/teal)
+- Secondary Brand: #f0653e (coral/orange)
+- Grid System: 4px modular grid
+- Themes: Light/Dark mode support
+- Accessibility: WCAG 2.1 AA compliance
 
 # Implementation Plan 
 
@@ -25,7 +25,7 @@ Purpose
 - Translate the 16 phases (0–15) into concrete, testable engineering work with clear interfaces, data models, security controls, and acceptance gates.
 
 References
-- PROMPT_README_COMBINED.md: single source of truth for scope, quality bars, and policies
+- PROMPT_README.md: single source of truth for scope, quality bars, and policies
 - APPLICATION_PHASES.md: execution sequencing and acceptance criteria
 
 Phase 0 — Program Setup & Governance
@@ -189,19 +189,19 @@ Risk Management
 - Store review risks reduced via early compliance checks and feature flags for sensitive integrations
 
 #### Key Components:
-1. **E2E Testing**
+1. E2E Testing
    - Complete user journey testing
    - Cross-platform validation
    - Performance testing
    - Load testing
 
-2. **Security Validation**
+2. Security Validation
    - Security scan results
    - Penetration testing
    - Data privacy audit
    - Compliance verification
 
-3. **Store Submission**
+3. Store Submission
    - App Store submission
    - Play Store submission
    - Review response preparation
@@ -215,39 +215,39 @@ Risk Management
 ## Quality Standards
 
 ### Code Quality
-- **Test Coverage**: ≥90% for critical paths
-- **Documentation**: Comprehensive API and code documentation
-- **Code Style**: Automated linting and formatting
-- **Security**: OWASP ASVS compliance
+- Test Coverage: ≥90% for critical paths
+- Documentation: Comprehensive API and code documentation
+- Code Style: Automated linting and formatting
+- Security: OWASP ASVS compliance
 
 ### Performance Standards
-- **Crash-free Sessions**: ≥99%
-- **App Launch Time**: <3 seconds
-- **API Response Time**: <2 seconds (95th percentile)
-- **Offline Support**: Full functionality without network
+- Crash-free Sessions: ≥99%
+- App Launch Time: <3 seconds
+- API Response Time: <2 seconds (95th percentile)
+- Offline Support: Full functionality without network
 
 ### Compliance
-- **Privacy**: GDPR/CCPA ready
-- **Accessibility**: WCAG 2.1 AA compliance
-- **Platform**: App Store and Play Store guidelines
-- **Security**: Industry-standard encryption and security practices
+- Privacy: GDPR/CCPA ready
+- Accessibility: WCAG 2.1 AA compliance
+- Platform: App Store and Play Store guidelines
+- Security: Industry-standard encryption and security practices
 
 ## Risk Mitigation
 
 ### Technical Risks
-- **AI Provider Outages**: Multiple provider fallback strategy
-- **Platform Policy Changes**: Regular compliance reviews
-- **Performance Issues**: Continuous monitoring and optimization
-- **Security Vulnerabilities**: Regular security audits
+- AI Provider Outages: Multiple provider fallback strategy
+- Platform Policy Changes: Regular compliance reviews
+- Performance Issues: Continuous monitoring and optimization
+- Security Vulnerabilities: Regular security audits
 
 ### Business Risks
-- **Store Rejection**: Comprehensive pre-submission testing
-- **User Privacy**: Privacy-by-design implementation
-- **Scalability**: Cloud-native architecture
-- **Maintenance**: Comprehensive documentation and testing
+- Store Rejection: Comprehensive pre-submission testing
+- User Privacy: Privacy-by-design implementation
+- Scalability: Cloud-native architecture
+- Maintenance: Comprehensive documentation and testing
 
 ## Success Metrics
-- **Functional**: All user flows implemented and working
-- **Technical**: All builds pass, tests pass, no security issues
-- **Compliance**: Store approval, privacy compliance
-- **Quality**: Performance targets met, crash-free sessions achieved
+- Functional: All user flows implemented and working
+- Technical: All builds pass, tests pass, no security issues
+- Compliance: Store approval, privacy compliance
+- Quality: Performance targets met, crash-free sessions achieved
