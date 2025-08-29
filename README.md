@@ -1,430 +1,418 @@
-# HealthCoachAI — End‑to‑End, Production‑Grade AI Health & Wellness Platform
-
-[![CI](https://github.com/coronis/Health_AI_V1/actions/workflows/backend.yml/badge.svg)](https://github.com/coronis/Health_AI_V1/actions)
-[![Mobile iOS](https://github.com/coronis/Health_AI_V1/actions/workflows/mobile-ios.yml/badge.svg)](https://github.com/coronis/Health_AI_V1/actions)
-[![Mobile Android](https://github.com/coronis/Health_AI_V1/actions/workflows/mobile-android.yml/badge.svg)](https://github.com/coronis/Health_AI_V1/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-Mission
-
-- Build and ship a launch‑ready, secure, scalable, AI‑powered health coach with
-  native iOS and Android apps, real backend, n8n orchestration, accurate
-  nutrition/fitness engines, privacy‑first AI, and CI/CD.
-- This README is aligned to PROMPT_README_COMBINED.md (SSOT) and
-  APPLICATION_PHASES.md (Phases 0–15). No placeholders or demo stubs. Secrets
-  never in code.
-
-Important Note about Architecture Update
-
-- Earlier drafts described a Flutter + FastAPI stack. Per
-  PROMPT_README_COMBINED.md and APPLICATION_PHASES.md, the target architecture
-  is:
-  - Native iOS (SwiftUI) + Android (Jetpack Compose)
-  - Backend: Node.js (NestJS + TypeScript)
-  - Orchestration: n8n
-  - Vector store: Postgres + pgvector (or OpenSearch)
-- This README reflects the target architecture and the atomic monorepo needed to
-  deliver it end‑to‑end. Where existing code differs, see “Migration Notes” near
-  the end of this document.
-
-Overview
-
-- Personalized nutrition and fitness planning (celebrity‑grade), with accurate
-  TDEE/macros/micros, GI/GL, cooking transforms.
-- Weekly adaptive loop using logs and wearable data.
-- Health report pipeline (OCR → NER → interpretation) with Level 1 highest
-  accuracy policy.
-- Domain‑scoped chat with RAG grounded in user data, report interpretations, and
-  curated domain knowledge.
-- India‑first UX and data sources; Hinglish inputs; global scaling target 10M+.
-
-Non‑negotiables
-
-- Level 1 vs Level 2 AI policies (accuracy vs cost) strictly enforced by AI
-  Router and n8n.
-- Security/privacy by design: no client‑side secrets, DLP/pseudonymization for
-  external AI calls, zero‑retention vendor flags.
-- Performance and reliability: p95 API < 2s, mobile launch < 3s, graceful
-  degradation, offline caching.
-- Accessibility: WCAG 2.1 AA; large tap targets; dynamic type; screen reader
-  labels.
-
-Architecture
-
-Mobile (Native)
-
-- iOS: SwiftUI + Combine; design system tokens; offline caching; HealthKit
-  integration.
-- Android: Kotlin + Jetpack Compose; design system tokens; offline caching;
-  Google Fit integration.
-- Shared UX: Onboarding, Dashboard, 7‑Day Meal Plan with swaps, Food Diary
-  (English + Hinglish), Analytics, Fitness Plan, Settings, Domain‑scoped Chat.
-
-Backend (services/backend)
-
-- Framework: NestJS (TypeScript), domain‑driven modular architecture.
-- Data: PostgreSQL (primary, + pgvector), Redis (cache), Object Storage
-  (S3/GCS).
-- APIs: REST/GraphQL; versioning; idempotency; caching headers; OpenAPI
-  published.
-- Core Modules: Auth, Consent, Profiles, Preferences, Goals, Reports + Level 1
-  pipeline, Nutrition Engine, Recipes, Meal Plans, Fitness Plans, Logs,
-  Analytics, AI Router (Level 1/2), Chat, RAG, ETL, Integrations, Notifications,
-  Admin.
-
-AI & Orchestration
-
-- n8n workflows:
-  - AI Router orchestrator (Level 1/2 + quotas + fallbacks + audit)
-  - Health Report Ingestion (OCR → NER → Interpretation)
-  - Daily Plan Runner and Weekly Review/Adaptation
-  - Notifications Scheduler (hydration/meals/workouts/AQI)
-  - Quota Reset (daily ladder reset for Level 1)
-- AI Router:
-  - Level 1 (health reports, report Q&A): always highest accuracy first with
-    daily tier step‑down; never below Level 2 without explicit consent.
-  - Level 2 (diet/fitness/recipes/chat): cheapest within 5% of top accuracy;
-    prefer open‑source/self‑hosted where feasible.
-  - DLP/pseudonymization; zero‑retention flags; decisions logged with model,
-    version, cost, quota state.
-
-RAG & Domain‑Scoped Chat
-
-- Vector store: pgvector on Postgres (or OpenSearch).
-- Indexed corpora: user profile/preferences/goals/logs/measurements, structured
-  health report extracts, plan summaries, curated nutrition/fitness knowledge.
-- Chat answers only domain‑scoped questions; provides citations where
-  applicable; update operations require explicit user confirmation; audits
-  recorded.
-
-Health Report Pipeline (Level 1)
-
-- OCR/DU (primary best‑in‑class per region) with fallbacks; table/section
-  extraction.
-- NER + normalization for biomarkers; units/ranges by age/sex.
-- Interpretation: anomalies, trends, plain‑language summaries; physician
-  red‑flag triggers.
-- Privacy: encrypted storage; no raw image logs; zero‑retention providers; DLP
-  enforced.
-
-Nutrition & Fitness Engines
-
-- Nutrition: TDEE (Mifflin–St Jeor), macro/micro targets, cooking
-  yields/retention factors, GI/GL computation and estimation for unmapped foods.
-- Data sources: USDA FDC; IFCT (license permitting); Open Food Facts; GI tables
-  (licensed/approved); provenance stored.
-- Fitness: monthly → weekly periodized programs; progressive overload; deload;
-  contraindications; safety notes; substitutions; video references.
-
-Integrations & Context
-
-- Health: Apple HealthKit (iOS), Google Fit (Android), Fitbit.
-- Environment: AQI/Weather (OpenWeather/IQAir) with caching and adaptive nudges.
-- Notifications: APNs/FCM; hydration, meal, workout reminders; configurable;
-  quiet hours.
-
-Performance, Security, Observability, Cost
-
-- Performance targets and load/soak testing; caching (Redis/CDN); background
-  jobs; circuit breakers; timeouts.
-- Security: OWASP ASVS; RBAC/ABAC; audit logs; TLS/mTLS; KMS encryption; secrets
-  via Secrets Manager; WAF/bot protection/rate limiting; data export/delete
-  flows.
-- Observability: OpenTelemetry tracing, structured logs, metrics; SLO
-  dashboards; synthetic checks; alerting; runbooks; DR tests.
-- Cost controls: model usage dashboards; quotas; cache hit metrics; provider mix
-  optimization per Level 1/2 policy.
-
-Design System
-
-- Brand: fresh greens & turquoise; coral/orange accents; soft neutrals.
-- Typography: Inter or Poppins; responsive; accessible.
-- Components: cards, chips, sliders, charts (progress ring, lines, stacked
-  bars), toggles, modals.
-- Accessibility: WCAG 2.1 AA; ≥44px tap targets; screen reader labels; logical
-  focus; high contrast options.
-
-Phases and Deliverables (0–15)
-
-- APPLICATION_PHASES.md is authoritative. Summary milestones:
-  - 0: Documentation & planning (implementation plan, repo structure, universal
-    tasks)
-  - 1: Program setup & governance
-  - 2: Core backend & data modeling
-  - 3: Nutrition & GI/GL engines + ETL
-  - 4: Recipe corpus & personalization
-  - 5: Fitness engine & workout library
-  - 6: Auth, consent, privacy
-  - 7: Mobile app foundations + design system
-  - 8: Onboarding & data capture
-  - 9: Plans UI, logging, analytics shell
-  - 10: AI core, router, n8n
-  - 11: Health report pipeline (Level 1)
-  - 12: AI meal planning & celebrity recipes (GI/GL & cooking transforms)
-  - 13: AI fitness adaptation, weekly loop, domain‑scoped chat with RAG
-  - 14: Integrations (HealthKit/Fit/Fitbit, AQI/Weather, Push)
-  - 15: Performance, security, observability, cost, QA (SIT/UAT), compliance &
-    launch
-
-Detailed Repository Structure
-
-The repository tree below mirrors the current README’s “Detailed Repository
-Structure” section as‑is.
-
-Key Policies
-
-AI Model Routing (Level 1/2)
-
-- Level 1 (health reports; report‑focused chat)
-  - Always select the highest‑accuracy model; daily quota ladder: 100% → 98% →
-    97%… Never below Level 2 without consent.
-  - Cache structured interpretations; reuse via RAG to reduce cost while
-    maintaining fidelity.
-- Level 2 (diet/fitness/recipes/general chat)
-  - Choose the cheapest provider within 5% of the top accuracy; prefer
-    open‑source/self‑hosted where feasible (Llama/Mistral/Qwen).
-- All AI calls
-  - DLP: redact/pseudonymize PII/PHI; enforce zero‑retention/no‑log modes where
-    supported; record model, version, cost, quota state.
-
-Security, Privacy, Compliance
-
-- OWASP ASVS baseline; PII/PHI minimization; data classification; field‑level
-  encryption targets.
-- No secrets in code or clients; all via environment and Secrets Manager; rate
-  limiting, WAF, bot protection.
-- Export/delete flows; consent tracking; regional data residency controls; mTLS
-  for internal/webhook paths where applicable.
-
-Nutrition Accuracy & Provenance
-
-- Data sources: USDA FDC; IFCT 2017 (license‑permitting); Open Food Facts; GI
-  tables (licensed/approved).
-- Cooking transforms: yield + nutrient retention factors by method.
-- GI/GL: per‑serving computation; estimation models for unmapped items with
-  documented assumptions and confidence scores.
-- Provenance stored; periodic audits vs benchmarks.
-
-Performance, Reliability, Observability, Cost
-
-- p95 API < 2s; app launch < 3s; caching; background jobs; circuit breakers;
-  retries with jitter; timeouts; graceful degradation.
-- OpenTelemetry tracing; structured logs; metrics; SLO dashboards; synthetic
-  checks; on‑call runbooks and DR tests.
-- Model usage and cost dashboards; quota enforcement; cache hit ratios; provider
-  mix optimization.
-
-Quick Start (Local Development)
-
-Prerequisites
-
-- Node.js 20+, pnpm or npm; Docker Desktop
-- PostgreSQL 15+, Redis 7+, S3‑compatible storage (e.g., MinIO) or cloud S3/GCS
-- Xcode (iOS), Android Studio (Android)
-- n8n (Docker) and AI provider accounts
-- mkcert (optional, local TLS), direnv (optional)
-
-Bootstrap
-
-- Clone repository
-- Copy environment templates:
-  - services/backend/.env.example → .env
-  - apps/mobile/ios/.env.example → .env
-  - apps/mobile/android/.env.example → .env
-  - n8n/.env.example → .env
-- Start local stack:
-  - docker compose -f infra/docker/docker-compose.yml up -d
-  - pnpm -w install
-  - pnpm -w run build
-  - pnpm --filter services/backend dev
-
-Backend (NestJS)
-
-- Run: pnpm --filter services/backend dev
-- Test: pnpm --filter services/backend test
-- Lint: pnpm --filter services/backend lint
-- Generate OpenAPI: pnpm --filter services/backend run openapi:export
-
-iOS
-
-- Open apps/mobile/ios in Xcode; select scheme and run.
-- Tests: XCUITest target; snapshot tests under apps/mobile/ios/Tests.
-
-Android
-
-- Open apps/mobile/android in Android Studio.
-- Tests: ./gradlew test connectedAndroidTest.
-
-n8n
-
-- Launch n8n via Docker; import JSON workflows from n8n/workflows.
-- Configure webhooks with mTLS (where feasible) and secret tokens.
-- Set provider keys and quotas via Secrets Manager/Environment.
-
-Environment Configuration (examples)
-
-services/backend/.env.example
-
-```env
-# Core
-NODE_ENV=development
-PORT=8080
-API_BASE_URL=http://localhost:8080
-APP_ORIGIN=http://localhost:3000
-
-# Database
-POSTGRES_URL=postgresql://user:password@localhost:5432/healthcoachai
-REDIS_URL=redis://localhost:6379
-
-# Object Storage
-S3_ENDPOINT=http://localhost:9000
-S3_BUCKET=healthcoachai
-S3_ACCESS_KEY=localdev
-S3_SECRET_KEY=localdev
-S3_REGION=us-east-1
-S3_FORCE_PATH_STYLE=true
-
-# Vector Store
-PGVECTOR_ENABLED=true
-
-# Auth
-JWT_ACCESS_TTL=900
-JWT_REFRESH_TTL=1209600
-
-# OAuth
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-APPLE_CLIENT_ID=
-APPLE_TEAM_ID=
-APPLE_KEY_ID=
-APPLE_PRIVATE_KEY_B64=
-
-# AI Providers & Policy
-AI_POLICY_LEVEL1_DAILY_TIERS=100,200,500
-AI_POLICY_LEVEL2_ACCURACY_WINDOW=0.05
-AI_VENDOR_LIST=openai,anthropic,vertex,openrouter,together
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-GOOGLE_VERTEX_PROJECT=
-GOOGLE_VERTEX_LOCATION=
-OPENROUTER_API_KEY=
-TOGETHER_API_KEY=
-AI_ZERO_RETENTION=true
-
-# OCR Providers
-OCR_PRIMARY=documentai
-GOOGLE_APPLICATION_CREDENTIALS_B64=
-AWS_TEXTRACT_ACCESS_KEY_ID=
-AWS_TEXTRACT_SECRET_ACCESS_KEY=
-AWS_TEXTRACT_REGION=
-
-# Integrations
-FITBIT_CLIENT_ID=
-FITBIT_CLIENT_SECRET=
-WEATHER_PROVIDER=openweather
-OPENWEATHER_API_KEY=
-
-# Telemetry
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-SENTRY_DSN=
+# Gitleaks
+
+```
+┌─○───┐
+│ │╲  │
+│ │ ○ │
+│ ○ ░ │
+└─░───┘
 ```
 
-apps/mobile/\*/.env.example
+<p align="left">
+  <p align="left">
+	  <a href="https://github.com/zricethezav/gitleaks/actions/workflows/test.yml">
+		  <img alt="Github Test" src="https://github.com/zricethezav/gitleaks/actions/workflows/test.yml/badge.svg">
+	  </a>
+	  <a href="https://hub.docker.com/r/zricethezav/gitleaks">
+		  <img src="https://img.shields.io/docker/pulls/zricethezav/gitleaks.svg" />
+	  </a>
+	  <a href="https://github.com/zricethezav/gitleaks-action">
+        	<img alt="gitleaks badge" src="https://img.shields.io/badge/protected%20by-gitleaks-blue">
+    	 </a>
+	  <a href="https://twitter.com/intent/follow?screen_name=zricethezav">
+		  <img src="https://img.shields.io/twitter/follow/zricethezav?label=Follow%20zricethezav&style=social&color=blue" alt="Follow @zricethezav" />
+	  </a>
+  </p>
+</p>
 
-```env
-# Non-sensitive config; no secrets here
-API_BASE_URL=http://localhost:8080
-FEATURE_FLAGS=chat,photo_log_stub
-ENV=development
+### Join our Discord! [![Discord](https://img.shields.io/discord/1102689410522284044.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/sydS6AHTUP)
+
+Gitleaks is a SAST tool for **detecting** and **preventing** hardcoded secrets like passwords, api keys, and tokens in git repos. Gitleaks is an **easy-to-use, all-in-one solution** for detecting secrets, past or present, in your code.
+
+```
+➜  ~/code(master) gitleaks detect --source . -v
+
+    ○
+    │╲
+    │ ○
+    ○ ░
+    ░    gitleaks
+
+
+Finding:     "export BUNDLE_ENTERPRISE__CONTRIBSYS__COM=cafebabe:deadbeef",
+Secret:      cafebabe:deadbeef
+RuleID:      sidekiq-secret
+Entropy:     2.609850
+File:        cmd/generate/config/rules/sidekiq.go
+Line:        23
+Commit:      cd5226711335c68be1e720b318b7bc3135a30eb2
+Author:      John
+Email:       john@users.noreply.github.com
+Date:        2022-08-03T12:31:40Z
+Fingerprint: cd5226711335c68be1e720b318b7bc3135a30eb2:cmd/generate/config/rules/sidekiq.go:sidekiq-secret:23
 ```
 
-Testing Strategy
+## Getting Started
 
-- Engines: deterministic unit tests vs reference datasets; ≥85% coverage; ≥90%
-  on critical paths by Phase 15.
-- Integration: provider mocks, ETL jobs, OCR/NER parsers, AI router decisions.
-- Mobile: UI snapshot tests; E2E flows (onboarding → plan → logging → analytics
-  → chat).
-- Performance: load/soak tests; cache effectiveness; p95/p99 latencies.
-- Security: SAST/DAST; fuzz parsers (OCR text); auth abuse scenarios; DLP
-  verification.
+Gitleaks can be installed using Homebrew, Docker, or Go. Gitleaks is also available in binary form for many popular platforms and OS types on the [releases page](https://github.com/zricethezav/gitleaks/releases). In addition, Gitleaks can be implemented as a pre-commit hook directly in your repo or as a GitHub action using [Gitleaks-Action](https://github.com/gitleaks/gitleaks-action).
 
-CI/CD
+### Installing
 
-- GitHub Actions workflows (backend, mobile-ios, mobile-android, infra,
-  security, release).
-- Branch protection with required checks (lint, tests, coverage, security
-  scans).
-- Release pipelines for stores; crash reporting (privacy‑conscious); staged
-  rollouts; rollback plans.
+```bash
+# MacOS
+brew install gitleaks
 
-Runbooks
+# Docker (DockerHub)
+docker pull zricethezav/gitleaks:latest
+docker run -v ${path_to_host_folder_to_scan}:/path zricethezav/gitleaks:latest [COMMAND] --source="/path" [OPTIONS]
 
-- Provider outage: switch to fallbacks; reduce Level 2 cost; increase cache
-  TTLs; notify users with banners.
-- Quota exhaustion (Level 1): step‑down tier; reuse cached interpretations;
-  delay non‑critical report reprocessing; inform users.
-- Incident response: triage, comms, mitigation, post‑mortem.
+# Docker (ghcr.io)
+docker pull ghcr.io/gitleaks/gitleaks:latest
+docker run -v ${path_to_host_folder_to_scan}:/path ghcr.io/gitleaks/gitleaks:latest [COMMAND] --source="/path" [OPTIONS]
 
-Business Use Cases Mapping (1–25)
+# From Source
+git clone https://github.com/gitleaks/gitleaks.git
+cd gitleaks
+make build
+```
 
-- 1–5 Onboarding, profiles, preferences, goals → Phases 6, 8
-- 6–12 Meal plan generation, sustainability, celebrity‑grade nutrition → Phases
-  3, 4, 12
-- 13–15 Logging, analytics, weekly adaptive loop → Phases 9, 13
-- 16 Accurate calculations, GI/GL, cooking transforms → Phase 3 (engines), Phase
-  12 (application)
-- 17 Hinglish inputs → Phases 8, 9, 13
-- 18 Domain‑scoped chat with RAG and update actions → Phase 13
-- 19 Security/privacy guarantees → Phases 1, 2, 6, 14, 15
-- 20 Wearables and push → Phase 14
-- 21 AQI/Weather context → Phase 14
-- 22 Burn target guidance → Phases 3, 12, 13 (compute + advice)
-- 23 Fitness planning & monthly updates → Phases 5, 13
-- 24 Scalability to 10M → Phases 2, 15
-- 25 Fallbacks and AI cost/accuracy policy → Phases 10, 11, 12, 13, 15
+### GitHub Action
 
-AI APIs & Models (disclosure)
+Check out the official [Gitleaks GitHub Action](https://github.com/gitleaks/gitleaks-action)
 
-- Level 1 primary (region‑specific, no‑retention): GPT‑4.1, Claude Sonnet 4,
-  Gemini 2.5 Pro
-- Level 1 secondary (≈98–96% tiers): GPT‑4o (no‑retention), Claude Sonnet 3.7,
-  Gemini 1.5 Pro
-- Level 2 primary (cost‑effective high accuracy): Llama 3.1 70B
-  (managed/self‑hosted), Mixtral 8x22B, Qwen2‑72B, GPT‑4o‑mini
-- OCR: Google Document AI (primary), AWS Textract (fallback), self‑hosted
-  Tesseract (last resort)
-- Vector DB: Postgres + pgvector (preferred)
-- Orchestrator: n8n
+```
+name: gitleaks
+on: [pull_request, push, workflow_dispatch]
+jobs:
+  scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE}} # Only required for Organizations, not personal accounts.
+```
 
-Migration Notes (from earlier README variants)
+### Pre-Commit
 
-- Previous drafts used Flutter (mobile) and FastAPI (backend). This updated
-  architecture follows the agreed SSOT and phases (native iOS/Android; NestJS
-  backend; n8n orchestration; RAG; Level 1/2 policies).
-- If parts of the repo still reflect Flutter/FastAPI, treat them as
-  transitional. Create migration issues to:
-  - Stand up native mobile app projects with shared design tokens and migrate
-    feature flows.
-  - Bootstrap NestJS backend with domain modules and ports to existing APIs
-    where feasible.
-  - Introduce n8n workflows for AI router and pipelines; move any “AI
-    orchestration in code” into n8n where policy requires.
-- Do not store secrets in mobile clients or repos. Update infra to use Secrets
-  Manager and environment‑based configuration.
+1. Install pre-commit from https://pre-commit.com/#install
+2. Create a `.pre-commit-config.yaml` file at the root of your repository with the following content:
 
-Contributing
+   ```
+   repos:
+     - repo: https://github.com/gitleaks/gitleaks
+       rev: v8.16.1
+       hooks:
+         - id: gitleaks
+   ```
 
-- Conventional commits; PR template and CODEOWNERS apply.
-- Any changes to PROMPT_README_COMBINED.md or APPLICATION_PHASES.md require
-  synchronized updates and product/security/AI lead approvals.
-- Ensure tests, lint, security scans pass before merge.
+   for a [native execution of GitLeaks](https://github.com/zricethezav/gitleaks/releases) or use the [`gitleaks-docker` pre-commit ID](https://github.com/zricethezav/gitleaks/blob/master/.pre-commit-hooks.yaml) for executing GitLeaks using the [official Docker images](#docker)
 
-License
+3. Auto-update the config to the latest repos' versions by executing `pre-commit autoupdate`
+4. Install with `pre-commit install`
+5. Now you're all set!
 
-- MIT (see LICENSE)
+```
+➜ git commit -m "this commit contains a secret"
+Detect hardcoded secrets.................................................Failed
+```
 
-Acknowledgments
+Note: to disable the gitleaks pre-commit hook you can prepend `SKIP=gitleaks` to the commit command
+and it will skip running gitleaks
 
-- Built to clinical‑grade standards where applicable for nutrition/fitness
-  logic, with strict privacy and safety policies.
+```
+➜ SKIP=gitleaks git commit -m "skip gitleaks check"
+Detect hardcoded secrets................................................Skipped
+```
+
+## Usage
+
+```
+Usage:
+  gitleaks [command]
+
+Available Commands:
+  completion  generate the autocompletion script for the specified shell
+  detect      detect secrets in code
+  help        Help about any command
+  protect     protect secrets in code
+  version     display gitleaks version
+
+Flags:
+  -b, --baseline-path string       path to baseline with issues that can be ignored
+  -c, --config string              config file path
+                                   order of precedence:
+                                   1. --config/-c
+                                   2. env var GITLEAKS_CONFIG
+                                   3. (--source/-s)/.gitleaks.toml
+                                   If none of the three options are used, then gitleaks will use the default config
+      --exit-code int              exit code when leaks have been encountered (default 1)
+  -h, --help                       help for gitleaks
+  -l, --log-level string           log level (trace, debug, info, warn, error, fatal) (default "info")
+      --max-target-megabytes int   files larger than this will be skipped
+      --no-color                   turn off color for verbose output
+      --no-banner                  suppress banner
+      --redact                     redact secrets from logs and stdout
+  -f, --report-format string       output format (json, csv, junit, sarif) (default "json")
+  -r, --report-path string         report file
+  -s, --source string              path to source (default ".")
+  -v, --verbose                    show verbose output from scan
+
+Use "gitleaks [command] --help" for more information about a command.
+```
+
+### Commands
+
+There are two commands you will use to detect secrets; `detect` and `protect`.
+
+#### Detect
+
+The `detect` command is used to scan repos, directories, and files. This command can be used on developer machines and in CI environments.
+
+When running `detect` on a git repository, gitleaks will parse the output of a `git log -p` command (you can see how this executed
+[here](https://github.com/zricethezav/gitleaks/blob/7240e16769b92d2a1b137c17d6bf9d55a8562899/git/git.go#L17-L25)).
+[`git log -p` generates patches](https://git-scm.com/docs/git-log#_generating_patch_text_with_p) which gitleaks will use to detect secrets.
+You can configure what commits `git log` will range over by using the `--log-opts` flag. `--log-opts` accepts any option for `git log -p`.
+For example, if you wanted to run gitleaks on a range of commits you could use the following command: `gitleaks detect --source . --log-opts="--all commitA..commitB"`.
+See the `git log` [documentation](https://git-scm.com/docs/git-log) for more information.
+
+You can scan files and directories by using the `--no-git` option.
+
+#### Protect
+
+The `protect` command is used to scan uncommitted changes in a git repo. This command should be used on developer machines in accordance with
+[shifting left on security](https://cloud.google.com/architecture/devops/devops-tech-shifting-left-on-security).
+When running `protect` on a git repository, gitleaks will parse the output of a `git diff` command (you can see how this executed
+[here](https://github.com/zricethezav/gitleaks/blob/7240e16769b92d2a1b137c17d6bf9d55a8562899/git/git.go#L48-L49)). You can set the
+`--staged` flag to check for changes in commits that have been `git add`ed. The `--staged` flag should be used when running Gitleaks
+as a pre-commit.
+
+**NOTE**: the `protect` command can only be used on git repos, running `protect` on files or directories will result in an error message.
+
+### Creating a baseline
+
+When scanning large repositories or repositories with a long history, it can be convenient to use a baseline. When using a baseline,
+gitleaks will ignore any old findings that are present in the baseline. A baseline can be any gitleaks report. To create a gitleaks report, run gitleaks with the `--report-path` parameter.
+
+```
+gitleaks detect --report-path gitleaks-report.json # This will save the report in a file called gitleaks-report.json
+```
+
+Once as baseline is created it can be applied when running the detect command again:
+
+```
+gitleaks detect --baseline-path gitleaks-report.json --report-path findings.json
+```
+
+After running the detect command with the --baseline-path parameter, report output (findings.json) will only contain new issues.
+
+### Verify Findings
+
+You can verify a finding found by gitleaks using a `git log` command.
+Example output:
+
+```
+Finding:     aws_secret="AKIAIMNOJVGFDXXXE4OA"
+RuleID:      aws-access-token
+Secret       AKIAIMNOJVGFDXXXE4OA
+Entropy:     3.65
+File:        checks_test.go
+Line:        37
+Commit:      ec2fc9d6cb0954fb3b57201cf6133c48d8ca0d29
+Author:      Zachary Rice
+Email:       z@email.com
+Date:        2018-01-28T17:39:00Z
+Fingerprint: ec2fc9d6cb0954fb3b57201cf6133c48d8ca0d29:checks_test.go:aws-access-token:37
+```
+
+We can use the following format to verify the leak:
+
+```
+git log -L {StartLine,EndLine}:{File} {Commit}
+```
+
+So in this example it would look like:
+
+```
+git log -L 37,37:checks_test.go ec2fc9d6cb0954fb3b57201cf6133c48d8ca0d29
+```
+
+Which gives us:
+
+```
+commit ec2fc9d6cb0954fb3b57201cf6133c48d8ca0d29
+Author: zricethezav <thisispublicanyways@gmail.com>
+Date:   Sun Jan 28 17:39:00 2018 -0500
+
+    [update] entropy check
+
+diff --git a/checks_test.go b/checks_test.go
+--- a/checks_test.go
++++ b/checks_test.go
+@@ -28,0 +37,1 @@
++               "aws_secret= \"AKIAIMNOJVGFDXXXE4OA\"":          true,
+
+```
+
+## Pre-Commit hook
+
+You can run Gitleaks as a pre-commit hook by copying the example `pre-commit.py` script into
+your `.git/hooks/` directory.
+
+## Configuration
+
+Gitleaks offers a configuration format you can follow to write your own secret detection rules:
+
+```toml
+# Title for the gitleaks configuration file.
+title = "Gitleaks title"
+
+# Extend the base (this) configuration. When you extend a configuration
+# the base rules take precedence over the extended rules. I.e., if there are
+# duplicate rules in both the base configuration and the extended configuration
+# the base rules will override the extended rules.
+# Another thing to know with extending configurations is you can chain together
+# multiple configuration files to a depth of 2. Allowlist arrays are appended
+# and can contain duplicates.
+# useDefault and path can NOT be used at the same time. Choose one.
+[extend]
+# useDefault will extend the base configuration with the default gitleaks config:
+# https://github.com/zricethezav/gitleaks/blob/master/config/gitleaks.toml
+useDefault = true
+# or you can supply a path to a configuration. Path is relative to where gitleaks
+# was invoked, not the location of the base config.
+path = "common_config.toml"
+
+# An array of tables that contain information that define instructions
+# on how to detect secrets
+[[rules]]
+
+# Unique identifier for this rule
+id = "awesome-rule-1"
+
+# Short human readable description of the rule.
+description = "awesome rule 1"
+
+# Golang regular expression used to detect secrets. Note Golang's regex engine
+# does not support lookaheads.
+regex = '''one-go-style-regex-for-this-rule'''
+
+# Golang regular expression used to match paths. This can be used as a standalone rule or it can be used
+# in conjunction with a valid `regex` entry.
+path = '''a-file-path-regex'''
+
+# Array of strings used for metadata and reporting purposes.
+tags = ["tag","another tag"]
+
+# Int used to extract secret from regex match and used as the group that will have
+# its entropy checked if `entropy` is set.
+secretGroup = 3
+
+# Float representing the minimum shannon entropy a regex group must have to be considered a secret.
+entropy = 3.5
+
+# Keywords are used for pre-regex check filtering. Rules that contain
+# keywords will perform a quick string compare check to make sure the
+# keyword(s) are in the content being scanned. Ideally these values should
+# either be part of the idenitifer or unique strings specific to the rule's regex
+# (introduced in v8.6.0)
+keywords = [
+  "auth",
+  "password",
+  "token",
+]
+
+# You can include an allowlist table for a single rule to reduce false positives or ignore commits
+# with known/rotated secrets
+[rules.allowlist]
+description = "ignore commit A"
+commits = [ "commit-A", "commit-B"]
+paths = [
+  '''go\.mod''',
+  '''go\.sum'''
+]
+# note: (rule) regexTarget defaults to check the _Secret_ in the finding.
+# if regexTarget is not specified then _Secret_ will be used.
+# Acceptable values for regexTarget are "match" and "line"
+regexTarget = "match"
+regexes = [
+  '''process''',
+  '''getenv''',
+]
+# note: stopwords targets the extracted secret, not the entire regex match
+# like 'regexes' does. (stopwords introduced in 8.8.0)
+stopwords = [
+  '''client''',
+  '''endpoint''',
+]
+
+
+# This is a global allowlist which has a higher order of precedence than rule-specific allowlists.
+# If a commit listed in the `commits` field below is encountered then that commit will be skipped and no
+# secrets will be detected for said commit. The same logic applies for regexes and paths.
+[allowlist]
+description = "global allow list"
+commits = [ "commit-A", "commit-B", "commit-C"]
+paths = [
+  '''gitleaks\.toml''',
+  '''(.*?)(jpg|gif|doc)'''
+]
+
+# note: (global) regexTarget defaults to check the _Secret_ in the finding.
+# if regexTarget is not specified then _Secret_ will be used.
+# Acceptable values for regexTarget are "match" and "line"
+regexTarget = "match"
+
+regexes = [
+  '''219-09-9999''',
+  '''078-05-1120''',
+  '''(9[0-9]{2}|666)-\d{2}-\d{4}''',
+]
+# note: stopwords targets the extracted secret, not the entire regex match
+# like 'regexes' does. (stopwords introduced in 8.8.0)
+stopwords = [
+  '''client''',
+  '''endpoint''',
+]
+```
+
+Refer to the default [gitleaks config](https://github.com/zricethezav/gitleaks/blob/master/config/gitleaks.toml) for examples or follow the [contributing guidelines](https://github.com/zricethezav/gitleaks/blob/master/README.md) if you would like to contribute to the default configuration. Additionally, you can check out [this gitleaks blog post](https://blog.gitleaks.io/stop-leaking-secrets-configuration-2-3-aeed293b1fbf) which covers advanced configuration setups.
+
+### Additional Configuration
+
+#### gitleaks:allow
+
+If you are knowingly committing a test secret that gitleaks will catch you can add a `gitleaks:allow` comment to that line which will instruct gitleaks
+to ignore that secret. Ex:
+
+```
+class CustomClass:
+    discord_client_secret = '8dyfuiRyq=vVc3RRr_edRk-fK__JItpZ'  #gitleaks:allow
+
+```
+
+#### .gitleaksignore
+
+You can ignore specific findings by creating a `.gitleaksignore` file at the root of your repo. In release v8.10.0 Gitleaks added a `Fingerprint` value to the Gitleaks report. Each leak, or finding, has a Fingerprint that uniquely identifies a secret. Add this fingerprint to the `.gitleaksignore` file to ignore that specific secret. See Gitleaks' [.gitleaksignore](https://github.com/zricethezav/gitleaks/blob/master/.gitleaksignore) for an example. Note: this feature is experimental and is subject to change in the future.
+
+## Sponsorships
+
+<p align="left">
+	  <a href="https://www.tines.com/?utm_source=oss&utm_medium=sponsorship&utm_campaign=gitleaks">
+		  <img alt="Tines Sponsorship" src="https://user-images.githubusercontent.com/15034943/146411864-4878f936-b4f7-49a0-b625-f9f40c704bfa.png" width=200>
+	  </a>
+  </p>
+
+## Exit Codes
+
+You can always set the exit code when leaks are encountered with the --exit-code flag. Default exit codes below:
+
+```
+0 - no leaks present
+1 - leaks or error encountered
+126 - unknown flag
+```
