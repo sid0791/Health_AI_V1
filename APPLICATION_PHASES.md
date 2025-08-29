@@ -11,7 +11,7 @@ Each phase is designed to be:
 - **Production-ready**: Follows best practices for security, performance, and maintainability
 
 ---
-Authoritative, phase-by-phase execution plan for HealthCoachAI. This file MUST remain fully aligned with PROMPT_README_COMBINED.md and governs scope, sequencing, quality bars, and acceptance gates for all code and documentation in this repository.
+Authoritative, phase-by-phase execution plan for HealthCoachAI. This file MUST remain fully aligned with PROMPT_README_COMBINED.md and governs scope, sequencing, quality bars, and acceptance gates for all code and documentation.
 
 Guiding principles
 - Build an end-to-end, production-ready, launch-ready application (native iOS + Android; optional web if added) with real backend, AI, data, security, infra, and CI/CD.
@@ -56,9 +56,10 @@ Phase list (max 16)
 
 - **Repository Documentation** 
   - Detailed Monorepo structure documented in tree format
+  - Repository should be full detailed, till atomic level
   - Architecture documentation
 
--  **Universal Tasks** (`UNIVERSAL_TASKS.md`)
+-  **Universal Tasks** 
   - Task breakdown for all phases
   - Checklist format for tracking
   - Dependencies and sequencing
