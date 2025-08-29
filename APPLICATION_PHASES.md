@@ -15,11 +15,22 @@ Authoritative, phase-by-phase execution plan for HealthCoachAI. This file MUST r
 
 Guiding principles
 - Build an end-to-end, production-ready, launch-ready application (native iOS + Android; optional web if added) with real backend, AI, data, security, infra, and CI/CD.
-- No placeholders, stubs, or demo code. Only complete, tested, shippable features.
+- No placeholders, stubs, or demo code. Only complete, tested, shippable features. Exception: demo API credentials/keys may be used strictly in a local developer secrets file or secret manager for development/testing only, never in production. All code must be fully production-logic-complete and work immediately once real credentials are provided (no code changes).
 - Use n8n for AI orchestration, quotas, fallbacks, and scheduled jobs.
 - Accuracy/Cost Policy: Level 1 (health reports) = always highest accuracy with daily step-down quota; Level 2 (diet/fitness/recipes) = cheapest provider within 5% of top accuracy.
 - Security, privacy, performance, accessibility, and scalability are non-negotiable.
 - India-first UX and data sources; globally scalable to 10M+ users.
+
+Security, Privacy, and Compliance baseline (applies across phases; enforced via phase-specific tasks below)
+- OWASP ASVS aligned; secure-by-default configurations for all services.
+- PII/PHI minimization; data classification; field-level encryption for sensitive fields; encrypted storage and backups.
+- All secrets via environment variables or a Secret Manager. No secrets in clients. Demo/placeholder secrets are permitted only in local dev/test secrets, never in production.
+- Token-based auth with short-lived access tokens, refresh token rotation, device binding; mTLS for service-to-service and webhooks where applicable.
+- Role- and attribute-based access control (RBAC/ABAC); audit logging; security anomaly detection.
+- DLP layer before external AI calls: redact PII/PHI, pseudonymize IDs, enforce vendor “no log/retention” settings with documented DPAs.
+- App Store/Play Store privacy compliance; explicit consent tracking; user data export/delete.
+- Regional data residency: configurable storage and processing locations; guardrails to keep data in-region where required.
+- Edge protections: rate limiting, WAF, bot protection, and abuse monitoring.
 
 Phase list (max 16)
 1.Documentation & Planning
@@ -81,17 +92,31 @@ Scope & Key Deliverables
 - Repository structure (modular, domain-driven), coding standards, lint/format rules, conventional commits.
 - Documentation baseline: architecture overview, security overview, contribution guide.
 - Design tokens (colors, typography, spacing) per brand spec; UI asset pipeline.
-- Secrets management policy (Cloud Secrets Manager), environment naming, and access controls.
+- Secrets and Configuration Policy: - - Secrets management policy (Cloud Secrets Manager), environment naming, and access controls.
+  - Adopt “Phase-Aware Config & Secrets (no hardcoding)” system across environments (dev/test/stage/prod).
+  - All settings (URLs, keys, limits, feature flags, model lists) via config + secrets (env + Secret Manager).
+  - Permit demo keys ONLY in local developer secrets (.env.local or local Secret Manager namespace), never in production.
+  - Provide CI guardrails: secret scanning and a rule that fails if hardcoded secrets/keys are detected in source or build artifacts.
+  - Document the exact steps for switching demo → real credentials (update secrets; no code changes).
+- Security, Privacy, Compliance Foundations:
+  - Adopt OWASP ASVS control baseline and secure-by-default configurations.
+  - Define data classification policy (PII/PHI tiers), PII minimization standards, and field-level encryption targets.
+  - Define RBAC/ABAC model patterns, audit logging policy, and security anomaly detection plan.
+  - Define rate limiting, WAF, bot protection, and abuse monitoring strategy and tools.
+  - Define regional data residency requirements and environment segregation.
+  - Define mTLS plan for service-to-service and webhook calls where applicable.
 - Initial CI scaffolding (lint/test runners), issue templates, PR templates, CODEOWNERS.
-
-n8n
-- Provision n8n instance (self-hosted), secure access, secret store, and base webhooks.
+- n8n
+  - Provision n8n instance (self-hosted), secure access, secret store, and base webhooks.
 
 Acceptance Criteria
 - Repo bootstrapped; pipelines green; documented governance and tokens published.
+- Secret scanning and hardcoded-secret guardrails enforced in CI; no client-side secrets.
+- Security policy docs published (ASVS baseline, data classification, mTLS plan, rate limiting/WAF/bot protection).
 
 Exit Criteria
 - All teams commit to standards; design tokens available in mobile projects as packages/assets.
+- Config/secrets policy and demo-keys-only-in-dev rule communicated and enforced.
 
 ----------------------------------------------------------------------
 Phase 2 — Core Backend Architecture & Data Modeling
@@ -112,15 +137,31 @@ Scope & Key Deliverables
   - Analytics (deficiency summaries, ETA predictions), Notifications/Nudges configs.
   - AI Decisions (routing logs, model versions, provenance).
 - API foundations: versioning, pagination, idempotency keys, caching headers.
-- Security baselines: TLS, AES-256 at rest via KMS, RBAC/ABAC, audit logging, PII minimization.
-- Observability scaffolding: structured logging, request tracing hooks.
+- Security baselines:
+  - TLS everywhere; mTLS enabled for internal service-to-service and n8n webhooks where applicable.
+  - AES-256 at rest via KMS; field-level encryption for sensitive fields (e.g., consents, health flags).
+  - RBAC/ABAC; audit logging; PII minimization; data classification tags persisted in metadata where applicable.
+  - Edge protections: rate limiting middleware, bot protection for public endpoints, abuse monitoring instrumentation.
+  - Regional data residency: configure storage buckets/DBs for region pinning; environment-level controls.
+- Observability scaffolding: structured logging, request tracing hooks, security anomaly detection hooks.
+- Phase-Aware Config & Secrets:
+  - Central configuration module reading env/Secret Manager per environment; no hardcoding.
+  - Provide tests for config loading, fallbacks, and validation.
+- Reference External API Client (production-logic complete):
+  - Implement one service that integrates an external API used by later phases (e.g., USDA FoodData Central or Open Food Facts).
+  - Include retries with exponential backoff, pagination/continuation handling, schema validation, and durable storage.
+  - Keys come from env/Secret Manager; include mocks and tests for config, client, and workflow.
+  - Works immediately with real keys by swapping secrets (no code changes).
 
 Acceptance Criteria
 - Schemas migrated, indexed; CRUD APIs for all core entities; integration tests passing.
 - No secrets in code; PII-safe logs; base SLOs defined.
+- Hardcoded-secret guardrail passes; config tests green; external API client tests pass with mocks.
+- Rate limiting enabled; WAF/bot protection plan connected to gateway/load balancer.
 
 Exit Criteria
 - Backend can store and serve core domain data reliably with tests.
+- Config/secrets system proven in use; external API client production-ready.
 
 ----------------------------------------------------------------------
 Phase 3 — Nutrition & Calculation Engines
@@ -138,6 +179,7 @@ Scope & Key Deliverables
   - GI ingestion from trusted tables (licensing respected).
   - GL computation per portion; estimation model for unmapped foods using carb composition, fiber, food form, resistant starch, meal composition.
 - Unit-tested service modules; precision validated on sample datasets.
+- Phase-Aware Config & Secrets: continue to use env/Secret Manager; no hardcoded values; tests updated.
 
 Data Ingestion (ETL)
 - USDA FoodData Central (open API).
@@ -145,9 +187,14 @@ Data Ingestion (ETL)
 - Open Food Facts for packaged items.
 - GI tables (University of Sydney or permitted sources).
 
+Security, Privacy, Compliance Activities
+- Validate data provenance/licensing; persist provenance metadata.
+- Ensure PII/PHI not mixed into ingestion/compute logs; audit trails for ingestion jobs.
+
 Acceptance Criteria
 - Engines reach target precision vs references; ≥85% coverage for engine modules.
 - Service APIs expose nutrient and GI/GL computations per ingredient/recipe/meal.
+- No secrets/config hardcoded; tests include config validation.
 
 Exit Criteria
 - Backend can compute accurate nutrition and GI/GL for arbitrary meals using ingested data.
@@ -168,6 +215,11 @@ Scope & Key Deliverables
   - Health conditions constraints (PCOS, diabetes, hypertension, fatty liver, sleep concerns, libido); hair/skin/mood group (grey hair, hair loss, dandruff/itchy scalp, dry skin, depression).
   - Craving-killer variants and controlled “guilty pleasures.”
 - Nutrient computation for each recipe using Phase 3 engines; GI/GL per serving.
+- Phase-Aware Config & Secrets: continue policy; tests updated.
+
+Security, Privacy, Compliance Activities
+- Content moderation pipeline to avoid disallowed ingredients per user constraints.
+- Audit logs for recipe modifications; data classification of user-linked preferences.
 
 Acceptance Criteria
 - Queries support filtering by diet/cuisine/health constraints; nutritional metadata present and correct.
@@ -189,10 +241,15 @@ Scope & Key Deliverables
   - Monthly → weekly plans; progressive overload; deload logic; rest/recovery integration.
   - Adjust to user experience level, equipment, time availability, goals.
 - Safety: per-exercise safety notes and red flags; movement substitutions.
+- Phase-Aware Config & Secrets: policy maintained; tests updated.
+
+Security, Privacy, Compliance Activities
+- RBAC/ABAC enforcement for plan editing; audit logs for plan generation/changes.
 
 Acceptance Criteria
 - Generator produces coherent monthly plans; validators enforce safe volume/progression caps.
 - Workouts render consistently via APIs with instructions/video links.
+- No secrets/config hardcoded.
 
 Exit Criteria
 - Backend can produce fitness plans ready for UI consumption.
@@ -205,13 +262,20 @@ Objectives
 - Implement secure auth, consent, and privacy primitives across apps and backend.
 
 Scope & Key Deliverables
-- Auth: Phone OTP, OAuth (Apple, Google, Facebook), JWT access + refresh rotation, device binding.
-- Consent and privacy screens; data export/delete endpoints; consent records in DB.
+- Auth: Phone OTP, OAuth (Apple, Google, Facebook), JWT access (short-lived) + refresh rotation, device binding.
+- mTLS for internal auth service interactions (and webhook callbacks) where applicable.
+- Consent and privacy screens; data export/delete endpoints; consent records in DB with audit.
 - RBAC/ABAC scaffolding; secure file uploads for health reports (no OCR yet).
 - DLP hooks and payload pseudonymization utilities (for later AI calls).
+- Phase-Aware Config & Secrets: auth providers configured via env/Secret Manager; no secrets in clients.
+
+Security, Privacy, Compliance Activities
+- Rate limiting and bot protection on auth endpoints; anomaly detection for login/OTP abuse patterns.
+- Regional data residency honored for identity data; field-level encryption for sensitive identity attributes.
 
 Acceptance Criteria
 - End-to-end login flows pass; tokens secure; consent captured; security tests green.
+- Hardcoded-secret guardrails pass; no client-side secrets.
 
 Exit Criteria
 - Users can sign in/up securely; privacy controls available.
@@ -228,9 +292,11 @@ Scope & Key Deliverables
 - Design system: color tokens, typography (Inter/Poppins), components (cards, chips, sliders, charts, toggles, modals).
 - Navigation shells: tab bars/stacks for Dashboard, Meal Plan, Log, Fitness, Settings.
 - Accessibility baseline (WCAG 2.1 AA), large targets (≥44px), dynamic type, dark/light mode.
+- Config consumption: apps read non-sensitive config from backend; no secrets embedded.
 
 Acceptance Criteria
 - Apps render core components at 60fps targets; automated UI snapshot tests for components.
+- Static analysis confirms no secrets in client apps.
 
 Exit Criteria
 - Foundation ready to integrate feature flows.
@@ -252,6 +318,10 @@ Scope & Key Deliverables
   - Goals: weight loss/gain/maintain, muscle gain; advanced health and lifestyle goals (sleep improvement, reduce smoking/alcohol).
 - Hinglish-tolerant inputs where relevant.
 - Progress bar, conversational cards, skip/modify options.
+- Phase-Aware Config & Secrets: continue policy; no secrets in client; use backend APIs.
+
+Security, Privacy, Compliance Activities
+- PII minimization in forms; data classification applied; consent capture and audit.
 
 Acceptance Criteria
 - Data persists via backend APIs; error states and retries covered; analytics events tracked (privacy-safe).
@@ -278,6 +348,10 @@ Scope & Key Deliverables
   - Weight trend line; macro split (stacked bars); micro deficiencies; goal ETA placeholder.
 - Fitness Plan UI:
   - Monthly → weekly blocks; workout details with instructions, safety, video links.
+- Phase-Aware Config & Secrets: continue policy; tests updated where config impacts UI behavior.
+
+Security, Privacy, Compliance Activities
+- Access controls on user-specific resources; audit logs for updates; rate limiting on logging endpoints.
 
 Acceptance Criteria
 - Offline caching of recent plans/logs; graceful sync; performance budgets met.
@@ -299,12 +373,14 @@ Scope & Key Deliverables
   - Cost-aware model choice for Level 2 (cheapest within 5% accuracy of top).
   - Provider config via env; model/version logging; response caching; retries/backoffs.
 - DLP/Pseudonymization:
-  - Strip PII, replace identifiers with pseudonyms; zero-retention flags set on providers.
+  - Strip/redact PII/PHI; replace identifiers with pseudonyms; enforce vendor zero-retention/no-log modes with DPAs documented.
 - n8n workflows:
-  - Router callable via webhook; daily quota reset job; error handling; provider failover logic; audit logs.
+  - Router callable via webhook (mTLS where supported); daily quota reset job; error handling; provider failover logic; audit logs.
+- Phase-Aware Config & Secrets: models/providers configured via env/Secret Manager; no hardcoded values; tests using mocks.
 
 Acceptance Criteria
 - Routing and quota logic unit/integration tested; anonymization verified; logs show model selection and costs.
+- CI guardrails confirm no hardcoded secrets; provider retention flags asserted in integration tests (where APIs support).
 
 Exit Criteria
 - System can reliably dispatch AI tasks with policy enforcement and fallbacks.
@@ -326,8 +402,11 @@ Scope & Key Deliverables
   - Flag anomalies; trend analysis; plain-language summaries; physician red-flag modal triggers.
 - Storage & Reuse:
   - Store structured interpretations for reuse by Level 2 tasks (diet/fitness/chat).
-- Privacy:
-  - Encrypted storage; no raw image logging; anonymized AI calls; zero retention modes.
+- Privacy & Security:
+  - Encrypted storage; no raw image logging; anonymized AI calls; zero retention modes; audit trails for access; mTLS for internal flows.
+
+Phase-Aware Config & Secrets
+- Provider keys and endpoints from env/Secret Manager; tests/mocks for OCR/NER/interpretation flows.
 
 Acceptance Criteria
 - E2E: upload → structured entities → interpretation; accuracy validated on a test set; quota step-down works.
@@ -353,6 +432,8 @@ Scope & Key Deliverables
 - Accuracy:
   - Use official DBs; research or estimate with documented rationale if direct values missing; avoid blind estimates.
 - Swap suggestions logic and shopping list generation.
+- DLP enforced before AI calls; vendor no-log/no-retention toggles set.
+- Phase-Aware Config & Secrets: providers/models configured via env/Secret Manager; tests updated.
 
 Acceptance Criteria
 - Plans meet constraints and pass validators; nutrients and GI/GL computed correctly; weekend treat pattern visible.
@@ -379,6 +460,8 @@ Scope & Key Deliverables
   - Health report–specific questions route via Level 1 router/quota; reuse structured interpretations to lower cost subsequently.
 - Hinglish NLP:
   - Synonym/transliteration dictionaries for logging and chat comprehension.
+- DLP before chat provider calls; vendor zero-retention enforced.
+- Phase-Aware Config & Secrets: continue; tests for config-driven providers.
 
 Acceptance Criteria
 - Measurable week-over-week adaptation; chat refuses out-of-domain; citations to sources in RAG responses where applicable.
@@ -402,9 +485,14 @@ Scope & Key Deliverables
   - OpenWeather (Weather + Air Pollution) or IQAir; cache per location; dashboard banners and nudges (home workouts on high AQI; hydration in dry heat).
 - Notifications:
   - APNs, FCM; hydration, meal, workout reminders; report status updates; adaptive timing; user-configurable toggles.
+- Security & Config:
+  - OAuth scopes minimized; tokens rotated; device tokens protected.
+  - All provider keys via env/Secret Manager; no hardcoded keys; rate limits respected; retries/backoff implemented.
+  - Tests with mocks for config and clients; documentation for swapping keys.
 
 Acceptance Criteria
 - Data sync resilient with retries/backoff; permission UX compliant; notifications timely and not naggy.
+- Hardcoded-secret guardrails green; no secrets in clients.
 
 Exit Criteria
 - Integrations demonstrably improve adherence and prediction accuracy.
@@ -420,9 +508,14 @@ Scope & Key Deliverables
 - Performance & Reliability:
   - p95 API <2s; app launch <3s; connection pooling; query optimization; CDN; background jobs; circuit breakers; timeouts; graceful degradation; offline caching.
 - Security & Privacy:
-  - OWASP ASVS; SAST/DAST; dependency/secret scanning; WAF; RBAC/ABAC; audit logs; DLP on AI payloads; export/delete flows; encrypted backups.
+  - OWASP ASVS verification; SAST/DAST; dependency/secret scanning; WAF; RBAC/ABAC; audit logs; DLP on AI payloads; export/delete flows; encrypted backups.
+  - Edge protections confirmed: global rate limiting, bot protection, and abuse monitoring with alerting.
+  - mTLS enforced where applicable; token TTLs and refresh rotation validated in prod-like env; device binding checks.
+  - Field-level encryption coverage review; data classification audit; PII/PHI minimization verified.
+  - Regional data residency: validation of data location controls and processing boundaries; DR runbooks per region.
 - Observability:
   - Centralized logs/metrics/traces; SLO dashboards; synthetic tests; alerting; runbooks; DR (backups, restore tests; RPO/RTO).
+  - Security anomaly detection dashboards (auth anomalies, scraping, brute force, abuse).
 - Cost Controls:
   - Model usage dashboards; quota enforcement; cache hit rates; provider mix optimization per Level 1/2 policies.
 - QA:
@@ -430,9 +523,11 @@ Scope & Key Deliverables
 - Compliance & Launch:
   - App Store/Play Store readiness; consent and privacy flows; localized disclosures; Privacy Policy/ToS; store assets; release pipelines; crash reporting (privacy-conscious).
   - Manual human steps documented for API keys (Apple/Google/Fitbit/AI providers) with env variable names.
+  - Demo policy enforcement: demo secrets allowed only in local dev/test; CI prevents demo keys in staging/prod; code uses production logic only.
 
 Acceptance Criteria
 - All tests green; SIT+UAT sign-offs; security/performance gates passed; store submissions accepted.
+- No hardcoded secrets/URLs/keys; region residency checks pass; WAF/rate limits/bot protection enabled and tested.
 
 Exit Criteria
 - Version v1.0.0 live with monitoring and on-call rotation active; rollback plan in place.
@@ -447,7 +542,7 @@ Mapping to Business Use Cases (1–25)
 - 16 Accurate calculations, GI/GL, cooking transforms → Phase 3 (engines), Phase 12 (application)
 - 17 Hinglish inputs → Phases 8, 9, 13
 - 18 Domain-scoped chat with RAG and update actions → Phase 13
-- 19 Security/privacy guarantees → Phases 1, 2, 6, 15
+- 19 Security/privacy guarantees → Phases 1, 2, 6, 10, 11, 14, 15
 - 20 Wearables and push → Phase 14
 - 21 AQI/Weather context → Phase 14
 - 22 Burn target guidance → Phases 3, 12, 13 (compute + advice)
@@ -482,12 +577,11 @@ Risks & Mitigations
 Change Control & Alignment
 ----------------------------------------------------------------------
 
-- PROMPT_README_COMBINED.md is the single source of truth. Any scope/standard changes require synchronized updates to this file and PROMPT_README_COMBINED.md via PR review by product, security, and AI leads.
-
+- PROMPT_README_COMBINED.md is the single source of truth. Any scope/standard changes require synchronized updates to this file and PROMPT_README_COMBINED.md via PR review by product, security, engineering, Cloud Leads, AI leads, Performance leads, Frontend and Backend leads, QA leads.
 
 ### ✅ VERIFICATION COMPLETE: Full End-to-End Application Coverage Confirmed
 
-**Summary**: All required application functionalities are comprehensively covered across the 6 development phases. The combined deliverables from all phases will provide a complete, production-ready HealthAICoach application with:
+**Summary**: All required application functionalities are comprehensively covered across the development phases. The combined deliverables from all phases will provide a complete, production-ready HealthAICoach application with:.
 
 - ✅ Complete user onboarding and authentication
 - ✅ Full AI-powered coaching capabilities  
@@ -500,4 +594,4 @@ Change Control & Alignment
 
 **No functionality gaps identified** - the phase-based approach delivers 100% of the required application features.
 
-```End of execution plan. All teams must adhere to these phases and acceptance gates. Deviations require explicit approval and synchronized SSOT updates.```
+```End of execution plan. All teams must adhere to these phases and acceptance gates. Deviations require explicit approval and synchronized SSOT updates.
