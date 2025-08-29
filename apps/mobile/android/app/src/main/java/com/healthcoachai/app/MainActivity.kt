@@ -1,19 +1,29 @@
 package com.healthcoachai.app
 
-import android.os.Bundle
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+/**
+ * MainActivity (Kotlin-only version for Phase 1)
+ * * This is a simplified version for build system validation.
+ * Android-specific implementation will be added in Phase 7.
+ */
+class MainActivity {
 
-class MainActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+    fun onCreate() {
+        println("MainActivity created")
+        setupUserInterface()
+        initializeHealthFeatures()
+    }
 
+    private fun setupUserInterface() {
         // Set up the main content
-        val titleTextView = findViewById<TextView>(R.id.titleTextView)
-        val subtitleTextView = findViewById<TextView>(R.id.subtitleTextView)
+        val title = "HealthCoachAI"
+        val subtitle = "Your AI-Powered Health Coach"
 
-        titleTextView.text = "HealthCoachAI"
-        subtitleTextView.text = "Your AI-Powered Health Coach"
+        println("Title: $title")
+        println("Subtitle: $subtitle")
+    }
+
+    private fun initializeHealthFeatures() {
+        // Initialize health-related features
+        println("Initializing health features...")
     }
 }

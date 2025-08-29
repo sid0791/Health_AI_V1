@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit hooks..."
+
+# Run lint-staged for staged files
+npx lint-staged
+
+# Check for secrets in staged files
+echo "🔐 Scanning for secrets..."
+if command -v gitleaks &> /dev/null; then
+  gitleaks protect --staged --verbose
+else
+  echo "⚠️  Warning: gitleaks not found. Skipping secret scan."
+  echo "💡 Install gitleaks: https://github.com/zricethezav/gitleaks#installation"
+fi
+
+# Validate commit message format
+echo "📝 Validating commit message format..."
+npx commitlint --edit "$1"
+
+echo "✅ Pre-commit checks completed!"
