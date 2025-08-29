@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "HealthCoachAI"
-include ':app'
+include(":app")
