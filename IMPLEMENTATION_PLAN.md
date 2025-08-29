@@ -19,364 +19,174 @@ End-to-end, production-ready mobile application (iOS + Android) with AI coaching
 - **Themes**: Light/Dark mode support
 - **Accessibility**: WCAG 2.1 AA compliance
 
-## Monorepo Structure
+# Implementation Plan 
 
-```
-Health_AI_V1/
-├── README.md                           # Main repository documentation
-├── IMPLEMENTATION_PLAN.md              # This file
-├── APPLICATION_PHASES.md               # Detailed phase breakdown
-├── PROMPT_README.md                    # Original requirements documentation
-├── UNIVERSAL_TASKS.md                  # Task list for all phases
-├── .gitignore                          # Repository-wide gitignore
-├── .github/
-│   └── workflows/                      # CI/CD pipelines
-│       ├── backend.yml                 # Backend testing and deployment
-│       ├── mobile.yml                  # Mobile builds and store uploads
-│       └── release.yml                 # Release management
-├── mobile/                             # Flutter application
-│   ├── lib/
-│   │   ├── main.dart                   # App entry point
-│   │   ├── app/                        # App-level configuration
-│   │   ├── core/                       # Core utilities and constants
-│   │   ├── features/                   # Feature modules
-│   │   │   ├── auth/                   # Authentication
-│   │   │   ├── onboarding/             # User onboarding
-│   │   │   ├── dashboard/              # Home dashboard
-│   │   │   ├── nutrition/              # Meal planning and logging
-│   │   │   ├── fitness/                # Workout planning and tracking
-│   │   │   ├── analytics/              # Health analytics
-│   │   │   ├── chat/                   # AI coach chat
-│   │   │   └── settings/               # User settings
-│   │   ├── shared/                     # Shared components
-│   │   │   ├── data/                   # Data layer
-│   │   │   ├── domain/                 # Business logic
-│   │   │   ├── presentation/           # UI components
-│   │   │   └── platform/               # Platform integrations
-│   │   └── design_system/              # Design tokens and themes
-│   ├── test/                           # Unit tests
-│   ├── integration_test/               # Integration tests
-│   ├── assets/                         # App assets
-│   ├── android/                        # Android configuration
-│   ├── ios/                            # iOS configuration
-│   ├── fastlane/                       # Store deployment automation
-│   └── pubspec.yaml                    # Flutter dependencies
-├── backend/                            # FastAPI backend
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── main.py                     # FastAPI app entry point
-│   │   ├── core/                       # Core configuration
-│   │   │   ├── __init__.py
-│   │   │   ├── config.py               # App configuration
-│   │   │   ├── security.py             # Security utilities
-│   │   │   ├── database.py             # Database configuration
-│   │   │   └── dependencies.py         # Dependency injection
-│   │   ├── api/                        # API routes
-│   │   │   ├── __init__.py
-│   │   │   ├── v1/                     # API version 1
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── auth.py             # Authentication endpoints
-│   │   │   │   ├── users.py            # User management
-│   │   │   │   ├── nutrition.py        # Nutrition endpoints
-│   │   │   │   ├── fitness.py          # Fitness endpoints
-│   │   │   │   ├── tracking.py         # Health tracking
-│   │   │   │   ├── analytics.py        # Analytics endpoints
-│   │   │   │   └── ai.py               # AI coach endpoints
-│   │   │   └── deps.py                 # API dependencies
-│   │   ├── models/                     # Database models
-│   │   │   ├── __init__.py
-│   │   │   ├── user.py                 # User models
-│   │   │   ├── nutrition.py            # Nutrition models
-│   │   │   ├── fitness.py              # Fitness models
-│   │   │   ├── tracking.py             # Tracking models
-│   │   │   └── ai.py                   # AI conversation models
-│   │   ├── schemas/                    # Pydantic schemas
-│   │   │   ├── __init__.py
-│   │   │   ├── user.py                 # User schemas
-│   │   │   ├── nutrition.py            # Nutrition schemas
-│   │   │   ├── fitness.py              # Fitness schemas
-│   │   │   ├── tracking.py             # Tracking schemas
-│   │   │   └── ai.py                   # AI schemas
-│   │   ├── services/                   # Business logic services
-│   │   │   ├── __init__.py
-│   │   │   ├── auth.py                 # Authentication service
-│   │   │   ├── user.py                 # User service
-│   │   │   ├── nutrition.py            # Nutrition algorithms
-│   │   │   ├── fitness.py              # Fitness algorithms
-│   │   │   ├── analytics.py            # Analytics service
-│   │   │   └── ai/                     # AI services
-│   │   │       ├── __init__.py
-│   │   │       ├── orchestrator.py     # AI orchestration
-│   │   │       ├── providers/          # AI provider implementations
-│   │   │       ├── tools/              # AI tool functions
-│   │   │       └── safety.py           # AI safety policies
-│   │   └── utils/                      # Utility functions
-│   │       ├── __init__.py
-│   │       ├── encryption.py           # Data encryption
-│   │       ├── logging.py              # Logging configuration
-│   │       └── validators.py           # Input validation
-│   ├── tests/                          # Backend tests
-│   │   ├── __init__.py
-│   │   ├── conftest.py                 # Test configuration
-│   │   ├── unit/                       # Unit tests
-│   │   ├── integration/                # Integration tests
-│   │   └── e2e/                        # End-to-end tests
-│   ├── alembic/                        # Database migrations
-│   │   ├── env.py
-│   │   ├── script.py.mako
-│   │   └── versions/
-│   ├── Dockerfile                      # Backend container
-│   ├── requirements.txt                # Python dependencies
-│   └── pyproject.toml                  # Python project configuration
-├── design/                             # Design assets and tokens
-│   ├── tokens/                         # Design tokens (JSON)
-│   │   ├── colors.json
-│   │   ├── typography.json
-│   │   ├── spacing.json
-│   │   └── components.json
-│   ├── mockups/                        # SVG mockups
-│   │   ├── onboarding_sign_in.svg
-│   │   ├── onboarding_biometrics.svg
-│   │   ├── onboarding_lifestyle.svg
-│   │   ├── onboarding_health_screening.svg
-│   │   ├── onboarding_diet_prefs.svg
-│   │   ├── onboarding_goals.svg
-│   │   ├── home_dashboard.svg
-│   │   ├── mealplan_week.svg
-│   │   ├── recipe_detail.svg
-│   │   ├── meal_logging_search.svg
-│   │   ├── analytics.svg
-│   │   ├── chat.svg
-│   │   └── fitness_calendar.svg
-│   └── assets/                         # App icons, splash screens
-├── infra/                              # Infrastructure configuration
-│   ├── docker-compose.yml              # Local development environment
-│   ├── docker-compose.prod.yml         # Production configuration
-│   └── scripts/                        # Deployment scripts
-└── docs/                               # Additional documentation
-    ├── api/                            # API documentation
-    ├── mobile/                         # Mobile development docs
-    ├── deployment/                     # Deployment guides
-    └── privacy/                        # Privacy policy and compliance
-```
+Purpose
+- Translate the 16 phases (0–15) into concrete, testable engineering work with clear interfaces, data models, security controls, and acceptance gates.
 
-## Implementation Phases
+References
+- PROMPT_README_COMBINED.md: single source of truth for scope, quality bars, and policies
+- APPLICATION_PHASES.md: execution sequencing and acceptance criteria
 
-### Phase 0: Documentation and Planning ✅
-- [x] Implementation Plan documentation
-- [x] Repository structure definition
-- [x] Application phases breakdown
-- [x] Task organization for future phases
+Phase 0 — Program Setup & Governance
+- Tasks
+  - Scaffold monorepo and domain-driven structure; establish coding standards and conventional commits.
+  - Add design tokens and shared component library baseline (brand colors: greens/turquoise with coral accents; typography: Inter/Poppins).
+  - Define security/privacy baselines (OWASP ASVS mapping, data classification, DLP, secrets policy).
+  - Initialize CI with lint, unit tests, secret scanning, SAST; enable branch protection and required checks.
+  - Provision n8n securely; set up base webhooks and secret storage; document access.
+- Deliverables
+  - CODEOWNERS, PR templates, CONTRIBUTING.md, SECURITY_PRIVACY.md, ARCHITECTURE.md.
+- Acceptance
+  - Pipelines green; secret scanning enforced; tokens published to mobile projects.
 
-### Phase 1: Backend Foundation
-**Duration**: 3-4 days
-**Focus**: Core backend infrastructure with real domain logic
+Phase 1 — Core Backend Architecture & Data Modeling
+- Tasks
+  - Implement services: users, identities, consents; profiles; preferences; goals; notifications config.
+  - Health report storage metadata and access controls.
+  - Recipes, MealPlan, FitnessPlan, Logs, Analytics, AI Decisions schemas + migrations and indexing.
+  - API versioning, pagination, idempotency keys, caching headers; error model and correlation IDs.
+  - Security: RBAC/ABAC, audit logs, TLS/mTLS where applicable, rate limiting hooks.
+  - Observability: structured logs, tracing (OpenTelemetry), metrics; SLOs defined.
+- Interfaces
+  - REST/GraphQL (OpenAPI schema published under data/schemas).
+- Acceptance
+  - CRUD and list endpoints; integration tests with DB; PII-safe logging verified.
 
-#### Key Components:
-1. **FastAPI Application Setup**
-   - Project structure and configuration
-   - Database setup (PostgreSQL) with SQLAlchemy
-   - Redis for caching and sessions
-   - Environment configuration management
+Phase 2 — Nutrition & Calculation Engines
+- Tasks
+  - Implement TDEE, macro/micro calculators with safe bands; expose as pure services.
+  - Integrate cooking yields and nutrient retention per method.
+  - GI/GL calculators; ingest GI tables and add estimation fallback; unit conversions.
+  - ETL jobs: USDA FDC, IFCT (where permitted), Open Food Facts, GI tables; provenance persisted.
+  - Unit tests with benchmark validations; precision targets defined and met.
+- Acceptance
+  - Engine APIs return correct values; coverage ≥85%; provenance stored.
 
-2. **Authentication System**
-   - OAuth integration (Apple Sign-In, Google Sign-In)
-   - Email/password authentication
-   - JWT token management with refresh tokens
-   - RBAC (Role-Based Access Control)
-   - Password reset functionality
+Phase 3 — Recipe Corpus & Personalization Rules
+- Tasks
+  - Seed healthy recipes (metadata only where licensing constrains distribution).
+  - Compute per-recipe nutrients and GI/GL using engines; cache results.
+  - Implement personalization constraints and filters (diet/cuisine/health/cravings).
+- Acceptance
+  - Filtered queries validated; nutrition fields correct; paging performant.
 
-3. **User Management**
-   - User registration and profile management
-   - Consent and privacy settings
-   - Data export/deletion capabilities
-   - User preferences and settings
+Phase 4 — Fitness Engine & Workout Library
+- Tasks
+  - Build exercise library with safety metadata and video references.
+  - Implement monthly→weekly generator with progression and deload logic.
+  - Tailor output to experience, equipment, time; validate volume/intensity caps.
+- Acceptance
+  - Generator outputs validated plans via API; safety rules tested.
 
-4. **AI Service Architecture**
-   - Provider abstraction layer
-   - OpenAI and Anthropic Claude integration
-   - Tool/function calling framework
-   - Streaming response handling
-   - Rate limiting and error handling
-   - Safety policies and input validation
+Phase 5 — Authentication, Consent & Privacy Baseline
+- Tasks
+  - Phone OTP; OAuth (Apple/Google/FB); JWT/refresh rotation; device binding.
+  - Consent capture and storage; export/delete workflows and endpoints.
+  - DLP/pseudonymization utilities for downstream AI calls; audit for sensitive actions.
+- Acceptance
+  - E2E login functional; consent and privacy controls tested; rate limiting active.
 
-5. **Nutrition Module**
-   - TDEE calculation (Mifflin-St Jeor equation)
-   - Macro calculation based on goals
-   - Meal planning algorithms
-   - Recipe database and management
-   - Grocery list generation
-   - Dietary restriction handling
+Phase 6 — Mobile Apps Foundation & Design System
+- Tasks
+  - App shells, navigation, and shared components; dark/light modes; accessibility baseline (WCAG 2.1 AA).
+  - Secure configuration handling; crash reporting stub (no PII).
+- Acceptance
+  - Component library snapshot tests; performance meets 60fps targets.
 
-6. **Fitness Module**
-   - Progressive overload algorithms
-   - Workout plan generation
-   - Heart rate zone calculations (Karvonen)
-   - VO2 max estimation
-   - Recovery and readiness assessment
-   - Periodization logic
+Phase 7 — Onboarding & Data Capture Flows
+- Tasks
+  - Build guided onboarding: basic info, lifestyle, health flags + report upload, preferences & cravings, goals.
+  - Hinglish-tolerant inputs; conversational microcopy; robust error/retry flows.
+- Acceptance
+  - Data persists; analytics events (privacy-safe) recorded; offline-ready.
 
-7. **Testing Infrastructure**
-   - Unit tests for all services
-   - Integration tests for API endpoints
-   - Database test fixtures
-   - Mock AI provider for testing
+Phase 8 — Meal/Fitness Plan UI, Logging & Analytics Shell
+- Tasks
+  - Dashboard; 7-day plan UI; meal details with nutrition table; shopping list.
+  - Food diary with Hinglish search, quantity chips, live totals; photo capture scaffolding.
+  - Analytics shell: weight trend, macro stacks, micro deficiencies, ETA.
+  - Fitness plan UI with instructions, safety notes, video links.
+- Acceptance
+  - Offline caching and queued sync; charts accurate; app launch <3s.
 
-#### Deliverables:
-- Fully functional FastAPI backend
-- Comprehensive test suite (90%+ coverage)
-- API documentation (OpenAPI/Swagger)
-- Database migration scripts
-- Docker configuration
+Phase 9 — AI Core Integration, Router & n8n Orchestration
+- Tasks
+  - Implement Level 1/2 routing, quota counters, and step-down ladder; Level 2 cheapest-within-5% logic.
+  - DLP middleware and zero-retention flags; content-addressed caching of results.
+  - n8n workflows for routing, failover, quota reset; audit logs of decisions and costs.
+- Acceptance
+  - Routing logic unit/integration tested; anonymization verified; logs complete.
 
-### Phase 2: Mobile Foundation
-**Duration**: 4-5 days
-**Focus**: Flutter app with design system and core functionality
+Phase 10 — Health Report Pipeline (OCR → NER → Interpretation)
+- Tasks
+  - OCR/DU integration with primary + fallbacks; table/section extraction; locale-aware.
+  - Biomarker NER + normalization; reference ranges; unit conversions.
+  - Interpretation: anomalies, trends; plain-language summaries; red-flag triggers.
+  - Encrypted storage; no raw image logs; reuse structured interpretations for downstream tasks.
+- Acceptance
+  - E2E validated against a labeled set; Level 1 quota handling correct.
 
-#### Key Components:
-1. **Flutter Project Setup**
-   - Project structure following clean architecture
-   - Dependency injection with Riverpod
-   - State management architecture
-   - Navigation routing setup
+Phase 11 — AI Meal Planning & Celebrity-Style Recipes
+- Tasks
+  - Generate personalized 7-day plans honoring preferences/conditions/cravings/cuisines; safe deficits/surpluses; GI/GL-aware.
+  - Produce innovative healthy recipes with per-serving macros/micros and GI/GL; apply cooking transforms; validate ingredient availability.
+  - Include weekend restaurant-style treats; controlled guilty pleasures; swap suggestions; shopping list generation.
+- Acceptance
+  - Plan validators pass; accuracy of nutrients/GL confirmed; Level 2 cost logs present.
 
-2. **Design System Implementation**
-   - Design tokens from JSON files
-   - Light/dark theme support
-   - Typography system
-   - Component library
-   - 4px grid system implementation
+Phase 12 — AI Fitness Planning, Weekly Adaptation & Domain-Scoped Chat with RAG
+- Tasks
+  - Weekly adherence/deficiency analysis; adapt next plans; nudges; request updated measurements.
+  - Fitness plan adaptation using logs/wearables; maintain safety; explanatory notes.
+  - Domain-scoped chat with RAG over user data, report interpretations, nutrition science, fitness fundamentals, recipe corpus; Hinglish NLP; update actions require confirmation.
+- Acceptance
+  - Measurable personalization week-over-week; chat refuses out-of-domain; citations when applicable.
 
-3. **Screen Implementation**
-   - All 13 mockup screens implemented
-   - Responsive design for different screen sizes
-   - Accessibility features (VoiceOver/TalkBack)
-   - Proper navigation flow
+Phase 13 — Integrations: HealthKit/Google Fit/Fitbit, AQI/Weather, Push
+- Tasks
+  - HealthKit/Google Fit/Fitbit OAuth/token handling; data ingestion (steps, HR, energy, sleep).
+  - AQI/Weather ingestion with caching; adaptive nudges.
+  - Push notifications via APNs/FCM; templates; quiet hours and user preferences; backoff for delivery.
+- Acceptance
+  - Reliable sync; permission UX compliant; nudges effective.
 
-4. **Data Layer**
-   - API client implementation
-   - Local database (SQLite) for offline support
-   - Repository pattern implementation
-   - Background sync capabilities
-   - Conflict resolution strategies
+Phase 14 — Performance/Security Hardening, Observability, Cost Controls
+- Tasks
+  - Performance: caching, pooling, queueing, batching; load/soak tests; cache hit analysis.
+  - Reliability: circuit breakers, retries with jitter, timeouts, graceful degradation; offline-first.
+  - Security: SAST/DAST, WAF, rate limits, dependency/secret scans, RBAC/ABAC validation, DLP verification; DR backups and restore drills.
+  - Observability: logs/metrics/traces, SLO dashboards, synthetic tests, alerts, runbooks.
+  - Cost: model usage dashboards, quotas, provider mix optimization.
+- Acceptance
+  - All gates pass; runbooks complete; cost dashboards live.
 
-5. **Platform Integrations Foundation**
-   - Health data permissions framework
-   - Push notification setup
-   - Crash reporting integration (Crashlytics/Sentry)
-   - Analytics framework (privacy-compliant)
+Phase 15 — QA (SIT/UAT), Compliance & Launch
+- Tasks
+  - QA: unit/integration/E2E (XCUITest/Espresso), performance, fuzzing; coverage ≥90% for critical paths; SIT across mobile/backend/AI/n8n/integrations; UAT against use cases (1–25).
+  - Compliance: App Store/Play Store readiness; consent and privacy disclosures; legal docs (Privacy Policy, ToS).
+  - Release: blue/green or rolling deploy; store listings; screenshots; crash reporting; analytics; rollback plan.
+  - Manual steps documented for API keys/secrets with env variables.
+- Acceptance
+  - All tests green; SIT+UAT sign-offs; store approvals; v1.0.0 live with monitoring.
 
-6. **Testing Framework**
-   - Widget tests for all screens
-   - Integration tests for user flows
-   - Golden tests for UI consistency
-   - E2E test infrastructure
+Key Interfaces and Contracts
+- OpenAPI/GraphQL schemas under data/schemas
+- Typed DTOs in services/backend/libs/common
+- Provider adapters with consistent error model and retry policies
+- AI routing policy documented in docs/AI_ROUTING_POLICY.md
 
-#### Deliverables:
-- Complete Flutter application
-- All screens implemented and navigable
-- Offline-first data architecture
-- Comprehensive test suite
-- iOS and Android build configurations
+Testing Strategy
+- Engines: deterministic unit tests against reference datasets
+- Integration: provider mocks, ETL jobs, data provenance checks
+- Mobile: UI snapshots; E2E user journeys (onboarding → plan → logging → analytics)
+- Performance: p95 latencies; cache hit ratios; soak tests
+- Security: fuzzing, auth abuse scenarios, DLP verification
 
-### Phase 3: AI Integration
-**Duration**: 2-3 days
-**Focus**: Wire AI capabilities to mobile app and implement streaming
-
-#### Key Components:
-1. **AI Tool Implementation**
-   - Nutrition planning tools
-   - Fitness planning tools
-   - Analytics interpretation tools
-   - Plan adjustment tools
-
-2. **Chat Interface**
-   - Real-time streaming responses
-   - Multi-turn conversation handling
-   - Tool use visualization
-   - Response source attribution
-
-3. **Planning Flows**
-   - AI-powered meal plan generation
-   - AI-powered workout plan creation
-   - Dynamic plan adjustments
-   - Explanation of changes
-
-4. **Safety and Compliance**
-   - Content filtering
-   - Medical disclaimer integration
-   - Safe completion policies
-   - Privacy-preserving AI interactions
-
-#### Deliverables:
-- Fully functional AI coach
-- Streaming chat interface
-- AI-powered planning features
-- Safety compliance validation
-
-### Phase 4: Platform Integrations
-**Duration**: 2-3 days
-**Focus**: Health platform integrations and notifications
-
-#### Key Components:
-1. **Health Data Integration**
-   - Apple HealthKit integration
-   - Google Fit integration
-   - User consent management
-   - Data synchronization
-
-2. **Notification System**
-   - Push notifications (FCM/APNs)
-   - Scheduled reminders
-   - Habit tracking notifications
-   - Analytics event notifications
-
-3. **Monitoring and Analytics**
-   - Crash reporting setup
-   - Performance monitoring
-   - User analytics (privacy-compliant)
-   - Error tracking and alerting
-
-#### Deliverables:
-- Health platform integrations
-- Notification system
-- Monitoring and analytics
-- Privacy compliance validation
-
-### Phase 5: CI/CD and Store Readiness
-**Duration**: 2-3 days
-**Focus**: Deployment automation and store preparation
-
-#### Key Components:
-1. **CI/CD Pipelines**
-   - Backend testing and deployment
-   - Mobile build automation
-   - Code quality gates
-   - Security scanning
-
-2. **Store Preparation**
-   - App icons and assets
-   - Screenshots (light/dark)
-   - Store descriptions
-   - Privacy policy
-   - iOS Privacy Manifest
-   - Android Data Safety
-
-3. **Release Automation**
-   - Fastlane configuration
-   - Automated store uploads
-   - Version management
-   - Release notes generation
-
-#### Deliverables:
-- Complete CI/CD pipelines
-- Store-ready applications
-- Release automation
-- Compliance documentation
-
-### Phase 6: Final Testing and Validation
-**Duration**: 1-2 days
-**Focus**: End-to-end validation and self-check
+Risk Management
+- Data licensing for IFCT and GI tables handled via provenance flags, permissible subsets, and estimation models with citations
+- Provider outages mitigated via multi-provider ladders, quotas, caching, and self-hosted fallbacks
+- Store review risks reduced via early compliance checks and feature flags for sensitive integrations
 
 #### Key Components:
 1. **E2E Testing**
