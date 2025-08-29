@@ -1,4 +1,4 @@
-# HealthCoachAI Monorepo Structure (Best-of Combined)
+# HealthCoachAI Monorepo Structure (Best-of Combined) 
 
 Authoritative, end-to-end, atomic repository layout aligned to:
 - PROMPT_README_COMBINED.md (single source of truth)
