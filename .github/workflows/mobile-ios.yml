@@ -111,7 +111,7 @@ jobs:
           fi
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ios-test-results
@@ -176,7 +176,7 @@ jobs:
           fi
 
       - name: Upload UI test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ios-ui-test-results
@@ -240,7 +240,7 @@ jobs:
           fi
 
       - name: Upload snapshot test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ios-snapshot-test-results
@@ -305,7 +305,7 @@ jobs:
           fi
 
       - name: Upload archive
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ios-archive
           path: apps/mobile/ios/build/HealthCoachAI.xcarchive
