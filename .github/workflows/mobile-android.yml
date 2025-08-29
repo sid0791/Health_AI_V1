@@ -88,12 +88,12 @@ jobs:
               # Create a minimal test report if none exists
               if ! ls build/test-results/testDebugUnitTest/TEST-*.xml 1> /dev/null 2>&1; then
                 echo "Creating placeholder test report..."
-                cat > build/test-results/testDebugUnitTest/TEST-placeholder.xml << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="AndroidPlaceholderTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2024-01-01T00:00:00" hostname="localhost" time="0.001">
-  <testcase name="placeholderTest" classname="AndroidPlaceholderTest" time="0.001"/>
-</testsuite>
-EOF
+                cat > build/test-results/testDebugUnitTest/TEST-placeholder.xml << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuite name="AndroidPlaceholderTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2024-01-01T00:00:00" hostname="localhost" time="0.001">
+            <testcase name="placeholderTest" classname="AndroidPlaceholderTest" time="0.001"/>
+          </testsuite>
+          EOF
               fi
             else
               echo "No gradlew found, skipping tests"
