@@ -6,13 +6,14 @@ This prompt governs all code and documentation produced in this repository and m
 0) Non-Negotiables
 End-to-end production-ready application with full frontend (Android, iOS, Web), backend, AI, data, security, cloud, DevOps, and QA.
 Zero placeholders, zero demo stubs, zero hardcoded secrets. All business logic must be algorithm-complete.
-0 known bugs at release; ≥90% test coverage on critical paths; comprehensive SIT and UIT/E2E test suites.
+Zero known bugs at release; ≥90% test coverage on critical paths; comprehensive SIT and UIT/E2E test suites. No dependency Issues, no runtime errors, no compilation errors.
 Security and privacy by design; no client-side secrets; vendor data-retention disabled; PII redaction for any external AI calls.
 Offline-first UX patterns; graceful API degradation; multi-layer fallbacks for AI and integrations.
 Cost-aware AI orchestration with dynamic policy (accuracy vs cost) and vendor fallback tiers.
 Use a workflow orchestrator (n8n preferred) for AI and integration pipelines.
 India-first with global scalability (0 → 10M users). Bilingual inputs (English + Hinglish), strong Indian recipe coverage, metric-first units.
 All features must comply with App Store and Play Store policies; WCAG 2.1 AA accessibility.
+
 1) Core Business Use Cases (Complete Coverage)
 Authentication and onboarding
 Phone OTP login; social logins (Google, Apple, optional Facebook).
@@ -66,6 +67,7 @@ Multi-tenant, horizontally scalable, 10M user design target; edge caching; backg
 Fallback policy (global)
 Each scenario must have an alternate (AI vendor fallback, cached decisioning, heuristic mode, delayed processing).
 Health report analysis is Level-1 importance → always highest accuracy first, with configured graceful degradation.
+
 2) AI Importance Levels and Vendor Selection Policy
 Level 1 (highest accuracy): health report analysis and any health-report Q&A in chat.
 Use the most accurate API regardless of cost (daily tier policy applies for cost control without compromising safety).
@@ -90,6 +92,7 @@ Configuration:
 
 X, Y, Z, provider lists, and accuracy/cost metadata are environment-configured and hot-reloadable.
 Vendor retention must be disabled; PHI redaction required.
+
 3) AI APIs, Models, and Cost Strategy
 Preferred model families (support multiple vendors with fallbacks):
 
@@ -116,6 +119,7 @@ Google Vertex AI (Gemini 2.5 Pro)
 OpenRouter or Together.ai for OSS models (Llama 3.1 70B, Mixtral 8x22B, Qwen2-72B)
 OCR: Google Document AI or AWS Textract (choose best in region)
 All with data-retention disabled; PHI redacted.
+
 4) Data, Nutrition Accuracy, and Recipe Coverage
 Nutrition databases (multi-source, reconciled):
 
@@ -140,6 +144,7 @@ Hinglish/English logging:
 
 Fuzzy search and synonym expansion; unit normalization (household to grams/ml).
 On-device language model or rules for quick disambiguation; server confirmers for ambiguous cases.
+
 5) RAG, Personalization Memory, and Workflows (n8n)
 RAG architecture:
 
@@ -158,6 +163,7 @@ Fitness Plan Builder: condition-aware plan with monthly progressions and safety 
 Integrations Sync: Fitbit/Apple Health/Google Fit polling + webhook callbacks; AQI/weather daily snapshot.
 Notifications & Nudges: hydration, steps, adherence prompts; quiet hours; opt-in categories.
 Cost Controller: tally Level 1 calls; enforce daily tiering; vendor fallback; cache reuse.
+
 6) Security, Privacy, Compliance
 OWASP ASVS-aligned; secure by default.
 PII/PHI minimization; data classification; field-level encryption for sensitive fields.
@@ -168,6 +174,7 @@ DLP layer before external AI calls: redact PII/PHI, enforce vendor “no log/ret
 App store/privacy compliance; data export/delete; consent tracking.
 Regional data residency where required (configurable).
 Rate limiting, WAF, bot protection, and abuse monitoring.
+
 7) UX/UI — Brand, Screens, Accessibility
 Brand & feel:
 
@@ -200,6 +207,7 @@ All critical actions <3 taps; ≥44px tap targets
 Hindi/Hinglish input accepted; i18n-ready
 Light/dark mode; high-contrast options
 Screen reader labels and logical focus order
+
 8) Algorithms & Health Logic
 TDEE via Mifflin/St. Jeor with activity factors; optional wearables to adjust EE.
 Macro split tailored to goal and health conditions (PCOS/IR, fatty liver, hypertension).
@@ -208,23 +216,27 @@ GI/GL-aware meal construction; minimize high-GI spikes for relevant conditions.
 Progressive overload and periodization in fitness; HR zone computations; recovery emphasis.
 Safety filters: no extreme caloric deficits/excess; protein upper bounds respecting renal safety; sodium limits for hypertension, etc.
 Anti-aging axis: prioritize muscle mass retention, collagen-supporting nutrients, anti-inflammatory profiles, sleep-supportive timing.
+
 9) Integrations, Context, and Nudges
 Fitbit, Apple Health, Google Fit: steps, HR, energy, sleep (where available).
 AQI/Weather providers: location-based advisories (high AQI → home workout and hydration prompts; dry weather → water intake).
 Daily “calories to burn” advisory beyond baseline to sustainably meet goals.
 Push notifications with scheduling, batching, quiet hours, and smart frequency control.
+
 10) Scalability, Performance, and Reliability Targets
 P95 API latency <2s, app cold start <3s.
 Horizontal scaling for API, workers, and vector DB; read replicas; sharding strategy when needed.
 Idempotent workflows; retries with backoff; circuit breakers; dead-letter queues.
 Edge CDN for static assets; image optimization; local caching.
 Observability: distributed tracing, logs, metrics, SLOs; incident runbooks.
+
 11) Testing, QA, and Release
 Unit, integration, contract, E2E, performance, security tests; fuzz inputs for free-text.
 Mock external vendors with golden files; chaos testing for fallbacks.
 ≥90% coverage on critical paths each phase.
 SIT and UIT must pass before release; bug triage to zero-known-bugs.
 CI/CD with gated releases; staged rollouts; crash/ANR monitoring; rollback plan.
+
 12) Phase Alignment- use this prompt, to divide the work into different phases. While dividing into phases, make sure each phase is fully functionaly complete. Each phase should be small enough that it could be completed by AI agents without any issues with ratelimit. While dividing the work into phases, make sure total number of phases doesn't increase more than 16. Each phase, could be run own its own, without any issue, without any bugs, and without any dependencies. Each phase would contain complete code, without any demo or placeholder code. Finally try to keep total number of phases as low as possible, but still should meet our above criteria, that is fully functionable and small enough to be completed by AI agents in one go.
 
 Each phase must be independently testable, production-ready, and compliant with standards defined in APPLICATION_PHASES.md (Quality Standards, No Placeholder Code, Algorithm-Complete, etc.).
@@ -240,6 +252,7 @@ RAG Documents (user, medical corpus, plan summaries)
 AI Calls (task type, vendor, cost, accuracy tier, cache key, retention flag)
 Notifications (categories, schedule), Integrations (tokens, scopes)
 Audit Logs, Errors, Feature Flags
+
 14) Edge Cases & Fallbacks
 API outages: vendor fallback chain; cached plan retrieval; heuristic local calculators.
 Missing wearables: default to self-reported activity; conservative estimates.
@@ -247,6 +260,7 @@ Ambiguous food entries: ask clarifying inline questions; default to safest equiv
 Allergies/religious constraints: strict exclusion; safe substitutions suggested.
 Non-adherence detected: adjust plan toward higher adherence without goal drift.
 Metabolic slowdown: periodic refeed/adjustments within safety bounds.
+
 15) Acceptance Criteria (Representative)
 Diet plan generation:
 
@@ -274,11 +288,13 @@ No third-party retention; privacy policy clearly stated; data export/delete supp
 Performance:
 
 Meets P95 latency targets; graceful fallback on vendor delays; offline caching for recent plans/logs.
+
 16) Configuration & Environment
 All secrets and API keys via environment or secret manager.
 AI policy tables (accuracy, cost, tiers X/Y/Z) are centrally configured (JSON/DB) and editable without redeploy.
 Vendor toggles for no-retention modes must be ON.
 Feature flags for experimental features (e.g., photo meal recognition).
+
 17) Deliverables in This Repository
 Full backend code (API, workers, RAG, AI policy, nutrition engine, fitness engine).
 Full mobile apps (Android, iOS) and web app; shared design system where feasible.
@@ -286,6 +302,7 @@ n8n workflow definitions (JSON) for all pipelines.
 Infrastructure-as-code (cloud-agnostic presets or specific provider) for reproducible environments.
 Test suites (unit/integration/E2E/perf/security), test data, and CI pipelines.
 Documentation: API docs, runbooks, operations, architecture, and this SSOT.
+
 18) AI API List (for README disclosure)
 OpenAI: GPT-4.1, GPT-4o (no-retention)
 Anthropic: Claude Sonnet 4, Sonnet 3.7 (no-retention)
@@ -306,11 +323,13 @@ Note: Ensure image assets are optimized, licensed, and culturally appropriate.
 Level 1 task: Health report analysis or health-report questions in chat (highest accuracy).
 Level 2 task: Diet/fitness planning, calorie/nutrition/GI estimation, cravings recipes, non-report chat.
 GI/GL: Glycemic Index/Load computed per serving considering preparation method.
+
 21) Compliance With APPLICATION_PHASES.md
 All above requirements are mapped into phases and must be reflected in APPLICATION_PHASES.md. Each phase is:
 
 Self-sufficient, production-ready, algorithm-complete, testable, with compliance gates and ≥90% critical-path coverage.
 Includes documentation and release notes.
 No placeholder or demo code at any stage.
+
 22) Summary
 HealthCoachAI delivers a celebrity-level nutritionist and fitness coach experience with trustworthy accuracy for critical tasks, sustainable long-term health outcomes, delightful and motivating UI/UX, strong privacy and security, and cost-optimized AI orchestration. This prompt is exhaustive; no functionality in the scope may be omitted.
