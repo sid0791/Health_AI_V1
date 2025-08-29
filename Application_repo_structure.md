@@ -1,15 +1,23 @@
 # HealthCoachAI Monorepo Structure — Combined, Atomic, SSOT‑Aligned
 
-This document reconciles the detailed tree in README.md with the architecture and layout in Application_repo_structure.md, using the depth and atomic detail of the README tree while aligning to the agreed stack and governance:
+This document reconciles the detailed tree in README.md with the architecture
+and layout in Application_repo_structure.md, using the depth and atomic detail
+of the README tree while aligning to the agreed stack and governance:
+
 - Native mobile: iOS (SwiftUI + Combine), Android (Jetpack Compose)
-- Backend: Node.js (NestJS + TypeScript), PostgreSQL, Redis, Object Storage, Vector Store (pgvector)
+- Backend: Node.js (NestJS + TypeScript), PostgreSQL, Redis, Object Storage,
+  Vector Store (pgvector)
 - Orchestration: n8n (AI routing, pipelines, jobs)
 - Policies and quality bars per PROMPT_README.md and APPLICATION_PHASES.md
 
 Notes
-- No secrets in code or clients; all provider keys via environment or a Secret Manager.
-- DLP/pseudonymization enforced for external AI calls; zero‑retention/no‑log flags required.
-- Each folder includes sufficient scaffolding to be production‑ready and testable per phase gates.
+
+- No secrets in code or clients; all provider keys via environment or a Secret
+  Manager.
+- DLP/pseudonymization enforced for external AI calls; zero‑retention/no‑log
+  flags required.
+- Each folder includes sufficient scaffolding to be production‑ready and
+  testable per phase gates.
 
 ## Repository Tree (atomic)
 
@@ -521,6 +529,7 @@ HealthCoachAI/
 ## Environment Templates (required variables; examples; no secrets in clients)
 
 services/backend/.env.example
+
 ```env
 # Core
 NODE_ENV=development
@@ -586,6 +595,7 @@ SENTRY_DSN=
 ```
 
 apps/mobile/ios/.env.example and apps/mobile/android/.env.example
+
 ```env
 # Non-sensitive client config
 API_BASE_URL=http://localhost:8080
@@ -594,6 +604,7 @@ ENV=development
 ```
 
 n8n/.env.example
+
 ```env
 N8N_HOST=localhost
 N8N_PROTOCOL=http
@@ -605,6 +616,9 @@ N8N_BASIC_AUTH_PASSWORD=changeme
 
 ## Alignment Summary
 
-- Uses README.md’s level of detail while adopting Application_repo_structure.md’s target architecture.
-- Replaces Flutter + FastAPI with Native iOS/Android + NestJS; adds n8n, pgvector, and Level 1/2 AI routing modules.
-- Incorporates universal gates (secret scanning, DLP, quotas, observability) and per‑phase deliverables to satisfy PROMPT_README.md and APPLICATION_PHASES.md.
+- Uses README.md’s level of detail while adopting
+  Application_repo_structure.md’s target architecture.
+- Replaces Flutter + FastAPI with Native iOS/Android + NestJS; adds n8n,
+  pgvector, and Level 1/2 AI routing modules.
+- Incorporates universal gates (secret scanning, DLP, quotas, observability) and
+  per‑phase deliverables to satisfy PROMPT_README.md and APPLICATION_PHASES.md.

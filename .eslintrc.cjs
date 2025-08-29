@@ -1,0 +1,41 @@
+module.exports = {
+  root: true,
+  env: {
+    es6: true,
+    node: true,
+    browser: true,
+  },
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking',
+  ],
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    ecmaVersion: 2022,
+    sourceType: 'module',
+    project: ['./tsconfig.json', './apps/*/tsconfig.json', './services/*/tsconfig.json'],
+  },
+  plugins: ['@typescript-eslint'],
+  rules: {
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-non-null-assertion': 'warn',
+    '@typescript-eslint/prefer-as-const': 'error',
+    '@typescript-eslint/no-inferrable-types': 'off',
+    'prefer-const': 'error',
+    'no-var': 'error',
+    'object-shorthand': 'error',
+    'prefer-arrow-callback': 'error',
+  },
+  ignorePatterns: [
+    'node_modules/',
+    'dist/',
+    'build/',
+    'coverage/',
+    '*.js',
+    '*.d.ts',
+  ],
+};

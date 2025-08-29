@@ -1,0 +1,312 @@
+name: iOS CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/mobile/ios/**'
+      - 'packages/design-system/**'
+      - '.github/workflows/mobile-ios.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/mobile/ios/**'
+      - 'packages/design-system/**'
+      - '.github/workflows/mobile-ios.yml'
+
+env:
+  XCODE_VERSION: '15.2'
+  IOS_SIMULATOR: 'iPhone 15 Pro'
+  IOS_VERSION: '17.2'
+
+jobs:
+  lint-and-test:
+    name: Lint and Test iOS
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install dependencies
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if [ -f "Package.swift" ]; then
+              swift package resolve
+            fi
+            if [ -f "Podfile" ]; then
+              pod install
+            fi
+          fi
+
+      - name: Lint Swift code
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if command -v swiftlint &> /dev/null; then
+              swiftlint lint --reporter github-actions-logging
+            else
+              echo "SwiftLint not installed, skipping lint"
+            fi
+          fi
+
+      - name: Build iOS app
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if [ -f "HealthCoachAI.xcworkspace" ]; then
+              xcodebuild clean build \
+                -workspace HealthCoachAI.xcworkspace \
+                -scheme HealthCoachAI \
+                -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+                CODE_SIGNING_ALLOWED=NO
+            elif [ -f "HealthCoachAI.xcodeproj" ]; then
+              xcodebuild clean build \
+                -project HealthCoachAI.xcodeproj \
+                -scheme HealthCoachAI \
+                -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+                CODE_SIGNING_ALLOWED=NO
+            else
+              echo "No Xcode project found, skipping build"
+            fi
+          fi
+
+      - name: Run unit tests
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if [ -f "HealthCoachAI.xcworkspace" ]; then
+              xcodebuild test \
+                -workspace HealthCoachAI.xcworkspace \
+                -scheme HealthCoachAI \
+                -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+                -enableCodeCoverage YES \
+                CODE_SIGNING_ALLOWED=NO
+            elif [ -f "HealthCoachAI.xcodeproj" ]; then
+              xcodebuild test \
+                -project HealthCoachAI.xcodeproj \
+                -scheme HealthCoachAI \
+                -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+                -enableCodeCoverage YES \
+                CODE_SIGNING_ALLOWED=NO
+            else
+              echo "No Xcode project found, skipping tests"
+            fi
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: ios-test-results
+          path: |
+            apps/mobile/ios/build/Logs
+            apps/mobile/ios/build/reports
+          retention-days: 7
+
+  ui-tests:
+    name: iOS UI Tests
+    runs-on: macos-14
+    needs: lint-and-test
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ui-test'))
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install dependencies
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if [ -f "Package.swift" ]; then
+              swift package resolve
+            fi
+            if [ -f "Podfile" ]; then
+              pod install
+            fi
+          fi
+
+      - name: Run UI tests
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if [ -f "HealthCoachAI.xcworkspace" ]; then
+              xcodebuild test \
+                -workspace HealthCoachAI.xcworkspace \
+                -scheme HealthCoachAIUITests \
+                -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+                CODE_SIGNING_ALLOWED=NO
+            elif [ -f "HealthCoachAI.xcodeproj" ]; then
+              xcodebuild test \
+                -project HealthCoachAI.xcodeproj \
+                -scheme HealthCoachAIUITests \
+                -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+                CODE_SIGNING_ALLOWED=NO
+            else
+              echo "No Xcode project found, skipping UI tests"
+            fi
+          fi
+
+      - name: Upload UI test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: ios-ui-test-results
+          path: |
+            apps/mobile/ios/build/Logs
+            apps/mobile/ios/build/reports
+          retention-days: 7
+
+  snapshot-tests:
+    name: iOS Snapshot Tests
+    runs-on: macos-14
+    needs: lint-and-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install dependencies
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if [ -f "Package.swift" ]; then
+              swift package resolve
+            fi
+            if [ -f "Podfile" ]; then
+              pod install
+            fi
+          fi
+
+      - name: Run snapshot tests
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if [ -f "HealthCoachAI.xcworkspace" ]; then
+              xcodebuild test \
+                -workspace HealthCoachAI.xcworkspace \
+                -scheme HealthCoachAISnapshotTests \
+                -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+                CODE_SIGNING_ALLOWED=NO
+            elif [ -f "HealthCoachAI.xcodeproj" ]; then
+              xcodebuild test \
+                -project HealthCoachAI.xcodeproj \
+                -scheme HealthCoachAISnapshotTests \
+                -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+                CODE_SIGNING_ALLOWED=NO
+            else
+              echo "No Xcode project found, skipping snapshot tests"
+            fi
+          fi
+
+      - name: Upload snapshot test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: ios-snapshot-test-results
+          path: |
+            apps/mobile/ios/build/Logs
+            apps/mobile/ios/__Snapshots__
+          retention-days: 7
+
+  build-archive:
+    name: Build iOS Archive
+    runs-on: macos-14
+    needs: [lint-and-test, snapshot-tests]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install dependencies
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if [ -f "Package.swift" ]; then
+              swift package resolve
+            fi
+            if [ -f "Podfile" ]; then
+              pod install
+            fi
+          fi
+
+      - name: Create archive
+        run: |
+          if [ -d "apps/mobile/ios" ]; then
+            cd apps/mobile/ios
+            if [ -f "HealthCoachAI.xcworkspace" ]; then
+              xcodebuild archive \
+                -workspace HealthCoachAI.xcworkspace \
+                -scheme HealthCoachAI \
+                -archivePath build/HealthCoachAI.xcarchive \
+                CODE_SIGNING_ALLOWED=NO
+            elif [ -f "HealthCoachAI.xcodeproj" ]; then
+              xcodebuild archive \
+                -project HealthCoachAI.xcodeproj \
+                -scheme HealthCoachAI \
+                -archivePath build/HealthCoachAI.xcarchive \
+                CODE_SIGNING_ALLOWED=NO
+            else
+              echo "No Xcode project found, skipping archive"
+            fi
+          fi
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-archive
+          path: apps/mobile/ios/build/HealthCoachAI.xcarchive
+          retention-days: 30
