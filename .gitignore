@@ -196,6 +196,10 @@ unlinked_spec.ds
 **/android/key.properties
 *.jks
 
+# Exception: Allow gradle wrapper for our minimal Android project
+!apps/mobile/android/gradle/wrapper/gradle-wrapper.jar
+!apps/mobile/android/gradlew
+
 # iOS related
 **/ios/**/*.mode1v3
 **/ios/**/*.mode2v3
