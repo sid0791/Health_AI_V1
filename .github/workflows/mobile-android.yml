@@ -91,7 +91,7 @@ jobs:
           reporter: java-junit
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-test-results
@@ -182,7 +182,7 @@ jobs:
             fi
 
       - name: Upload instrumentation test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-instrumentation-test-results-api-${{ matrix.api-level }}
@@ -295,7 +295,7 @@ jobs:
           fi
 
       - name: Upload APK artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: android-apks
           path: |
@@ -353,7 +353,7 @@ jobs:
           fi
 
       - name: Upload bundle artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: android-bundle
           path: apps/mobile/android/**/build/outputs/bundle/release/*.aab
