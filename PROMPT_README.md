@@ -175,7 +175,11 @@ App store/privacy compliance; data export/delete; consent tracking.
 Regional data residency where required (configurable).
 Rate limiting, WAF, bot protection, and abuse monitoring.
 
-7) UX/UI — Brand, Screens, Accessibility
+7) Phase-Aware Config & Secrets (no hardcoding) -  All settings (URLs, keys, limits, etc.) must come from a config + secrets system where demo values live only in a local secrets file that humans can later replace with real ones, without touching code. Create one service feature that connects to an external API with full production logic (retries, pagination, validation, storage) so it works immediately once real keys are swapped in. Provide tests for the config, the client, and the workflow, using mocks for external calls. Add guardrails that fail if hardcoded secrets appear, and clear docs explaining that switching demo → real only requires updating the secrets file. Each phase must deliver bug-free, fully functional, testable code.
+
+8) Remember Only demo files/Codes that are allowed in our whole code is, to put demo apis/code, or where efforts are required that only a HUMAN can do, that is AI is not able to do that work. In no other circumstances, any Demo file/code or placeholder file/code is allowed. Even in the circumstances is a work could be done by Human, and also by AI, than always prefer that AI would complete it end to end, and this no placeholder/demo code or file would be provided. Finally even if we are using demo apis, code/algotithm that uses those API, should be configured such a way, that it would ALWAYS work with actual APIs/Credentials. So that as a HUMAN, i just need to replace demo apis/credentials, with actual apis/credentials, and it would work.
+
+9) UX/UI — Brand, Screens, Accessibility
 Brand & feel:
 
 Premium yet warm; celebrity-luxury meets approachable coach.
