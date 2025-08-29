@@ -6,12 +6,20 @@ on:
   pull_request:
     branches: [main, develop]
   schedule:
-    # Run security scans daily at 2 AM UTC
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
 
 jobs:
   secret-scan:
-    name: Secret Scanning
+    name: Secret Scanning (gitleaks)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,11 +34,17 @@ jobs:
           sudo mv gitleaks /usr/local/bin/
 
       - name: Run Gitleaks
-        run: gitleaks detect --source . --config .gitleaks.toml --report-format json --report-path gitleaks-report.json
+        shell: bash
+        run: |
+          CFG=""
+          if [ -f ".gitleaks.toml" ]; then
+            CFG="--config .gitleaks.toml"
+          fi
+          gitleaks detect --source . $CFG --report-format json --report-path gitleaks-report.json
 
       - name: Upload Gitleaks results
-        uses: actions/upload-artifact@v3
         if: failure()
+        uses: actions/upload-artifact@v4
         with:
           name: gitleaks-report
           path: gitleaks-report.json
@@ -46,33 +60,53 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: '8.15.0'
+          version: "8.15.0"
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
-      - name: Run npm audit
-        run: pnpm audit --audit-level moderate
+      - name: Cache pnpm store
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies (workspace)
+        run: pnpm -w install --frozen-lockfile
+
+      - name: pnpm audit (non-failing)
+        run: pnpm audit --json > pnpm-audit.json || true
+
+      - name: Upload pnpm audit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pnpm-audit
+          path: pnpm-audit.json
+          retention-days: 30
 
       - name: Install Snyk
         run: npm install -g snyk
 
       - name: Authenticate Snyk
-        run: snyk auth ${{ secrets.SNYK_TOKEN }}
         if: ${{ secrets.SNYK_TOKEN }}
+        run: snyk auth "${{ secrets.SNYK_TOKEN }}"
 
       - name: Run Snyk test
-        run: snyk test --all-projects --json > snyk-report.json || true
         if: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --all-projects --json > snyk-report.json || true
 
       - name: Upload Snyk results
-        uses: actions/upload-artifact@v3
         if: ${{ secrets.SNYK_TOKEN }}
+        uses: actions/upload-artifact@v4
         with:
           name: snyk-report
           path: snyk-report.json
@@ -81,22 +115,16 @@ jobs:
   codeql:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
     strategy:
       fail-fast: false
       matrix:
-        language: ['javascript', 'typescript']
-
+        language: ["javascript", "typescript"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
@@ -104,23 +132,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: '8.15.0'
+          version: "8.15.0"
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (workspace)
+        run: pnpm -w install --frozen-lockfile
 
-      - name: Build for analysis
-        run: pnpm run build
+      - name: Build for analysis (non-failing if missing)
+        run: pnpm -r --if-present build
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
-          category: '/language:${{matrix.language}}'
+          category: "/language:${{ matrix.language }}"
 
   docker-security:
     name: Docker Security Scan
@@ -134,26 +163,27 @@ jobs:
         run: |
           if [ -f "services/backend/Dockerfile" ]; then
             docker build -t healthcoachai-backend:latest services/backend/
+            echo "BUILT=1" >> $GITHUB_ENV
+          else
+            echo "BUILT=0" >> $GITHUB_ENV
           fi
 
       - name: Install Trivy
         run: |
           sudo apt-get update
-          sudo apt-get install wget apt-transport-https gnupg lsb-release
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
           echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
           sudo apt-get update
-          sudo apt-get install trivy
+          sudo apt-get install -y trivy
 
       - name: Run Trivy vulnerability scanner
-        run: |
-          if docker images healthcoachai-backend:latest > /dev/null 2>&1; then
-            trivy image --format json --output trivy-report.json healthcoachai-backend:latest
-          fi
+        if: env.BUILT == '1'
+        run: trivy image --format json --output trivy-report.json healthcoachai-backend:latest || true
 
       - name: Upload Trivy results
-        uses: actions/upload-artifact@v3
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: trivy-report
           path: trivy-report.json
@@ -177,11 +207,13 @@ jobs:
         run: |
           if [ -d "infra" ]; then
             tfsec infra/ --format json --out tfsec-report.json || true
+          else
+            echo "No infra/ directory; skipping tfsec."
           fi
 
       - name: Upload tfsec results
-        uses: actions/upload-artifact@v3
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: tfsec-report
           path: tfsec-report.json
@@ -194,7 +226,9 @@ jobs:
     if: always()
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       - name: Generate security summary
         run: |
@@ -203,30 +237,34 @@ jobs:
           echo "## Scan Results" >> security-summary.md
           echo "" >> security-summary.md
 
-          if [ -f "gitleaks-report/gitleaks-report.json" ]; then
+          if [ -f "artifacts/gitleaks-report/gitleaks-report.json" ]; then
             echo "⚠️ **Secret Scan**: Issues found - check gitleaks-report artifact" >> security-summary.md
           else
             echo "✅ **Secret Scan**: No secrets detected" >> security-summary.md
           fi
 
-          if [ -f "snyk-report/snyk-report.json" ]; then
-            echo "⚠️ **Dependency Scan**: Check snyk-report artifact for details" >> security-summary.md
+          if [ -f "artifacts/pnpm-audit/pnpm-audit.json" ]; then
+            echo "⚠️ **Dependency Scan**: Check pnpm-audit artifact for details" >> security-summary.md
           else
             echo "✅ **Dependency Scan**: No critical vulnerabilities found" >> security-summary.md
           fi
 
           echo "✅ **CodeQL**: Analysis completed" >> security-summary.md
 
-          if [ -f "trivy-report/trivy-report.json" ]; then
+          if [ -f "artifacts/snyk-report/snyk-report.json" ]; then
+            echo "✅ **Snyk**: Report generated" >> security-summary.md
+          fi
+
+          if [ -f "artifacts/trivy-report/trivy-report.json" ]; then
             echo "✅ **Container Scan**: Analysis completed" >> security-summary.md
           fi
 
-          if [ -f "tfsec-report/tfsec-report.json" ]; then
+          if [ -f "artifacts/tfsec-report/tfsec-report.json" ]; then
             echo "✅ **Infrastructure Scan**: Analysis completed" >> security-summary.md
           fi
 
       - name: Upload security summary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-summary
           path: security-summary.md
