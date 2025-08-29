@@ -100,38 +100,32 @@ jobs:
               # Create a minimal test report if none exists
               if ! ls build/test-results/testDebugUnitTest/TEST-*.xml 1> /dev/null 2>&1; then
                 echo "Creating placeholder test report..."
-                cat > build/test-results/testDebugUnitTest/TEST-placeholder.xml << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="AndroidPlaceholderTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2024-01-01T00:00:00" hostname="localhost" time="0.001">
-  <testcase name="placeholderTest" classname="AndroidPlaceholderTest" time="0.001"/>
-</testsuite>
-EOF
+                echo '<?xml version="1.0" encoding="UTF-8"?>' > build/test-results/testDebugUnitTest/TEST-placeholder.xml
+                echo '<testsuite name="AndroidPlaceholderTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2024-01-01T00:00:00" hostname="localhost" time="0.001">' >> build/test-results/testDebugUnitTest/TEST-placeholder.xml
+                echo '  <testcase name="placeholderTest" classname="AndroidPlaceholderTest" time="0.001"/>' >> build/test-results/testDebugUnitTest/TEST-placeholder.xml
+                echo '</testsuite>' >> build/test-results/testDebugUnitTest/TEST-placeholder.xml
               fi
             else
               echo "No gradlew found, skipping tests"
               # Create directory structure and placeholder for when gradlew doesn't exist
               mkdir -p build/test-results/testDebugUnitTest
-              cat > build/test-results/testDebugUnitTest/TEST-placeholder.xml << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="AndroidPlaceholderTest" tests="1" skipped="1" failures="0" errors="0" timestamp="2024-01-01T00:00:00" hostname="localhost" time="0.001">
-  <testcase name="placeholderTest" classname="AndroidPlaceholderTest" time="0.001">
-    <skipped message="Gradlew not found"/>
-  </testcase>
-</testsuite>
-EOF
+              echo '<?xml version="1.0" encoding="UTF-8"?>' > build/test-results/testDebugUnitTest/TEST-placeholder.xml
+              echo '<testsuite name="AndroidPlaceholderTest" tests="1" skipped="1" failures="0" errors="0" timestamp="2024-01-01T00:00:00" hostname="localhost" time="0.001">' >> build/test-results/testDebugUnitTest/TEST-placeholder.xml
+              echo '  <testcase name="placeholderTest" classname="AndroidPlaceholderTest" time="0.001">' >> build/test-results/testDebugUnitTest/TEST-placeholder.xml
+              echo '    <skipped message="Gradlew not found"/>' >> build/test-results/testDebugUnitTest/TEST-placeholder.xml
+              echo '  </testcase>' >> build/test-results/testDebugUnitTest/TEST-placeholder.xml
+              echo '</testsuite>' >> build/test-results/testDebugUnitTest/TEST-placeholder.xml
             fi
           else
             echo "No Android project found, creating placeholder structure"
             # Create directory structure for the case where Android project doesn't exist
             mkdir -p apps/mobile/android/build/test-results/testDebugUnitTest
-            cat > apps/mobile/android/build/test-results/testDebugUnitTest/TEST-placeholder.xml << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="AndroidNoProjectTest" tests="1" skipped="1" failures="0" errors="0" timestamp="2024-01-01T00:00:00" hostname="localhost" time="0.001">
-  <testcase name="noProjectTest" classname="AndroidNoProjectTest" time="0.001">
-    <skipped message="Android project not found"/>
-  </testcase>
-</testsuite>
-EOF
+            echo '<?xml version="1.0" encoding="UTF-8"?>' > apps/mobile/android/build/test-results/testDebugUnitTest/TEST-placeholder.xml
+            echo '<testsuite name="AndroidNoProjectTest" tests="1" skipped="1" failures="0" errors="0" timestamp="2024-01-01T00:00:00" hostname="localhost" time="0.001">' >> apps/mobile/android/build/test-results/testDebugUnitTest/TEST-placeholder.xml
+            echo '  <testcase name="noProjectTest" classname="AndroidNoProjectTest" time="0.001">' >> apps/mobile/android/build/test-results/testDebugUnitTest/TEST-placeholder.xml
+            echo '    <skipped message="Android project not found"/>' >> apps/mobile/android/build/test-results/testDebugUnitTest/TEST-placeholder.xml
+            echo '  </testcase>' >> apps/mobile/android/build/test-results/testDebugUnitTest/TEST-placeholder.xml
+            echo '</testsuite>' >> apps/mobile/android/build/test-results/testDebugUnitTest/TEST-placeholder.xml
           fi
 
       - name: Generate test report

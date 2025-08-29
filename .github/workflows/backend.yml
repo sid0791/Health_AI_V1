@@ -53,7 +53,7 @@ jobs:
       - name: Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent 2>/dev/null || echo '.pnpm-store')" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
         uses: actions/cache@v3
@@ -120,7 +120,7 @@ jobs:
       - name: Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent 2>/dev/null || echo '.pnpm-store')" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
         uses: actions/cache@v3
@@ -188,43 +188,11 @@ jobs:
             echo "Semgrep found, running scan..."
             semgrep --config=auto --sarif --output=semgrep.sarif services/backend/ 2>/dev/null || {
               echo "Semgrep scan failed or no rules available, creating empty SARIF file"
-              cat > semgrep.sarif << 'EOF'
-{
-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-  "version": "2.1.0",
-  "runs": [
-    {
-      "tool": {
-        "driver": {
-          "name": "semgrep",
-          "informationUri": "https://semgrep.dev/"
-        }
-      },
-      "results": []
-    }
-  ]
-}
-EOF
+              echo '{"$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","version":"2.1.0","runs":[{"tool":{"driver":{"name":"semgrep","informationUri":"https://semgrep.dev/"}},"results":[]}]}' > semgrep.sarif
             }
           else
             echo "Semgrep not available, creating empty SARIF file"
-            cat > semgrep.sarif << 'EOF'
-{
-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json", 
-  "version": "2.1.0",
-  "runs": [
-    {
-      "tool": {
-        "driver": {
-          "name": "semgrep",
-          "informationUri": "https://semgrep.dev/"
-        }
-      },
-      "results": []
-    }
-  ]
-}
-EOF
+            echo '{"$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","version":"2.1.0","runs":[{"tool":{"driver":{"name":"semgrep","informationUri":"https://semgrep.dev/"}},"results":[]}]}' > semgrep.sarif
           fi
 
       - name: Upload Semgrep results
@@ -254,7 +222,7 @@ EOF
       - name: Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent 2>/dev/null || echo '.pnpm-store')" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
         uses: actions/cache@v3
