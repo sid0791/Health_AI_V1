@@ -11,7 +11,6 @@ Each phase is designed to be:
 - **Production-ready**: Follows best practices for security, performance, and maintainability
 
 ---
-# APPLICATION_PHASES.md
 Authoritative, phase-by-phase execution plan for HealthCoachAI. This file MUST remain fully aligned with PROMPT_README_COMBINED.md and governs scope, sequencing, quality bars, and acceptance gates for all code and documentation in this repository.
 
 Guiding principles
