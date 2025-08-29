@@ -40,7 +40,7 @@ Steps to reproduce the behavior:
 - [ ] Web
 - [ ] Backend API
 - [ ] n8n Workflows
-- [ ] Other: ****\_\_\_****
+- [ ] Other: \***\*\_\_\_\*\***
 
 **Device Information (for mobile bugs):**
 
