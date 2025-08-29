@@ -1,0 +1,173 @@
+# HealthCoachAI Monorepo Structure (Best-of Combined)
+
+Authoritative, end-to-end, atomic repository layout aligned to:
+- PROMPT_README_COMBINED.md (single source of truth)
+- APPLICATION_PHASES.md (Phases 0–15)
+
+Guiding choices
+- Native mobile: iOS (SwiftUI) and Android (Jetpack Compose) as per phases
+- Backend: Node.js (NestJS + TypeScript), PostgreSQL, Redis, Object Storage, Vector Store (pgvector/OpenSearch)
+- AI Orchestration: n8n with Level 1/2 routing, quotas, fallbacks, and privacy (DLP)
+- Accuracy and cost controls, observability, security/privacy are first-class
+- Domain-driven modularity; no secrets in code; infra-as-code; CI/CD integrated
+
+Repository root
+- apps/                           Application clients
+  - mobile/
+    - ios/                        Native iOS app (SwiftUI + Combine)
+      - App/                      App entry, environment, DI container
+      - Features/                 Feature modules (one folder per module)
+        - Dashboard/
+        - Onboarding/
+        - MealPlan/
+        - FoodLog/
+        - Analytics/
+        - Fitness/
+        - Settings/
+        - Chat/
+      - DesignSystem/             Tokens, styles, shared UI components
+      - Services/                 API client, Auth, Push, HealthKit, Config
+      - Localization/             EN + Hinglish strings, fonts
+      - Resources/                Assets, icons
+      - Tests/                    Unit/UI (XCUITest), snapshots
+      - Scripts/                  Fastlane, build, lint
+    - android/                    Native Android app (Kotlin + Jetpack Compose)
+      - app/                      App module, navigation, Hilt DI
+      - features/                 Feature modules mirroring iOS
+        - dashboard/
+        - onboarding/
+        - mealplan/
+        - foodlog/
+        - analytics/
+        - fitness/
+        - settings/
+        - chat/
+      - designsystem/             Tokens, theming, components
+      - services/                 API client, Auth, Push, Google Fit, Config
+      - localization/             EN + Hinglish strings
+      - resources/                Drawables, icons
+      - tests/                    Unit/Espresso UI tests, snapshots
+      - scripts/                  Gradle tasks, lint
+  - web/                          Optional (Next.js) – empty unless enabled
+- packages/                       Cross-platform packages
+  - design-tokens/                Source-of-truth tokens (JSON/YAML) + codegen
+  - food-mappings/                Hinglish ↔ English, synonyms, transliterations
+  - schema/                       Shared JSON schemas, OpenAPI fragments
+- services/                       Backend and supporting services
+  - api-gateway/                  Edge gateway (e.g., Envoy/Nginx with WAF rules)
+  - backend/                      Primary backend (NestJS + TypeScript)
+    - apps/
+      - core-api/                 REST/GraphQL API, versioned endpoints
+    - modules/                    Domain modules (DDD)
+      - auth/                     Phone OTP, OAuth (Apple/Google/FB), JWT/refresh, device binding
+      - users/                    Accounts, identities
+      - consent/                  Consent storage, export/delete flows
+      - profiles/                 Basic + lifestyle + health flags, measurements
+      - preferences/              Dietary, cuisines, allergies
+      - goals/                    Weight/muscle/lifestyle goals
+      - reports/                  Secure upload/storage refs, access control
+      - report-pipeline/          OCR → NER → Interpretation (Level 1), provider ladder
+      - nutrition-engine/         TDEE, macros/micros, cooking yields/retention, GI/GL
+      - recipe/                   Recipe CRUD, tags, nutrition, GI/GL per serving
+      - plan-meals/               7-day meal planner, swap logic, shopping lists
+      - plan-fitness/             Monthly→weekly generator, safety/contraindications
+      - logs/                     Meal logs (Hinglish-friendly), activity, weight/measurements
+      - analytics/                Trends, deficiencies, goal ETA structures
+      - ai-router/                Level 1/2 routing, quotas, step-down, DLP, caching
+      - chat/                     Domain-scoped assistant; update ops with confirmation
+      - rag/                      Embeddings, vector store, hybrid retrieval, citations
+      - integrations/
+        - healthkit/              Mediation where needed, token exchange
+        - googlefit/              OAuth + data sync
+        - fitbit/                 OAuth + data sync
+        - weather-aqi/            OpenWeather/IQAir clients + caching
+        - push/                   APNs/FCM senders, templates, preferences
+      - etl/                      USDA FDC, IFCT (where permitted), Open Food Facts, GI tables
+      - notifications/            Nudges, schedules (hydration/meals/workouts/AQI)
+      - cost-observability/       Model usage, quotas, cache metrics, dashboards
+      - admin/                    Admin APIs, RBAC/ABAC, audit logs
+    - libs/                       Reusable libraries
+      - common/                   DTOs, validators, feature flags, result types
+      - security/                 RBAC/ABAC guards, cryptography, KMS clients
+      - configs/                  Typed config loader + schema validation
+      - http/                     Resilient HTTP clients (retries/backoff/circuit breaker)
+      - dlp/                      PII redaction/pseudonymization middleware
+      - nlp/                      Hinglish mappings, tokenization helpers
+      - observability/            Logging, tracing (OpenTelemetry), metrics
+      - persistence/              DB utilities, migrations, seed helpers
+    - prisma/ or migrations/      DB migrations (if not using ORM migrations in code)
+    - test/                       Unit/integration tests for backend modules
+  - workers/                      Background workers/queues (BullMQ/Celery analog)
+    - jobs/                       Long-running tasks (ETL, indexing, notifications)
+- n8n/                            AI orchestration & scheduled jobs
+  - workflows/
+    - ai-router-orchestrator.json           Enforce Level 1/2 with quotas/fallbacks
+    - health-report-ingestion.json          OCR → NER → Interpretation
+    - daily-plan-runner.json                Refresh/validate plans daily
+    - weekly-review-adaptation.json         Aggregate adherence → adapt next week
+    - notifications-scheduler.json          Hydration/meals/workouts/AQI nudges
+    - quota-reset.json                      Daily Level 1 quota reset
+  - README.md                               Deployment, security (mTLS/secret store), endpoints
+- data/                           Data, seeds, schemas
+  - seeds/                        Curated seed data (recipes metadata, exercises)
+  - mappings/                     GI mapping tables, ingredient equivalences
+  - schemas/                      OpenAPI, GraphQL, JSON Schemas
+  - samples/                      Sample reports and test fixtures (de-identified)
+- infra/                          Infrastructure as code
+  - terraform/
+    - modules/                    Reusable modules (VPC, RDS, Redis, S3, OpenSearch, EKS)
+    - envs/
+      - dev/
+      - staging/
+      - prod/
+  - k8s/                          Helm charts/manifests for services & jobs
+  - policies/                     OPA/Rego policies, WAF rules
+  - docker/                       Dockerfiles, docker-compose for local stack
+- .github/                        CI/CD & repo management
+  - workflows/
+    - backend.yml                 Lint, test, build, SAST/DAST, coverage
+    - mobile-ios.yml              Build/tests (Xcode), snapshots, artifacts
+    - mobile-android.yml          Build/tests (Gradle), snapshots, artifacts
+    - infra.yml                   Terraform plan/apply with approvals
+    - security.yml                Secret/dependency scanning
+    - release.yml                 Versioning, changelogs, store upload pipelines
+  - ISSUE_TEMPLATE/               Bug/feature templates
+  - PULL_REQUEST_TEMPLATE.md      Security/test/docs checklist
+  - CODEOWNERS                    Review gates by domain
+- docs/                           Documentation (SSOT-aligned)
+  - PROMPT_README_COMBINED.md     SSOT prompt/spec (do not diverge)
+  - APPLICATION_PHASES.md         Phases 0–15 execution plan
+  - ARCHITECTURE.md               Diagrams, data flows, module boundaries
+  - API_REFERENCE.md              OpenAPI/GraphQL doc and examples
+  - AI_ROUTING_POLICY.md          Level 1/2 rules, quotas, fallbacks, providers
+  - SECURITY_PRIVACY.md           ASVS mapping, DLP, encryption, DR, consent
+  - DATA_SOURCES.md               USDA/IFCT/GI/OFF sources, licenses, provenance
+  - MOBILE_UX_GUIDE.md           Tokens, components, accessibility requirements
+  - RUNBOOKS/
+    - provider-outage.md
+    - quota-exhaustion.md
+    - incident-response.md
+    - oncall-checklist.md
+- tests/                         Cross-cutting tests
+  - unit/
+  - integration/
+  - e2e/
+  - performance/
+  - security/
+- tools/                         Dev tools and generators
+  - codegen/                     OpenAPI clients for mobile/backend
+  - lint-config/                 Shared lint/format rules
+- scripts/                       Local dev scripts, data sync, codegen
+- .editorconfig
+- .gitignore
+- LICENSE
+- README.md                      Entry point (see file)
+- IMPLEMENTATION_PLAN.md         Tasks mapped to phases 0–15
+- UNIVERSAL_TASKS.md             Universal checklists and gates
+
+Notes
+- Optional alternatives (if team opts-in and phases are updated accordingly):
+  - Backend Kotlin/Spring Boot instead of NestJS (structure remains similar)
+  - Web client (Next.js) under apps/web
+- Secrets never stored in code; use cloud Secrets Manager; zero retention flags for AI calls
+- Vector store: pgvector on Postgres or OpenSearch; configured in services/backend/libs/configs
