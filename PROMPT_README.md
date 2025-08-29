@@ -1,421 +1,316 @@
-# HealthAICoach - Original Requirements and Specifications
-
-This document preserves the complete original requirements and specifications for the HealthAICoach application as provided in the problem statement.
-
-## Role and Responsibility
-
-**Engineer Profile**: Senior staff-level mobile, backend, and AI systems engineer
-
-**Mission**: Deliver an end-to-end, App Store and Play Store–launch-ready HealthAICoach application with no demo or placeholder code. Everything must compile, run, and pass tests on first run.
-
-## High-Level Product Vision
-
-HealthAICoach is a personalized AI-powered health and wellness companion providing:
-
-### Core Capabilities
-- **Intelligent nutrition guidance and meal planning**
-- **Fitness planning and progression**
-- **Health tracking and analytics**
-- **AI chat/coach experience powered by specialized coaching capabilities**
-- **Seamless UX across iOS and Android, with light/dark theme and accessibility**
-
-### Quality Standards
-- **Production-ready**: No demo or placeholder code
-- **Immediate functionality**: Everything compiles, runs, and passes tests on first run
-- **AI Integration**: Correct server-side integration with proper privacy/security
-- **Platform compliance**: Respects App Store and Play Store policies
-
-## Design System Source of Truth
-
-### Design Tokens and Themes
-- **Colors, typography, spacing, components as first-class citizens**
-- **Interactive SVG mockups (13 screens)**
-- **Accessibility-first, WCAG 2.1 AA compliance**
-- **4px grid system**
-- **Dark/light theme support**
-
-### Brand and Token Anchors
-- **Brand Primary**: #14b8a6 (turquoise/teal)
-- **Brand Secondary**: #f0653e (coral/orange)
-- **Neutrals**: Full grayscale palette
-- **Semantic colors**: Success, warning, error, info (with dark/light theme mappings)
-- **Typography**: System font stacks (Inter/Poppins equivalents)
-- **Spacing**: 4px modular grid system
-
-## Technology Stack Requirements
-
-### Mobile Platform
-- **Framework**: One codebase producing native-quality iOS and Android apps
-- **Technology**: Flutter (Dart) with Material 3 + custom tokens/themes
-- **Architecture**: Production-grade folder structure, modular architecture, dependency injection
-- **Testing**: Unit/integration/E2E tests with offline-first data layer
-- **Restrictions**: No placeholders, production-grade implementation
-
-### Backend Platform
-- **Framework**: Production-ready Python FastAPI service
-- **AI Integration**: OpenAI + Anthropic server-side integration
-  - Tool/function calling
-  - Streaming responses
-  - Fallbacks, timeouts, retries
-  - Rate limiting
-- **Domain Logic**: Real nutrition, fitness, monitoring, analytics algorithms
-- **Authentication**: 
-  - Sign in with Apple/Google + email/password
-  - JWT with refresh tokens
-  - RBAC (Role-Based Access Control)
-- **Data Storage**: 
-  - PostgreSQL with secure storage
-  - Migrations support
-  - Encryption for PII at rest
-  - TLS in transit
-- **Observability**: Structured logging, metrics, tracing
-- **Security**: 
-  - Input validation
-  - Schema validation
-  - OWASP ASVS-aligned controls
-  - Secrets via environment variables and vault
-
-### Infrastructure Requirements
-- **Containerization**: Docker with multi-stage builds
-- **CI/CD**: GitHub Actions for mobile and backend
-- **Release workflows**: Build signing, automated tests, linting gates
-- **Monitoring**: Sentry/Crashlytics integration
-- **Quality Gates**: All tests must pass before deployment
-
-## Functional Scope (Aligned with Mockups)
-
-### Complete User Journeys (No Stubs)
-
-#### Onboarding Flow
-1. **Sign In**: Apple/Google/email authentication with consent and privacy acknowledgements
-2. **Biometrics Capture**: Age, sex, height, weight, body fat percentage (if known)
-3. **Lifestyle Assessment**: Sleep patterns, stress levels, activity level, constraints
-4. **Health Screening**: Medical conditions, medications, contraindications
-5. **Diet Preferences**: Vegetarian options, allergies, cuisine likes/dislikes
-6. **Goals Setting**: Weight targets, body composition, performance, biomarkers, general wellness
-
-#### Core Application Features
-1. **Home Dashboard**
-   - Daily/weekly overview (nutrition targets, workouts, habit streaks, key biometrics)
-   - Actionable cards (log meal, start workout, review plan changes)
-
-2. **Meal Plan Week**
-   - Full week meal plan with macros breakdown
-   - Grocery list generator
-   - Substitutions respecting dietary preferences
-   - Recipe details with steps and nutrition facts
-   - Meal logging search and quick logging
-
-3. **Fitness Calendar**
-   - Weekly/monthly plan visualization
-   - Progression tracking
-   - Rest days and deload weeks
-   - Workout details (sets/reps/tempo/intervals, RPE/RIR where applicable)
-
-4. **Analytics Dashboard**
-   - Trends for weight, body fat, steps, workouts, calories, macros, sleep
-   - KPI benchmarks and alerts
-   - Progress visualization
-
-5. **Chat (AI Coach)**
-   - Multi-capability coach with tool use:
-     - Nutrition planning, grocery lists, substitutions
-     - Fitness planning and progression
-     - Habit and education guidance
-     - Health monitoring interpretation
-   - Traceable responses (show data sources and rationale at high level)
-   - Safe completion policies
-
-6. **Settings/Profile**
-   - Profile editing and preferences
-   - Notification settings
-   - Data export/delete account
-   - Privacy and consent management
-
-## AI Integration Requirements (Server-Side Only)
-
-### AI Service Architecture
-- **Provider Abstraction**: Support for multiple AI providers with dynamic routing
-- **Providers**: OpenAI (latest GPT family) and Anthropic (Claude 3.7/4)
-- **Routing Policy**: Deterministic policy for provider selection with fallback mechanisms
-- **Streaming Support**: Real-time responses to mobile app via server-sent events or websockets
-
-### Tool/Function Calling Patterns
-Domain-verified operations with the following functions:
-- `create_nutrition_plan(user_profile, goals, dietary_prefs)`
-- `generate_grocery_list(meal_plan)`
-- `create_fitness_plan(user_profile, goals, readiness, constraints)`
-- `analyze_metrics(metrics_time_series)`
-- `explain_plan_changes(diff)`
-
-### Safety and Validation
-- **Input/Output Schema Validation**: Pydantic-based validation
-- **Safe Tool Arguments**: Prevent malicious or invalid inputs
-- **Sensitive Field Redaction**: Protect user privacy
-- **Rate Limiting**: Prevent abuse and manage costs
-- **Error Handling**: Graceful fallbacks and retry mechanisms
-
-### Domain Algorithm Requirements (Real and Robust)
-
-#### Nutrition Algorithms
-- **Calorie Calculation**: Mifflin–St Jeor/TDEE with activity multipliers
-- **Macro Distribution**: Customizable by goal (weight loss, maintenance, muscle gain)
-- **Nutrient Constraints**: Handle allergies/intolerances
-- **Substitutions Engine**: Replacement foods respecting dietary preferences
-
-#### Fitness Algorithms
-- **Progressive Overload**: Linear/undulating/step loading protocols
-- **Rest/Deload Scheduling**: Automatic periodization
-- **Heart Rate Zones**: Karvonen formula implementation
-- **VO2 Max Estimation**: Progression guidance
-- **Habit Formation**: Nudges and adherence scoring
-
-### Security Requirements
-- **No Client-Side Keys**: All AI API keys server-side only
-- **No Client-Side Prompting**: All LLM interactions server-side
-- **Input Sanitization**: Comprehensive validation and sanitization
-- **Audit Logging**: Track all AI interactions for compliance
-
-## Data & Privacy Requirements
-
-### Compliance Standards
-- **GDPR/CCPA**: Ready data controls and compliance
-- **Data Safety**: Android Data Safety form compliance
-- **Privacy Manifest**: iOS Privacy Manifest requirements
-- **User Controls**: Data export, account deletion, explicit consent flows
-
-### Security Standards
-- **PHI Handling**: Encryption and principle of least privilege
-- **Audit Logging**: Sensitive events tracking
-- **Data Minimization**: Collect only necessary data
-- **Consent Management**: Granular privacy controls
-
-## Mobile App Architecture (Flutter)
-
-### Architectural Layers
-- **Presentation Layer**: Widgets and UI components
-- **State Management**: Riverpod/Bloc for state management
-- **Domain Layer**: Use-cases and business logic
-- **Data Layer**: Repositories and data sources
-- **Platform Layer**: Health integrations and platform-specific code
-
-### Core Features
-- **Offline-First**: Local cache (sqflite), background sync, conflict resolution
-- **Theming**: Design tokens implementation with light/dark support
-- **Accessibility**: Large text, contrast, VoiceOver/TalkBack, focus order
-- **Testing**: Widget, integration, golden tests for screens; E2E with integration_test; 90%+ critical path coverage
-
-### Platform Integrations
-- **Health Data**: Apple HealthKit / Google Fit (with user opt-in)
-- **Notifications**: Push notifications (FCM/APNs), scheduled reminders
-- **Monitoring**: Crashlytics/Sentry integration
-- **Analytics**: Privacy-friendly analytics implementation
-
-## Backend Architecture (FastAPI)
-
-### Module Structure
-- **auth**: OAuth (Apple/Google), email/password, password reset
-- **users**: Profiles, consents, preferences management
-- **nutrition**: Plan creation, recipes, grocery lists, logging
-- **fitness**: Programs, workouts, progression, calendar, logging
-- **tracking**: Biometrics, sleep, steps, HR, device integrations
-- **analytics**: Timeseries storage, aggregation, trends, anomaly alerts
-- **ai**: Orchestration, tool handlers, provider routing, safety policies
-
-### Infrastructure Components
-- **Database**: PostgreSQL with SQLAlchemy + Alembic migrations; PII encryption at rest
-- **Caching**: Redis for sessions, rate limits, and AI response caching
-- **Observability**: OpenTelemetry traces, Prometheus metrics, structured logs
-- **Security**: CSP, rate limiting, input validation, WAF-ready behind reverse proxy
-
-### Testing Strategy
-- **Unit Tests**: pytest unit tests for all services
-- **Integration Tests**: API test suite with contract tests
-- **OpenAPI-Driven**: Contract testing based on OpenAPI specifications
-
-## Design System Implementation
-
-### Token Implementation
-- **Colors**: Implement from design/tokens/colors.json
-- **Typography**: Implement from design/tokens/typography.json
-- **Spacing**: Implement from design/tokens/spacing.json
-- **Components**: Implement from design/tokens/components.json
-
-### Screen Implementation
-Build all mockup screens faithfully:
-- onboarding_sign_in.svg
-- onboarding_biometrics.svg
-- onboarding_lifestyle.svg
-- onboarding_health_screening.svg
-- onboarding_diet_prefs.svg
-- onboarding_goals.svg
-- home_dashboard.svg
-- mealplan_week.svg
-- recipe_detail.svg
-- meal_logging_search.svg
-- analytics.svg
-- chat.svg
-- fitness_calendar.svg
-
-### Implementation Notes
-- **Design Annotations**: Include as code comments where necessary
-- **Grid System**: 4px modular grid implementation
-- **Responsive Design**: Adapt to different screen sizes
-- **Accessibility**: WCAG 2.1 AA compliance
-
-## Build, Release, and CI/CD
-
-### GitHub Actions Requirements
-- **Backend Pipeline**:
-  - Lint (ruff), type-check (mypy), tests
-  - Build/publish Docker image
-  - Security scanning
-  - Deployment automation
-
-- **Mobile Pipeline**:
-  - flutter analyze/test
-  - Build iOS/Android artifacts
-  - Upload to TestFlight/Internal testing
-  - Store metadata management
-
-### Signing and Secrets Management
-- **iOS**: Fastlane (match or app store connect API), encrypted certificates
-- **Android**: Keystore handling via encrypted secrets; Play Developer API for uploads
-- **Security**: All secrets via environment variables, no hardcoded credentials
-
-### Store Readiness Artifacts
-- **App Icons**: All required sizes and formats
-- **Splash Screens**: Platform-specific implementations
-- **Screenshots**: Light/dark mode for all device sizes
-- **Descriptions**: Short/long descriptions for stores
-- **Privacy Policy**: Comprehensive privacy documentation
-- **iOS Privacy Manifest**: Required privacy declarations
-- **Android Data Safety**: Form configuration files
-
-### Release Checklist Requirements
-- **Quality Gates**: Blocks release if tests or privacy checks fail
-- **Automated Testing**: All tests must pass
-- **Security Scanning**: No high-severity vulnerabilities
-- **Privacy Compliance**: All privacy requirements met
-
-## Acceptance Criteria (No Exceptions)
-
-### Code Quality Standards
-- **No Placeholders**: No demo, "TODO", "lorem ipsum", or mock endpoints
-- **Complete Implementation**: All screens and flows implemented and navigable
-- **AI Functionality**: AI endpoints return valid, coherent outputs with real tool handlers and verifiable schema
-- **Build Success**: Both iOS and Android builds succeed locally and in CI
-- **Test Coverage**: All tests pass; code coverage for critical paths ≥ 90%
-
-### Compliance Standards
-- **Accessibility**: Accessibility checks pass (contrast, labels, navigation)
-- **Security**: Security scans pass; secrets not exposed client-side
-- **Reliability**: Crash-free sessions ≥ 99% during internal testing
-- **Platform Compliance**: App adheres to App Store and Play Store guidelines
-
-### Performance Standards
-- **Response Times**: API responses < 2 seconds (95th percentile)
-- **App Launch**: Cold start < 3 seconds
-- **Offline Support**: Full functionality without network connection
-- **Memory Usage**: Optimized memory usage on mobile devices
-
-## Key Environment Variables
-
-### AI Configuration
-- `OPENAI_API_KEY`: OpenAI API access key
-- `ANTHROPIC_API_KEY`: Anthropic Claude API access key
-
-### Database Configuration
-- `DATABASE_URL`: PostgreSQL connection string
-- `REDIS_URL`: Redis connection string
-
-### Authentication Configuration
-- `JWT_SECRET`: JWT token signing secret
-- `OAUTH_GOOGLE_CLIENT_ID`: Google OAuth client ID
-- `OAUTH_APPLE_CLIENT_ID`: Apple OAuth client ID
-
-### Monitoring Configuration
-- `SENTRY_DSN`: Sentry error tracking DSN
-- `CRASHLYTICS_CONFIG`: Firebase Crashlytics configuration
-- `ANALYTICS_WRITE_KEY`: Privacy-compliant analytics key
-
-## Domain Implementation Specifications
-
-### Nutrition Domain
-- **TDEE Calculation**: Mifflin–St Jeor equation with activity multipliers
-- **Macro Distribution**: Goal-based macro splits (weight loss, recomposition, muscle gain)
-- **Constraints**: Macro constraints per dietary preferences
-- **Substitutions**: Allergen-safe food substitutions
-- **Shopping Lists**: Automated grocery list generation from meal plans
-
-### Fitness Domain
-- **Periodization**: Periodized programming with progressive overload
-- **Heart Rate**: HR zone calculations using Karvonen formula
-- **VO2 Max**: Estimation and progression tracking
-- **Recovery**: Sleep and HRV inputs for auto-adjusting sessions
-- **Rest/Deload**: Automatic rest and deload week scheduling
-
-### Tracking & Analytics Domain
-- **Timeseries Storage**: Store metrics with appropriate rollups
-- **Trend Analysis**: Produce trend summaries and weekly reports
-- **Anomaly Detection**: Alert on metric anomalies
-- **Plan Adjustments**: Generate plan adjustments with explanations
-
-### Safety & Compliance Domain
-- **Medical Disclaimers**: Never provide medical diagnosis; present general guidance with disclaimers
-- **Platform Policies**: Respect platform content policies; avoid disallowed claims
-- **Privacy Protection**: Minimize data collection and protect user privacy
-- **Content Filtering**: Filter inappropriate or harmful content
-
-## Prohibited Elements
-
-### Code Restrictions
-- **No Demo Code**: Any demo, stub, or placeholder code
-- **No Client-Side AI**: Client-side direct LLM calls or exposed API keys
-- **No Incomplete Flows**: Incomplete flows, unimplemented buttons, or dead navigation routes
-- **No Hardcoded Secrets**: Any hardcoded API keys or credentials
-
-### Content Restrictions
-- **No Medical Claims**: Avoid making medical diagnoses or claims
-- **No Inappropriate Content**: Filter and prevent inappropriate or harmful content
-- **No Privacy Violations**: Respect user privacy and data protection laws
-- **No Platform Violations**: Adhere to App Store and Play Store guidelines
-
-## Final Deliverables
-
-### Application Deliverables
-- **Complete Flutter App**: Buildable Flutter app for iOS/Android
-- **Complete Backend**: Deployable FastAPI backend (Dockerized) with matching OpenAPI schema
-- **CI/CD Pipelines**: Complete pipelines for both mobile and backend with signing and store-upload tasks
-
-### Documentation Deliverables
-- **Comprehensive Tests**: Unit/integration/E2E tests with documentation
-- **Run/Build/Release Instructions**: Complete setup and deployment documentation
-- **Store Metadata**: Descriptions, screenshots checklist, privacy policy with links
-
-### Compliance Deliverables
-- **Privacy Documentation**: Comprehensive privacy policy and data handling documentation
-- **Security Documentation**: Security measures and compliance documentation
-- **Accessibility Documentation**: Accessibility features and compliance validation
-- **Platform Compliance**: App Store and Play Store compliance verification
-
-## Implementation Approach
-
-### Phase-Based Development
-1. **Documentation and Planning**: Complete project documentation and planning
-2. **Backend Foundation**: Core backend with real domain logic and AI integration
-3. **Mobile Foundation**: Complete Flutter app with design system and core screens
-4. **AI Integration**: Wire AI capabilities with streaming and tool calling
-5. **Platform Integrations**: Health platform integrations and notifications
-6. **CI/CD and Store Readiness**: Complete deployment automation and store preparation
-7. **Final Testing**: E2E validation and production readiness verification
-
-### Quality Assurance
-- **Continuous Testing**: Tests run at every stage of development
-- **Security Reviews**: Regular security scans and reviews
-- **Performance Monitoring**: Continuous performance monitoring and optimization
-- **Compliance Verification**: Regular compliance checks against all requirements
-
----
-
-This document serves as the definitive source of truth for all requirements and specifications for the HealthAICoach application. All implementation decisions should reference back to these requirements to ensure complete compliance with the original specifications.
+HealthCoachAI — Ultimate Product & Engineering Prompt
+This is the single source of truth (SSOT) for building HealthCoachAI: a production-grade, launch-ready, security-first, AI-powered health, diet, and fitness application. It consolidates all business requirements, functional and non-functional specs, AI selection policies, data/privacy rules, UI/UX, QA, and delivery standards. No placeholders or demos; everything must be production-ready.
+
+This prompt governs all code and documentation produced in this repository and must remain fully aligned with APPLICATION_PHASES.md.
+
+0) Non-Negotiables
+End-to-end production-ready application with full frontend (Android, iOS, Web), backend, AI, data, security, cloud, DevOps, and QA.
+Zero placeholders, zero demo stubs, zero hardcoded secrets. All business logic must be algorithm-complete.
+0 known bugs at release; ≥90% test coverage on critical paths; comprehensive SIT and UIT/E2E test suites.
+Security and privacy by design; no client-side secrets; vendor data-retention disabled; PII redaction for any external AI calls.
+Offline-first UX patterns; graceful API degradation; multi-layer fallbacks for AI and integrations.
+Cost-aware AI orchestration with dynamic policy (accuracy vs cost) and vendor fallback tiers.
+Use a workflow orchestrator (n8n preferred) for AI and integration pipelines.
+India-first with global scalability (0 → 10M users). Bilingual inputs (English + Hinglish), strong Indian recipe coverage, metric-first units.
+All features must comply with App Store and Play Store policies; WCAG 2.1 AA accessibility.
+1) Core Business Use Cases (Complete Coverage)
+Authentication and onboarding
+Phone OTP login; social logins (Google, Apple, optional Facebook).
+Consent screen (compact, clear toggles).
+Create/edit profile: name, age, sex, height, weight, current body structure, body measurements.
+Advanced inputs (skippable), two tabs:
+Lifestyle: smoking (quantity), alcohol (frequency), sleep timing, outside food frequency, work activity (sitting/sedentary/moving), routine.
+Health: conditions (PCOS, diabetes, hypertension, high/low BP, high/low sugar, fatty liver, sleep disorder, libido issues, nutrient deficiencies). Upload health reports (PDF/images).
+Food preferences and cravings
+Veg/Non-veg/Vegan; cuisines (Indian/Chinese/Asian/Italian/etc.).
+Craving signals: chai/tea, ice cream, cold drinks, street food, etc.
+Goals
+Primary: weight loss/gain/maintain, muscle gain.
+Advanced: minimize/ameliorate health conditions from the health tab; lifestyle corrections (sleep, smoking, alcohol reduction).
+7-day diet plan generation (celebrity-level nutritionist)
+Personalized to goals, preferences, lifestyle, and health reports.
+Sustainable, safe nutrition: no harmful deficits or excess (e.g., excessive protein).
+Includes recipes with steps, prep time, difficulty, images, and links.
+Full macro/micro nutrients and calorie counts per meal; GI/GL where applicable.
+Innovative, healthy “craving busters” and guilt-free options (e.g., protein ice cream with dates/makhana/almonds; low-calorie high-protein burger; healthy desserts).
+Focused on long-term anti-aging, joint, skin, hair, metabolic health.
+Health condition alignment
+Diet planning that supports PCOS, insulin resistance, fatty liver, BP management, libido, sleep quality; minimizes aggravation if not correctable.
+Long-term goals coverage: grey hair, hair loss, dandruff/itchy scalp, dry skin, mood/depression support via nutrition.
+Meal logging (Food Diary)
+English + Hinglish search (Rice/Chawal, Tea/Chai).
+Portion controls (½, 1x, 2x), free-form quantity, timestamp.
+Nutrition computation of logged meals with macro/micro breakdown.
+Analytics & predictions
+Macro/micro deficiency charts; daily/weekly trends; weight trends; adherence.
+Goal ETA prediction based on intake, activity, and plan.
+Weekly review and adaptive planning
+Weekly review of logs → new week’s plan adapts to deficiencies, adherence, changing measurements.
+Adaptive plan balancing metabolism (avoid metabolic slowdown), GI/GL focus, sustainability, and user preference adherence.
+AI Chat Assistant (domain-specific)
+Trained on user profile, health reports, plans, and internal knowledge base (RAG).
+Capabilities: answer, explain, update data (with confirmation), retrieve plans, give tips. Not a general-purpose chatbot.
+Level-1 API policy for health-report related Q&A.
+Security & privacy
+Extreme privacy: no external sharing beyond processing; vendor data-retention disabled; PHI/PII redaction.
+End-to-end encryption in transit; encryption at rest; least-privilege access; rate limiting; DLP on outbound AI prompts.
+Integrations and context
+Fitbit, Google Fit, Apple Health for steps, HR, calories, O2 (where available).
+AQI and weather context to tailor nudges and activities.
+Push notifications: hydration, meal reminders, steps, sleep, weekly review, physician red flags (if necessary).
+Fitness plan (celebrity coach)
+Monthly plan with weekly blocks; mix of resistance, calisthenics, yoga; progressions; safety notes; demo videos.
+Adjust monthly based on diet logs, body changes, weight change, and goals.
+Scalability & reliability
+Multi-tenant, horizontally scalable, 10M user design target; edge caching; background jobs; idempotency; retries; circuit breakers.
+Fallback policy (global)
+Each scenario must have an alternate (AI vendor fallback, cached decisioning, heuristic mode, delayed processing).
+Health report analysis is Level-1 importance → always highest accuracy first, with configured graceful degradation.
+2) AI Importance Levels and Vendor Selection Policy
+Level 1 (highest accuracy): health report analysis and any health-report Q&A in chat.
+Use the most accurate API regardless of cost (daily tier policy applies for cost control without compromising safety).
+Level 2 (balanced): diet plan suggestions, calorie/nutrition/GI computations (where derived, not measured), fitness plans.
+Choose the cheapest API whose accuracy is within 5% of the best-available option.
+Selection algorithm:
+
+Determine task level (1 or 2).
+Gather candidate providers: accuracy score (historical evals), cost per 1K tokens/inference, latency, retention policy.
+If Level 1: pick max-accuracy provider with no data retention; if multiple tied, pick lowest latency; if still tied, pick lowest cost.
+If Level 2: compute best accuracy Amax. Accept providers with accuracy ≥ Amax - 5%. Choose lowest cost among them. Break ties by latency.
+Ensure provider supports required features (tool use, JSON mode, function calling if needed).
+Daily accuracy tiering for Level 1 (anti-abuse but safe):
+
+Tier 0: X calls/day at full-accuracy model (100% target).
+Tier 1: next Y calls/day at ≥98% accuracy provider (still non-retaining).
+Tier 2: next Z calls/day at ≥96% accuracy.
+Floor: never degrade below “Level 2 high-accuracy” providers for Level 1 tasks.
+Reset every day at midnight local for user or UTC (configurable).
+Cache and reuse high-cost insights: If a report is already analyzed at Tier 0, reuse normalized, structured results for subsequent queries via RAG to reduce cost while maintaining fidelity.
+Configuration:
+
+X, Y, Z, provider lists, and accuracy/cost metadata are environment-configured and hot-reloadable.
+Vendor retention must be disabled; PHI redaction required.
+3) AI APIs, Models, and Cost Strategy
+Preferred model families (support multiple vendors with fallbacks):
+
+Level 1 Primary (choose per region/availability; all with no-retention toggles enabled):
+GPT-4.1 (JSON mode), Claude Sonnet 4, Gemini 2.5 Pro
+Level 1 Secondary (≥98–96% tiers): GPT-4o (no-retention), Claude Sonnet 3.7, Gemini 1.5 Pro
+Level 2 Primary (open/low-cost with strong accuracy):
+Llama 3.1 70B Instruct (managed or self-hosted), Mixtral 8x22B, Qwen2-72B, GPT-4o-mini (cost-effective)
+Specialized components:
+OCR: Google Document AI, AWS Textract, or Tesseract (on-device) with PHI redaction
+Tabular extraction: Docugami/Structured parsers or custom prompt-engineered extractors
+Vector search: pgvector on Postgres
+Workflow: n8n as the orchestrator (HTTP nodes, function nodes, queues, retries)
+Cost control and self-hosting:
+
+Compare paid inference vs self-hosted open-source (GPU hours, autoscaling, preemption).
+Use autoscaling, cold-start pools, and caching to ensure Level 2 defaults are low-cost while meeting accuracy within 5%.
+Maintain evaluation datasets to measure “accuracy within 5%” for Level 2 decisions.
+List of AI APIs relied upon (configurable):
+
+OpenAI API (GPT-4.1, GPT-4o)
+Anthropic API (Claude Sonnet 4, 3.7)
+Google Vertex AI (Gemini 2.5 Pro)
+OpenRouter or Together.ai for OSS models (Llama 3.1 70B, Mixtral 8x22B, Qwen2-72B)
+OCR: Google Document AI or AWS Textract (choose best in region)
+All with data-retention disabled; PHI redacted.
+4) Data, Nutrition Accuracy, and Recipe Coverage
+Nutrition databases (multi-source, reconciled):
+
+USDA FoodData Central (FDC) for core macro/micro values.
+IFCT (Indian Food Composition Tables by ICMR–NIN) for Indian staples (respect licensing).
+McCance & Widdowson UK tables for cross-verification.
+Branded databases (optional): Nutritionix, Edamam as paid fallbacks.
+Glycemic Index/Load: University of Sydney GI database (licensed access) and peer-reviewed GI tables; compute GL per serving.
+Cooking transformations: apply water/fat loss, yield factors, and nutrient retention factors (FAO/USDA).
+Hinglish synonym map for ingredient canonicalization (e.g., “chawal” → rice).
+Recipe coverage and innovation:
+
+Curated seed recipe set emphasizing Indian/regional cuisines; extend with open datasets and internal curation.
+Generative recipe engine (Level 2) that:
+Produces innovative, healthy twists (protein ice creams, low-cal burgers, desserts with dates/makhana/almonds, etc.).
+Constrains to user goals, health conditions, allergy/religious constraints.
+Back-solves to target macros/micros and GI/GL with validated ingredients from canonical DB.
+Nutrient computation pipeline:
+Ingredient → canonical food ID → base 100g nutrients → apply preparation yield + retention factors → per-portion scaling → macro/micro/GI/GL table.
+Confidence scoring; flag low-confidence values for human nutritionist review queue (internal workflows).
+Hinglish/English logging:
+
+Fuzzy search and synonym expansion; unit normalization (household to grams/ml).
+On-device language model or rules for quick disambiguation; server confirmers for ambiguous cases.
+5) RAG, Personalization Memory, and Workflows (n8n)
+RAG architecture:
+
+Vector store (pgvector) with:
+User profile, goals, preferences, restrictions
+Structured health report extracts (FHIR-like normalized schema)
+Past plans, weekly reviews, adherence summaries
+Condition guidelines (PCOS, fatty liver, etc.) from curated medical-nutrition corpus
+Retrieval-augmented prompts ensure the chat and planners only use domain knowledge.
+n8n workflows:
+
+Health Report Intake: OCR → PHI redaction → structured extraction → L1 analysis → storage → summary.
+Diet Plan Generator: retrieve user context → compute TDEE/macros → generate 7-day plan → nutrient calc → validation → store.
+Weekly Review → Adaptation: ingest logs → detect micro deficits/adherence → modify upcoming plan → notify.
+Fitness Plan Builder: condition-aware plan with monthly progressions and safety constraints.
+Integrations Sync: Fitbit/Apple Health/Google Fit polling + webhook callbacks; AQI/weather daily snapshot.
+Notifications & Nudges: hydration, steps, adherence prompts; quiet hours; opt-in categories.
+Cost Controller: tally Level 1 calls; enforce daily tiering; vendor fallback; cache reuse.
+6) Security, Privacy, Compliance
+OWASP ASVS-aligned; secure by default.
+PII/PHI minimization; data classification; field-level encryption for sensitive fields.
+All secrets via environment or secret manager; no secrets in clients.
+Token-based auth (short-lived), refresh tokens with rotation, device binding; mTLS where applicable.
+Role- and attribute-based access control; audit logging; anomaly detection.
+DLP layer before external AI calls: redact PII/PHI, enforce vendor “no log/retention” settings.
+App store/privacy compliance; data export/delete; consent tracking.
+Regional data residency where required (configurable).
+Rate limiting, WAF, bot protection, and abuse monitoring.
+7) UX/UI — Brand, Screens, Accessibility
+Brand & feel:
+
+Premium yet warm; celebrity-luxury meets approachable coach.
+Colors: fresh greens & turquoise; coral/orange accents; soft neutrals backgrounds.
+Fonts: Inter or Poppins; friendly rounded; large bold for emphasis.
+Imagery: high-quality food; diverse people; Indian-first but global.
+Core UX principles:
+
+Minimal-friction onboarding; conversational; clear skips.
+Personalization front and center.
+Data simplified with friendly charts.
+Encouraging tone; microcopy nudges.
+Consistency via component library.
+Key screens & flows:
+
+Welcome + Onboarding (OTP + social, consent, guided setup)
+Home Dashboard (greeting, today’s meals, quick actions, activity)
+7-Day Meal Plan (day tabs; meal cards; swap; meal detail with recipe, nutrition, add to shopping list)
+Meal Logging (English/Hinglish search; portion chips; photo capture future-ready)
+Analytics & Progress (weight trend, macros, micro deficiencies, ETA)
+AI Chat Assistant (inline cards; quick actions; references personal data)
+Fitness Plan (monthly blocks; yoga/resistance/calisthenics; videos)
+Settings: Integrations (Fitbit/Apple Health/Google Fit toggles); AQI banner
+Settings: Notifications & Nudges (hydration, meals, workouts, report updates)
+Physician red-flag modal when needed (BP/Sugar anomalies)
+Accessibility & localization:
+
+All critical actions <3 taps; ≥44px tap targets
+Hindi/Hinglish input accepted; i18n-ready
+Light/dark mode; high-contrast options
+Screen reader labels and logical focus order
+8) Algorithms & Health Logic
+TDEE via Mifflin/St. Jeor with activity factors; optional wearables to adjust EE.
+Macro split tailored to goal and health conditions (PCOS/IR, fatty liver, hypertension).
+Micronutrient targets from RDAs; highlight deficits and plan corrections.
+GI/GL-aware meal construction; minimize high-GI spikes for relevant conditions.
+Progressive overload and periodization in fitness; HR zone computations; recovery emphasis.
+Safety filters: no extreme caloric deficits/excess; protein upper bounds respecting renal safety; sodium limits for hypertension, etc.
+Anti-aging axis: prioritize muscle mass retention, collagen-supporting nutrients, anti-inflammatory profiles, sleep-supportive timing.
+9) Integrations, Context, and Nudges
+Fitbit, Apple Health, Google Fit: steps, HR, energy, sleep (where available).
+AQI/Weather providers: location-based advisories (high AQI → home workout and hydration prompts; dry weather → water intake).
+Daily “calories to burn” advisory beyond baseline to sustainably meet goals.
+Push notifications with scheduling, batching, quiet hours, and smart frequency control.
+10) Scalability, Performance, and Reliability Targets
+P95 API latency <2s, app cold start <3s.
+Horizontal scaling for API, workers, and vector DB; read replicas; sharding strategy when needed.
+Idempotent workflows; retries with backoff; circuit breakers; dead-letter queues.
+Edge CDN for static assets; image optimization; local caching.
+Observability: distributed tracing, logs, metrics, SLOs; incident runbooks.
+11) Testing, QA, and Release
+Unit, integration, contract, E2E, performance, security tests; fuzz inputs for free-text.
+Mock external vendors with golden files; chaos testing for fallbacks.
+≥90% coverage on critical paths each phase.
+SIT and UIT must pass before release; bug triage to zero-known-bugs.
+CI/CD with gated releases; staged rollouts; crash/ANR monitoring; rollback plan.
+12) Phase Alignment- use this prompt, to divide the work into different phases. While dividing into phases, make sure each phase is fully functionaly complete. Each phase should be small enough that it could be completed by AI agents without any issues with ratelimit. While dividing the work into phases, make sure total number of phases doesn't increase more than 15. Each phase, could be run own its own, without any issue, without any bugs, and without any dependencies. Each phase would contain complete code, without any demo or placeholder code. Finally try to keep total number of phases as low as possible, but still should meet our above criteria, that is fully functionable and small enough to be completed by AI agents in one go.
+
+Each phase must be independently testable, production-ready, and compliant with standards defined in APPLICATION_PHASES.md (Quality Standards, No Placeholder Code, Algorithm-Complete, etc.).
+
+13) Data Model (High-Level)
+Users, Devices, Consents, Auth Identities
+Profiles (demographics, measurements), Preferences (diet, cuisines, allergens)
+Health Conditions, Reports (files, OCR text, structured extracts), Physician Flags
+Plans (DietPlanWeek → Days → Meals → Ingredients), FitnessPlans (monthly → weekly → sessions)
+Logs (Meals, Portions, Timestamps), Wearable Sync Data (steps, HR, sleep)
+Analytics (macro/micro daily summaries, trends, ETA)
+RAG Documents (user, medical corpus, plan summaries)
+AI Calls (task type, vendor, cost, accuracy tier, cache key, retention flag)
+Notifications (categories, schedule), Integrations (tokens, scopes)
+Audit Logs, Errors, Feature Flags
+14) Edge Cases & Fallbacks
+API outages: vendor fallback chain; cached plan retrieval; heuristic local calculators.
+Missing wearables: default to self-reported activity; conservative estimates.
+Ambiguous food entries: ask clarifying inline questions; default to safest equivalent.
+Allergies/religious constraints: strict exclusion; safe substitutions suggested.
+Non-adherence detected: adjust plan toward higher adherence without goal drift.
+Metabolic slowdown: periodic refeed/adjustments within safety bounds.
+15) Acceptance Criteria (Representative)
+Diet plan generation:
+
+Produces 7-day plan aligned to user goals, conditions, lifestyle, and preferences.
+Each meal has ingredients, steps, images, macros/micros, GI/GL, and links.
+Includes at least 2 innovative “craving buster” items per week.
+Validated by nutrient calculator pipeline; safety checks pass.
+Health report analysis (Level 1):
+
+OCR with PHI redaction; structured entities extracted; summarized with references.
+Highest-accuracy tier used until daily tier rules apply; vendor logs disabled.
+Results normalized and stored for RAG reuse.
+Chat:
+
+Answers only domain questions; can show plans, update preferences, and log meals (with confirmation).
+Uses Level 1 policy for report-related questions; otherwise Level 2 policy.
+Analytics:
+
+Accurate macro/micro aggregation; weekly summary; ETA prediction visible.
+Deficiency-aware plan adjustments reflected in next week’s plan.
+Security:
+
+No secrets in clients; at-rest encryption; rate limits; audit logs; DLP for AI calls.
+No third-party retention; privacy policy clearly stated; data export/delete supported.
+Performance:
+
+Meets P95 latency targets; graceful fallback on vendor delays; offline caching for recent plans/logs.
+16) Configuration & Environment
+All secrets and API keys via environment or secret manager.
+AI policy tables (accuracy, cost, tiers X/Y/Z) are centrally configured (JSON/DB) and editable without redeploy.
+Vendor toggles for no-retention modes must be ON.
+Feature flags for experimental features (e.g., photo meal recognition).
+17) Deliverables in This Repository
+Full backend code (API, workers, RAG, AI policy, nutrition engine, fitness engine).
+Full mobile apps (Android, iOS) and web app; shared design system where feasible.
+n8n workflow definitions (JSON) for all pipelines.
+Infrastructure-as-code (cloud-agnostic presets or specific provider) for reproducible environments.
+Test suites (unit/integration/E2E/perf/security), test data, and CI pipelines.
+Documentation: API docs, runbooks, operations, architecture, and this SSOT.
+18) AI API List (for README disclosure)
+OpenAI: GPT-4.1, GPT-4o (no-retention)
+Anthropic: Claude Sonnet 4, Sonnet 3.7 (no-retention)
+Google Vertex AI: Gemini 2.5 Pro (data control enabled)
+Open-source via OpenRouter/Together/self-hosted: Llama 3.1 70B, Mixtral 8x22B, Qwen2-72B
+OCR: Google Document AI or AWS Textract
+Vector DB: Postgres + pgvector
+Orchestrator: n8n
+All usage follows the Level 1/2 policy, daily tiering, and PHI redaction rules.
+
+19) UI/UX Artifacts
+Figma file: Include flows for onboarding, dashboard, meal plan, meal detail, logging, analytics, chat, fitness, settings (integrations/notifications).
+Design tokens documented (colors, typography, spacing).
+Components: cards, chips, sliders, charts (progress ring, lines, stacked bars), toggles, modals.
+Note: Ensure image assets are optimized, licensed, and culturally appropriate.
+
+20) Definitions
+Level 1 task: Health report analysis or health-report questions in chat (highest accuracy).
+Level 2 task: Diet/fitness planning, calorie/nutrition/GI estimation, cravings recipes, non-report chat.
+GI/GL: Glycemic Index/Load computed per serving considering preparation method.
+21) Compliance With APPLICATION_PHASES.md
+All above requirements are mapped into phases and must be reflected in APPLICATION_PHASES.md. Each phase is:
+
+Self-sufficient, production-ready, algorithm-complete, testable, with compliance gates and ≥90% critical-path coverage.
+Includes documentation and release notes.
+No placeholder or demo code at any stage.
+22) Summary
+HealthCoachAI delivers a celebrity-level nutritionist and fitness coach experience with trustworthy accuracy for critical tasks, sustainable long-term health outcomes, delightful and motivating UI/UX, strong privacy and security, and cost-optimized AI orchestration. This prompt is exhaustive; no functionality in the scope may be omitted.
