@@ -20,7 +20,15 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d database/data-source.ts",
+    "migration:create": "typeorm-ts-node-commonjs migration:create -d database/data-source.ts",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d database/data-source.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d database/data-source.ts",
+    "migration:show": "typeorm-ts-node-commonjs migration:show -d database/data-source.ts",
+    "schema:sync": "typeorm-ts-node-commonjs schema:sync -d database/data-source.ts",
+    "schema:drop": "typeorm-ts-node-commonjs schema:drop -d database/data-source.ts",
+    "seed:run": "ts-node database/scripts/run-seeds.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
@@ -49,7 +57,8 @@
     "jsonwebtoken": "^9.0.2",
     "axios": "^1.6.5",
     "reflect-metadata": "^0.2.1",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "aws-sdk": "^2.1584.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.2.1",
@@ -64,6 +73,8 @@
     "@types/jsonwebtoken": "^9.0.5",
     "@types/uuid": "^9.0.7",
     "@types/compression": "^1.7.5",
+    "@types/aws-sdk": "^2.7.0",
+    "dotenv": "^16.3.1",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.2",

@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d database/data-source.ts",
+    "migration:create": "typeorm-ts-node-commonjs migration:create",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d database/data-source.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d database/data-source.ts",
+    "migration:show": "typeorm-ts-node-commonjs migration:show -d database/data-source.ts",
+    "schema:sync": "typeorm-ts-node-commonjs schema:sync -d database/data-source.ts",
+    "schema:drop": "typeorm-ts-node-commonjs schema:drop -d database/data-source.ts",
+    "seed:run": "ts-node database/scripts/run-seeds.ts"
+  }
+}

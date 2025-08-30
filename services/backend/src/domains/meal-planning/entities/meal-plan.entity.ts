@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { MealPlanEntry } from './meal-plan-entry.entity';
 
 export enum MealPlanType {
   WEIGHT_LOSS = 'weight_loss',
@@ -296,11 +298,11 @@ export class MealPlan {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  // Note: MealPlanDay relationship will be added when that entity is created
-  // @OneToMany(() => MealPlanDay, (day) => day.mealPlan, {
-  //   cascade: true,
-  // })
-  // days: MealPlanDay[];
+  // MealPlanEntry relationship
+  @OneToMany(() => MealPlanEntry, (entry) => entry.mealPlan, {
+    cascade: true,
+  })
+  entries: MealPlanEntry[];
 
   // Helper methods
   isCurrentlyActive(): boolean {
