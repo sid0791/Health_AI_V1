@@ -44,10 +44,10 @@ export class VectorStoreService {
     try {
       // Enable pgvector extension if not already enabled
       await this.dataSource.query('CREATE EXTENSION IF NOT EXISTS vector;');
-      
+
       // Create vector documents table if it doesn't exist
       await this.createVectorTable();
-      
+
       this.logger.log('Vector store initialized successfully');
     } catch (error) {
       this.logger.error('Failed to initialize vector store', error);
@@ -88,13 +88,17 @@ export class VectorStoreService {
   /**
    * Store a document with its embedding in the vector store
    */
-  async storeDocument(document: Omit<VectorDocument, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async storeDocument(
+    document: Omit<VectorDocument, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<string> {
     if (!this.isEnabled) {
       throw new Error('Vector store is not enabled');
     }
 
     if (document.embedding.length !== this.dimensions) {
-      throw new Error(`Embedding dimension mismatch. Expected ${this.dimensions}, got ${document.embedding.length}`);
+      throw new Error(
+        `Embedding dimension mismatch. Expected ${this.dimensions}, got ${document.embedding.length}`,
+      );
     }
 
     try {
@@ -108,7 +112,7 @@ export class VectorStoreService {
           JSON.stringify(document.metadata || {}),
           document.category,
           document.source,
-        ]
+        ],
       );
 
       const documentId = result[0].id;
@@ -128,14 +132,16 @@ export class VectorStoreService {
     limit: number = 10,
     threshold: number = 0.7,
     category?: string,
-    source?: string
+    source?: string,
   ): Promise<VectorSearchResult[]> {
     if (!this.isEnabled) {
       throw new Error('Vector store is not enabled');
     }
 
     if (embedding.length !== this.dimensions) {
-      throw new Error(`Embedding dimension mismatch. Expected ${this.dimensions}, got ${embedding.length}`);
+      throw new Error(
+        `Embedding dimension mismatch. Expected ${this.dimensions}, got ${embedding.length}`,
+      );
     }
 
     try {
@@ -148,7 +154,7 @@ export class VectorStoreService {
         FROM vector_documents
         WHERE 1 - (embedding <=> $1::vector) > $2
       `;
-      
+
       const params: any[] = [JSON.stringify(embedding), threshold];
       let paramIndex = 3;
 
@@ -187,13 +193,18 @@ export class VectorStoreService {
   /**
    * Update an existing document
    */
-  async updateDocument(id: string, updates: Partial<Omit<VectorDocument, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
+  async updateDocument(
+    id: string,
+    updates: Partial<Omit<VectorDocument, 'id' | 'createdAt' | 'updatedAt'>>,
+  ): Promise<void> {
     if (!this.isEnabled) {
       throw new Error('Vector store is not enabled');
     }
 
     if (updates.embedding && updates.embedding.length !== this.dimensions) {
-      throw new Error(`Embedding dimension mismatch. Expected ${this.dimensions}, got ${updates.embedding.length}`);
+      throw new Error(
+        `Embedding dimension mismatch. Expected ${this.dimensions}, got ${updates.embedding.length}`,
+      );
     }
 
     try {
@@ -273,10 +284,9 @@ export class VectorStoreService {
     }
 
     try {
-      const result = await this.dataSource.query(
-        'SELECT * FROM vector_documents WHERE id = $1',
-        [id]
-      );
+      const result = await this.dataSource.query('SELECT * FROM vector_documents WHERE id = $1', [
+        id,
+      ]);
 
       if (result.length === 0) {
         return null;

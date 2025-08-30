@@ -97,8 +97,7 @@ import { MealLog } from './domains/logs/entities/meal-log.entity';
         logging: configService.get('NODE_ENV') === 'development',
         ssl: configService.get('DB_SSL', false)
           ? {
-              rejectUnauthorized:
-                configService.get('NODE_ENV') === 'production',
+              rejectUnauthorized: configService.get('NODE_ENV') === 'production',
             }
           : false,
         // Connection pool settings

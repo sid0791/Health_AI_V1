@@ -10,7 +10,13 @@ export interface UploadOptions {
   metadata?: Record<string, string>;
   encryption?: boolean;
   expirationDays?: number;
-  category?: 'health-reports' | 'profile-images' | 'meal-photos' | 'workout-videos' | 'documents' | 'other';
+  category?:
+    | 'health-reports'
+    | 'profile-images'
+    | 'meal-photos'
+    | 'workout-videos'
+    | 'documents'
+    | 'other';
   userId?: string;
 }
 
@@ -45,7 +51,7 @@ export class ObjectStorageService {
     const endpoint = this.configService.get('S3_ENDPOINT');
     const accessKeyId = this.configService.get('S3_ACCESS_KEY');
     const secretAccessKey = this.configService.get('S3_SECRET_KEY');
-    
+
     this.bucket = this.configService.get('S3_BUCKET') || 'healthcoachai-storage';
     this.region = this.configService.get('S3_REGION', 'us-east-1');
     this.encryptionEnabled = this.configService.get('S3_ENCRYPTION_ENABLED', 'true') === 'true';
@@ -71,7 +77,7 @@ export class ObjectStorageService {
     });
 
     this.baseUrl = endpoint || `https://s3.${this.region}.amazonaws.com`;
-    
+
     this.initializeStorage();
   }
 
@@ -92,16 +98,18 @@ export class ObjectStorageService {
 
   private async createBucket(): Promise<void> {
     try {
-      await this.s3.createBucket({
-        Bucket: this.bucket,
-        CreateBucketConfiguration: {
-          LocationConstraint: this.region,
-        },
-      }).promise();
+      await this.s3
+        .createBucket({
+          Bucket: this.bucket,
+          CreateBucketConfiguration: {
+            LocationConstraint: this.region,
+          },
+        })
+        .promise();
 
       // Configure bucket for security and lifecycle
       await this.configureBucket();
-      
+
       this.logger.log(`Created storage bucket '${this.bucket}'`);
     } catch (error) {
       this.logger.error(`Failed to create bucket '${this.bucket}'`, error);
@@ -112,71 +120,78 @@ export class ObjectStorageService {
   private async configureBucket(): Promise<void> {
     try {
       // Enable versioning
-      await this.s3.putBucketVersioning({
-        Bucket: this.bucket,
-        VersioningConfiguration: {
-          Status: 'Enabled',
-        },
-      }).promise();
+      await this.s3
+        .putBucketVersioning({
+          Bucket: this.bucket,
+          VersioningConfiguration: {
+            Status: 'Enabled',
+          },
+        })
+        .promise();
 
       // Configure server-side encryption
       if (this.encryptionEnabled) {
-        await this.s3.putBucketEncryption({
-          Bucket: this.bucket,
-          ServerSideEncryptionConfiguration: {
-            Rules: [
-              {
-                ApplyServerSideEncryptionByDefault: {
-                  SSEAlgorithm: 'AES256',
+        await this.s3
+          .putBucketEncryption({
+            Bucket: this.bucket,
+            ServerSideEncryptionConfiguration: {
+              Rules: [
+                {
+                  ApplyServerSideEncryptionByDefault: {
+                    SSEAlgorithm: 'AES256',
+                  },
+                  BucketKeyEnabled: true,
                 },
-                BucketKeyEnabled: true,
-              },
-            ],
-          },
-        }).promise();
+              ],
+            },
+          })
+          .promise();
       }
 
       // Configure lifecycle policy
-      await this.s3.putBucketLifecycleConfiguration({
-        Bucket: this.bucket,
-        LifecycleConfiguration: {
-          Rules: [
-            {
-              ID: 'temporary-files-cleanup',
-              Status: 'Enabled',
-              Filter: { Prefix: 'temp/' },
-              Expiration: { Days: 7 },
-            },
-            {
-              ID: 'incomplete-multipart-uploads',
-              Status: 'Enabled',
-              AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
-            },
-            {
-              ID: 'old-versions-cleanup',
-              Status: 'Enabled',
-              NoncurrentVersionExpiration: { NoncurrentDays: 30 },
-            },
-          ],
-        },
-      }).promise();
+      await this.s3
+        .putBucketLifecycleConfiguration({
+          Bucket: this.bucket,
+          LifecycleConfiguration: {
+            Rules: [
+              {
+                ID: 'temporary-files-cleanup',
+                Status: 'Enabled',
+                Filter: { Prefix: 'temp/' },
+                Expiration: { Days: 7 },
+              },
+              {
+                ID: 'incomplete-multipart-uploads',
+                Status: 'Enabled',
+                AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
+              },
+              {
+                ID: 'old-versions-cleanup',
+                Status: 'Enabled',
+                NoncurrentVersionExpiration: { NoncurrentDays: 30 },
+              },
+            ],
+          },
+        })
+        .promise();
 
       // Configure CORS for web access
-      await this.s3.putBucketCors({
-        Bucket: this.bucket,
-        CORSConfiguration: {
-          CORSRules: [
-            {
-              AllowedHeaders: ['*'],
-              AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
-              AllowedOrigins: ['*'], // Should be restricted in production
-              ExposeHeaders: ['ETag'],
-              MaxAgeSeconds: 3000,
-            },
-          ],
-        },
-      }).promise();
-
+      await this.s3
+        .putBucketCors({
+          Bucket: this.bucket,
+          CORSConfiguration: {
+            CORSRules: [
+              {
+                AllowedHeaders: ['*'],
+                AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
+                AllowedOrigins: ['*'], // Should be restricted in production
+                ExposeHeaders: ['ETag'],
+                MaxAgeSeconds: 3000,
+              },
+            ],
+          },
+        })
+        .promise();
     } catch (error) {
       this.logger.warn('Some bucket configuration failed', error);
       // Don't throw here as the bucket might still be usable
@@ -189,7 +204,7 @@ export class ObjectStorageService {
   async uploadFile(
     fileBuffer: Buffer,
     originalName: string,
-    options: UploadOptions = {}
+    options: UploadOptions = {},
   ): Promise<UploadResult> {
     const {
       contentType = 'application/octet-stream',
@@ -264,10 +279,12 @@ export class ObjectStorageService {
    */
   async downloadFile(key: string): Promise<Buffer> {
     try {
-      const result = await this.s3.getObject({
-        Bucket: this.bucket,
-        Key: key,
-      }).promise();
+      const result = await this.s3
+        .getObject({
+          Bucket: this.bucket,
+          Key: key,
+        })
+        .promise();
 
       if (!result.Body) {
         throw new Error('File not found or empty');
@@ -286,7 +303,7 @@ export class ObjectStorageService {
   async getSignedUrl(
     key: string,
     operation: 'getObject' | 'putObject' = 'getObject',
-    options: DownloadOptions = {}
+    options: DownloadOptions = {},
   ): Promise<string> {
     const {
       expirationSeconds = 3600, // 1 hour default
@@ -323,10 +340,12 @@ export class ObjectStorageService {
    */
   async deleteFile(key: string): Promise<void> {
     try {
-      await this.s3.deleteObject({
-        Bucket: this.bucket,
-        Key: key,
-      }).promise();
+      await this.s3
+        .deleteObject({
+          Bucket: this.bucket,
+          Key: key,
+        })
+        .promise();
 
       this.logger.debug(`File deleted: ${key}`);
     } catch (error) {
@@ -346,10 +365,12 @@ export class ObjectStorageService {
     etag: string;
   }> {
     try {
-      const result = await this.s3.headObject({
-        Bucket: this.bucket,
-        Key: key,
-      }).promise();
+      const result = await this.s3
+        .headObject({
+          Bucket: this.bucket,
+          Key: key,
+        })
+        .promise();
 
       return {
         size: result.ContentLength || 0,
@@ -369,21 +390,25 @@ export class ObjectStorageService {
    */
   async listFiles(
     prefix?: string,
-    maxKeys: number = 100
-  ): Promise<Array<{
-    key: string;
-    size: number;
-    lastModified: Date;
-    etag: string;
-  }>> {
+    maxKeys: number = 100,
+  ): Promise<
+    Array<{
+      key: string;
+      size: number;
+      lastModified: Date;
+      etag: string;
+    }>
+  > {
     try {
-      const result = await this.s3.listObjectsV2({
-        Bucket: this.bucket,
-        Prefix: prefix,
-        MaxKeys: maxKeys,
-      }).promise();
+      const result = await this.s3
+        .listObjectsV2({
+          Bucket: this.bucket,
+          Prefix: prefix,
+          MaxKeys: maxKeys,
+        })
+        .promise();
 
-      return (result.Contents || []).map(object => ({
+      return (result.Contents || []).map((object) => ({
         key: object.Key || '',
         size: object.Size || 0,
         lastModified: object.LastModified || new Date(),
@@ -400,11 +425,13 @@ export class ObjectStorageService {
    */
   async copyFile(sourceKey: string, destinationKey: string): Promise<void> {
     try {
-      await this.s3.copyObject({
-        Bucket: this.bucket,
-        CopySource: `${this.bucket}/${sourceKey}`,
-        Key: destinationKey,
-      }).promise();
+      await this.s3
+        .copyObject({
+          Bucket: this.bucket,
+          CopySource: `${this.bucket}/${sourceKey}`,
+          Key: destinationKey,
+        })
+        .promise();
 
       this.logger.debug(`File copied from ${sourceKey} to ${destinationKey}`);
     } catch (error) {
@@ -418,10 +445,12 @@ export class ObjectStorageService {
    */
   async fileExists(key: string): Promise<boolean> {
     try {
-      await this.s3.headObject({
-        Bucket: this.bucket,
-        Key: key,
-      }).promise();
+      await this.s3
+        .headObject({
+          Bucket: this.bucket,
+          Key: key,
+        })
+        .promise();
       return true;
     } catch (error) {
       if (error.statusCode === 404) {
@@ -442,9 +471,11 @@ export class ObjectStorageService {
   }> {
     try {
       // Note: This is a simplified version. For large buckets, you'd need pagination
-      const result = await this.s3.listObjectsV2({
-        Bucket: this.bucket,
-      }).promise();
+      const result = await this.s3
+        .listObjectsV2({
+          Bucket: this.bucket,
+        })
+        .promise();
 
       const totalObjects = result.KeyCount || 0;
       const totalSize = (result.Contents || []).reduce((sum, obj) => sum + (obj.Size || 0), 0);
@@ -478,12 +509,12 @@ export class ObjectStorageService {
     fileId: string,
     sanitizedName: string,
     extension: string,
-    category: string
+    category: string,
   ): string {
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
     const day = String(new Date().getDate()).padStart(2, '0');
-    
+
     return `${category}/${year}/${month}/${day}/${fileId}-${sanitizedName}${extension}`;
   }
 
