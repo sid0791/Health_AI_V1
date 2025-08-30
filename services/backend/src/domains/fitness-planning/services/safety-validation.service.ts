@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { Exercise, DifficultyLevel } from '../entities/exercise.entity';
+import { Exercise, DifficultyLevel, ExerciseCategory } from '../entities/exercise.entity';
 import { FitnessPlan, ExperienceLevel, FitnessPlanType } from '../entities/fitness-plan.entity';
 import { FitnessPlanWorkout } from '../entities/fitness-plan-workout.entity';
 import { FitnessPlanExercise } from '../entities/fitness-plan-exercise.entity';
@@ -114,7 +114,7 @@ export class SafetyValidationService {
     // Age-specific considerations
     if (userProfile.age) {
       if (userProfile.age >= 65) {
-        if (exercise.category === 'plyometric' || exercise.tags?.includes('high-impact')) {
+        if (exercise.category === ExerciseCategory.CARDIO || exercise.tags?.includes('high-impact')) {
           result.warnings.push(
             `High-impact exercise "${exercise.name}" - ensure proper warm-up and consider impact modifications`
           );
