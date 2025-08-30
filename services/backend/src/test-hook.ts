@@ -1,1 +1,0 @@
-// Git hook validation test
