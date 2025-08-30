@@ -27,20 +27,37 @@ export enum UserStatus {
 }
 
 @Entity('users')
-@Index(['email'], { unique: true })
+@Index(['email'], { unique: true, where: 'email IS NOT NULL' })
 @Index(['phoneNumber'], { unique: true, where: 'phone_number IS NOT NULL' })
+@Index(['phone'], { unique: true, where: 'phone IS NOT NULL' })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, length: 255 })
-  email: string;
+  @Column({ unique: true, length: 255, nullable: true })
+  email?: string;
 
   @Column({ name: 'phone_number', nullable: true, length: 20 })
   phoneNumber?: string;
 
+  // New phone field for consistency with auth system
+  @Column({ nullable: true, length: 20 })
+  phone?: string;
+
+  // Name field for OAuth users
+  @Column({ nullable: true, length: 255 })
+  name?: string;
+
   @Column({ name: 'password_hash', nullable: true, length: 255 })
   passwordHash?: string;
+
+  // Profile completion status
+  @Column({ name: 'profile_completed', default: false })
+  profileCompleted: boolean;
+
+  // Profile picture URL from OAuth or uploaded
+  @Column({ name: 'profile_picture_url', nullable: true, length: 500 })
+  profilePictureUrl?: string;
 
   @Column({
     type: 'enum',
@@ -61,6 +78,13 @@ export class User {
 
   @Column({ name: 'phone_verified', default: false })
   phoneVerified: boolean;
+
+  // OAuth verification status
+  @Column({ name: 'is_email_verified', default: false })
+  isEmailVerified: boolean;
+
+  @Column({ name: 'is_phone_verified', default: false })
+  isPhoneVerified: boolean;
 
   @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
@@ -105,12 +129,17 @@ export class User {
   @OneToOne(() => UserGoals, (goals) => goals.user, { cascade: true })
   goals: UserGoals;
 
+  // OAuth accounts relationship - using lazy loading to avoid circular dependencies
+  @OneToMany('UserOAuthAccount', (oauthAccount: any) => oauthAccount.user, { cascade: true })
+  oauthAccounts: any[];
+
   // Soft delete method
   softDelete(): void {
     this.status = UserStatus.DELETED;
     this.deletedAt = new Date();
-    this.email = `deleted_${this.id}@deleted.local`;
+    if (this.email) this.email = `deleted_${this.id}@deleted.local`;
     this.phoneNumber = null;
+    this.phone = null;
   }
 
   // Check if user is locked

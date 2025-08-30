@@ -154,6 +154,91 @@ export class UsersService {
     });
   }
 
+  async findByPhone(phone: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { phone, status: UserStatus.ACTIVE },
+      relations: ['profile'],
+    });
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { id, status: UserStatus.ACTIVE },
+      relations: ['profile'],
+    });
+  }
+
+  /**
+   * Create user from phone number (for OTP-based auth)
+   */
+  async createFromPhone(phone: string): Promise<User> {
+    // Check if user already exists
+    const existingUser = await this.findByPhone(phone);
+    if (existingUser) {
+      throw new ConflictException('User with this phone number already exists');
+    }
+
+    const user = this.usersRepository.create({
+      phone,
+      isPhoneVerified: true, // Phone is verified via OTP
+      dataResidencyRegion: 'IN',
+      piiClassification: 'PERSONAL',
+    });
+
+    const savedUser = await this.usersRepository.save(user);
+    this.logger.log(`User created from phone with ID: ${savedUser.id}`);
+    
+    return savedUser;
+  }
+
+  /**
+   * Create user from OAuth provider data
+   */
+  async createFromOAuth(userData: {
+    email?: string;
+    name?: string;
+    profilePictureUrl?: string;
+    isEmailVerified?: boolean;
+  }): Promise<User> {
+    // Check if user already exists by email
+    if (userData.email) {
+      const existingUser = await this.findByEmail(userData.email);
+      if (existingUser) {
+        throw new ConflictException('User with this email already exists');
+      }
+    }
+
+    const user = this.usersRepository.create({
+      email: userData.email,
+      name: userData.name,
+      profilePictureUrl: userData.profilePictureUrl,
+      isEmailVerified: userData.isEmailVerified || false,
+      dataResidencyRegion: 'IN',
+      piiClassification: 'PERSONAL',
+    });
+
+    const savedUser = await this.usersRepository.save(user);
+
+    // Create profile if name is provided
+    if (userData.name) {
+      const nameParts = userData.name.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const profile = this.userProfileRepository.create({
+        userId: savedUser.id,
+        firstName,
+        lastName,
+        displayName: userData.name,
+        country: 'IN',
+      });
+      await this.userProfileRepository.save(profile);
+    }
+
+    this.logger.log(`User created from OAuth with ID: ${savedUser.id}`);
+    return savedUser;
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
 

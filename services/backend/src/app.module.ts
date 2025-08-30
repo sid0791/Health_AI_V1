@@ -12,6 +12,7 @@ import { AppConfigService } from './config/app-config.service';
 
 // Domain modules
 import { UsersModule } from './domains/users/users.module';
+import { AuthModule } from './domains/auth/auth.module';
 import { HealthReportsModule } from './domains/health-reports/health-reports.module';
 import { RecipeModule } from './domains/recipes/recipe.module';
 import { ExternalApiModule } from './external-apis/external-api.module';
@@ -43,6 +44,12 @@ import { FitnessPlanExercise } from './domains/fitness-planning/entities/fitness
 
 // Logs entities
 import { MealLog } from './domains/logs/entities/meal-log.entity';
+
+// Auth entities
+import { UserSession } from './domains/auth/entities/user-session.entity';
+import { UserOTP } from './domains/auth/entities/user-otp.entity';
+import { UserOAuthAccount } from './domains/auth/entities/user-oauth-account.entity';
+import { AuditLog } from './domains/auth/entities/audit-log.entity';
 
 @Module({
   imports: [
@@ -93,6 +100,12 @@ import { MealLog } from './domains/logs/entities/meal-log.entity';
 
           // Logs entities
           MealLog,
+
+          // Auth entities
+          UserSession,
+          UserOTP,
+          UserOAuthAccount,
+          AuditLog,
         ],
         synchronize: false, // Never use synchronize in production
         logging: configService.get('NODE_ENV') === 'development',
@@ -169,6 +182,7 @@ import { MealLog } from './domains/logs/entities/meal-log.entity';
 
     // Domain Modules
     UsersModule,
+    AuthModule,
     HealthReportsModule,
     RecipeModule,
     ExternalApiModule,
