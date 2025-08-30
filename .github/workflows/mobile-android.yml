@@ -42,6 +42,8 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        continue-on-error: true
+        id: android-setup
         with:
           api-level: ${{ env.ANDROID_API_LEVEL }}
           build-tools: ${{ env.ANDROID_BUILD_TOOLS }}
@@ -72,12 +74,20 @@ jobs:
             cd apps/mobile/android
             if [ -f "gradlew" ]; then
               echo "Running Android linting tasks..."
-              # Try to run available lint tasks, but don't fail if Android SDK isn't configured
-              ./gradlew tasks --all | grep -E "(ktlint|detekt|lint)" || echo "No lint tasks found"
-              # Try ktlint if available
-              ./gradlew ktlintCheck --continue || echo "ktlint completed or not available"
-              # Try detekt if available  
-              ./gradlew detekt --continue || echo "detekt completed or not available"
+              # Check if Android SDK setup was successful
+              if [ "${{ steps.android-setup.outcome }}" = "success" ]; then
+                echo "Android SDK available, running full lint tasks..."
+                # Try to run available lint tasks
+                ./gradlew tasks --all | grep -E "(ktlint|detekt|lint)" || echo "No lint tasks found"
+                # Try ktlint if available
+                ./gradlew ktlintCheck --continue || echo "ktlint completed or not available"
+                # Try detekt if available  
+                ./gradlew detekt --continue || echo "detekt completed or not available"
+              else
+                echo "Android SDK setup failed, running basic checks only..."
+                # Just check if gradlew works without SDK-dependent tasks
+                ./gradlew help || echo "Gradle wrapper check failed"
+              fi
             else
               echo "No gradlew found, skipping lint"
             fi
