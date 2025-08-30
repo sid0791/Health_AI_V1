@@ -63,9 +63,6 @@ describe('AIRoutingService', () => {
     }).compile();
 
     service = module.get<AIRoutingService>(AIRoutingService);
-    repository = module.get<Repository<AIRoutingDecision>>(getRepositoryToken(AIRoutingDecision));
-    cacheManager = module.get(CACHE_MANAGER);
-    configService = module.get<ConfigService>(ConfigService);
 
     // Reset mocks
     jest.clearAllMocks();

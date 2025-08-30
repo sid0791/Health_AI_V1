@@ -6,7 +6,6 @@ import {
   HttpStatus,
   HttpException,
   Logger,
-  UseGuards,
   Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiHeader } from '@nestjs/swagger';
@@ -56,7 +55,6 @@ export class AIRoutingWebhookController {
   async handleRoutingWebhook(
     @Body() payload: N8nWebhookPayload,
     @Headers('x-n8n-signature') signature: string,
-    @Req() request: Request,
   ): Promise<WebhookResponse> {
     try {
       // Verify webhook signature

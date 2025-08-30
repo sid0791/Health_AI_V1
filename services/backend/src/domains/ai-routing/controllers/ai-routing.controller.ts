@@ -11,7 +11,7 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
-import { AIRoutingService, AIRoutingRequest, AIRoutingResult } from '../services/ai-routing.service';
+import { AIRoutingService, AIRoutingRequest } from '../services/ai-routing.service';
 import { DLPService } from '../../auth/services/dlp.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User } from '../../auth/decorators/user.decorator';
