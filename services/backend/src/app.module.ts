@@ -56,7 +56,9 @@ import { StructuredEntity } from './domains/health-reports/entities/structured-e
         logging: configService.get('NODE_ENV') === 'development',
         ssl: configService.get('DB_SSL', false)
           ? {
-              rejectUnauthorized: false,
+              rejectUnauthorized:
+                configService.get('NODE_ENV') === 'development' ||
+                configService.get('NODE_ENV') === 'test',
             }
           : false,
         // Connection pool settings
