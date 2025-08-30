@@ -97,12 +97,12 @@ describe('OTPService', () => {
 
     it('should throw error if rate limit exceeded', async () => {
       const phone = '+919876543210';
-      
+
       mockRepository.count.mockResolvedValue(5); // Exceeds limit
 
-      await expect(
-        service.generateOTP(phone, OTPType.LOGIN)
-      ).rejects.toThrow('Too many OTP requests');
+      await expect(service.generateOTP(phone, OTPType.LOGIN)).rejects.toThrow(
+        'Too many OTP requests',
+      );
     });
   });
 
@@ -111,7 +111,7 @@ describe('OTPService', () => {
       const phone = '+919876543210';
       const otpCode = '123456';
       const userId = 'test-user-id';
-      
+
       const mockOTP = {
         id: 'otp-id',
         phone,
@@ -144,7 +144,7 @@ describe('OTPService', () => {
     it('should throw error for invalid OTP', async () => {
       const phone = '+919876543210';
       const otpCode = '999999';
-      
+
       const mockOTP = {
         id: 'otp-id',
         phone,
@@ -160,9 +160,9 @@ describe('OTPService', () => {
       mockRepository.findOne.mockResolvedValue(mockOTP);
       mockRepository.save.mockResolvedValue(mockOTP);
 
-      await expect(
-        service.verifyOTP(phone, otpCode, OTPType.LOGIN)
-      ).rejects.toThrow('Invalid OTP code');
+      await expect(service.verifyOTP(phone, otpCode, OTPType.LOGIN)).rejects.toThrow(
+        'Invalid OTP code',
+      );
 
       expect(mockOTP.incrementAttempt).toHaveBeenCalled();
     });
@@ -173,9 +173,9 @@ describe('OTPService', () => {
 
       mockRepository.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.verifyOTP(phone, otpCode, OTPType.LOGIN)
-      ).rejects.toThrow('No valid OTP found');
+      await expect(service.verifyOTP(phone, otpCode, OTPType.LOGIN)).rejects.toThrow(
+        'No valid OTP found',
+      );
     });
   });
 
@@ -194,7 +194,7 @@ describe('OTPService', () => {
     it('should return OTP statistics', async () => {
       mockRepository.count
         .mockResolvedValueOnce(10) // total generated
-        .mockResolvedValueOnce(8)  // total verified
+        .mockResolvedValueOnce(8) // total verified
         .mockResolvedValueOnce(1); // total failed
 
       const result = await service.getOTPStatistics(24);

@@ -34,10 +34,7 @@ import { FitnessPlanController } from './controllers/fitness-plan.controller';
     FitnessPlanGeneratorService,
     SafetyValidationService,
   ],
-  controllers: [
-    ExerciseController,
-    FitnessPlanController,
-  ],
+  controllers: [ExerciseController, FitnessPlanController],
   exports: [
     ExerciseLibraryService,
     FitnessPlanService,

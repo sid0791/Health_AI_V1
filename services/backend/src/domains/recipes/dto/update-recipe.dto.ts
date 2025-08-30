@@ -1,6 +1,18 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateRecipeDto, CreateRecipeIngredientDto, CreateRecipeStepDto } from './create-recipe.dto';
-import { IsOptional, IsBoolean, IsNumber, Min, Max, IsArray, ValidateNested } from 'class-validator';
+import {
+  CreateRecipeDto,
+  CreateRecipeIngredientDto,
+  CreateRecipeStepDto,
+} from './create-recipe.dto';
+import {
+  IsOptional,
+  IsBoolean,
+  IsNumber,
+  Min,
+  Max,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateRecipeDto extends PartialType(CreateRecipeDto) {

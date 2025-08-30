@@ -241,17 +241,17 @@ export class Exercise {
     if (!this.equipment || this.equipment.length === 0) {
       return true; // No equipment required
     }
-    return this.equipment.every(eq => availableEquipment.includes(eq));
+    return this.equipment.every((eq) => availableEquipment.includes(eq));
   }
 
   isSafeForConditions(healthConditions: string[]): boolean {
     if (!this.healthConditionsToAvoid || this.healthConditionsToAvoid.length === 0) {
       return true; // No specific conditions to avoid
     }
-    return !this.healthConditionsToAvoid.some(condition =>
-      healthConditions.some(userCondition =>
-        userCondition.toLowerCase().includes(condition.toLowerCase())
-      )
+    return !this.healthConditionsToAvoid.some((condition) =>
+      healthConditions.some((userCondition) =>
+        userCondition.toLowerCase().includes(condition.toLowerCase()),
+      ),
     );
   }
 
@@ -290,28 +290,28 @@ export class Exercise {
 
   getRecommendedSets(userLevel: DifficultyLevel): number {
     if (!this.defaultSets) return 3;
-    
+
     const multiplier = {
       [DifficultyLevel.BEGINNER]: 0.7,
       [DifficultyLevel.INTERMEDIATE]: 1.0,
       [DifficultyLevel.ADVANCED]: 1.3,
       [DifficultyLevel.EXPERT]: 1.5,
     };
-    
+
     return Math.round(this.defaultSets * multiplier[userLevel]);
   }
 
   getRecommendedReps(userLevel: DifficultyLevel): { min: number; max: number } {
     const baseMin = this.defaultRepsMin || 8;
     const baseMax = this.defaultRepsMax || 12;
-    
+
     const adjustment = {
       [DifficultyLevel.BEGINNER]: { min: -2, max: -2 },
       [DifficultyLevel.INTERMEDIATE]: { min: 0, max: 0 },
       [DifficultyLevel.ADVANCED]: { min: 2, max: 3 },
       [DifficultyLevel.EXPERT]: { min: 3, max: 5 },
     };
-    
+
     const adj = adjustment[userLevel];
     return {
       min: Math.max(1, baseMin + adj.min),

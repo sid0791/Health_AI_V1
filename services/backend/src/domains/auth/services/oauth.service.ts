@@ -47,24 +47,48 @@ export class OAuthService {
     private readonly auditService: AuditService,
   ) {
     this.oauthConfigs = new Map([
-      [OAuthProvider.GOOGLE, {
-        clientId: this.configService.get<string>('GOOGLE_CLIENT_ID', 'demo_google_client_id'),
-        clientSecret: this.configService.get<string>('GOOGLE_CLIENT_SECRET', 'demo_google_secret'),
-        redirectUri: this.configService.get<string>('GOOGLE_REDIRECT_URI', 'https://api.healthcoachai.com/auth/oauth/google/callback'),
-        scope: ['openid', 'profile', 'email'],
-      }],
-      [OAuthProvider.APPLE, {
-        clientId: this.configService.get<string>('APPLE_CLIENT_ID', 'demo_apple_client_id'),
-        clientSecret: this.configService.get<string>('APPLE_CLIENT_SECRET', 'demo_apple_secret'),
-        redirectUri: this.configService.get<string>('APPLE_REDIRECT_URI', 'https://api.healthcoachai.com/auth/oauth/apple/callback'),
-        scope: ['name', 'email'],
-      }],
-      [OAuthProvider.FACEBOOK, {
-        clientId: this.configService.get<string>('FACEBOOK_CLIENT_ID', 'demo_facebook_client_id'),
-        clientSecret: this.configService.get<string>('FACEBOOK_CLIENT_SECRET', 'demo_facebook_secret'),
-        redirectUri: this.configService.get<string>('FACEBOOK_REDIRECT_URI', 'https://api.healthcoachai.com/auth/oauth/facebook/callback'),
-        scope: ['email', 'public_profile'],
-      }],
+      [
+        OAuthProvider.GOOGLE,
+        {
+          clientId: this.configService.get<string>('GOOGLE_CLIENT_ID', 'demo_google_client_id'),
+          clientSecret: this.configService.get<string>(
+            'GOOGLE_CLIENT_SECRET',
+            'demo_google_secret',
+          ),
+          redirectUri: this.configService.get<string>(
+            'GOOGLE_REDIRECT_URI',
+            'https://api.healthcoachai.com/auth/oauth/google/callback',
+          ),
+          scope: ['openid', 'profile', 'email'],
+        },
+      ],
+      [
+        OAuthProvider.APPLE,
+        {
+          clientId: this.configService.get<string>('APPLE_CLIENT_ID', 'demo_apple_client_id'),
+          clientSecret: this.configService.get<string>('APPLE_CLIENT_SECRET', 'demo_apple_secret'),
+          redirectUri: this.configService.get<string>(
+            'APPLE_REDIRECT_URI',
+            'https://api.healthcoachai.com/auth/oauth/apple/callback',
+          ),
+          scope: ['name', 'email'],
+        },
+      ],
+      [
+        OAuthProvider.FACEBOOK,
+        {
+          clientId: this.configService.get<string>('FACEBOOK_CLIENT_ID', 'demo_facebook_client_id'),
+          clientSecret: this.configService.get<string>(
+            'FACEBOOK_CLIENT_SECRET',
+            'demo_facebook_secret',
+          ),
+          redirectUri: this.configService.get<string>(
+            'FACEBOOK_REDIRECT_URI',
+            'https://api.healthcoachai.com/auth/oauth/facebook/callback',
+          ),
+          scope: ['email', 'public_profile'],
+        },
+      ],
     ]);
   }
 
@@ -103,7 +127,7 @@ export class OAuthService {
     }
 
     this.logger.log(`Generated OAuth URL for provider ${provider}`);
-    
+
     return { authUrl, state: generatedState };
   }
 
@@ -119,20 +143,15 @@ export class OAuthService {
     try {
       // Exchange code for tokens
       const tokens = await this.exchangeCodeForTokens(provider, code);
-      
+
       // Get user info from provider
       const userInfo = await this.getUserInfo(provider, tokens.accessToken);
-      
+
       // Find or create user
       const { user, isNewUser } = await this.findOrCreateUser(userInfo, provider);
-      
+
       // Create or update OAuth account
-      const oauthAccount = await this.createOrUpdateOAuthAccount(
-        user,
-        provider,
-        userInfo,
-        tokens,
-      );
+      const oauthAccount = await this.createOrUpdateOAuthAccount(user, provider, userInfo, tokens);
 
       // Audit log
       await this.auditService.logAuthEvent(
@@ -155,7 +174,7 @@ export class OAuthService {
       return { user, isNewUser, oauthAccount };
     } catch (error) {
       this.logger.error(`OAuth ${provider} callback failed`, error);
-      
+
       await this.auditService.logAuthEvent(
         AuditEventType.LOGIN_FAILED,
         `OAuth ${provider} authentication failed`,
@@ -166,7 +185,7 @@ export class OAuthService {
         { provider, error: error.message },
         false,
       );
-      
+
       throw error;
     }
   }
@@ -198,26 +217,23 @@ export class OAuthService {
 
       // Exchange code for tokens
       const tokens = await this.exchangeCodeForTokens(provider, code);
-      
+
       // Get user info from provider
       const userInfo = await this.getUserInfo(provider, tokens.accessToken);
-      
+
       // Check if this OAuth account is already connected to another user
       const existingProviderAccount = await this.oauthRepository.findOne({
         where: { provider, providerId: userInfo.id },
       });
 
       if (existingProviderAccount) {
-        throw new BadRequestException(`This ${provider} account is already connected to another user`);
+        throw new BadRequestException(
+          `This ${provider} account is already connected to another user`,
+        );
       }
 
       // Create OAuth account
-      const oauthAccount = await this.createOrUpdateOAuthAccount(
-        user,
-        provider,
-        userInfo,
-        tokens,
-      );
+      const oauthAccount = await this.createOrUpdateOAuthAccount(user, provider, userInfo, tokens);
 
       // Audit log
       await this.auditService.logAuthEvent(
@@ -299,10 +315,7 @@ export class OAuthService {
   /**
    * Exchange authorization code for tokens
    */
-  private async exchangeCodeForTokens(
-    provider: OAuthProvider,
-    code: string,
-  ): Promise<OAuthTokens> {
+  private async exchangeCodeForTokens(provider: OAuthProvider, code: string): Promise<OAuthTokens> {
     const config = this.oauthConfigs.get(provider);
     if (!config) {
       throw new BadRequestException(`OAuth provider ${provider} not configured`);
@@ -380,7 +393,7 @@ export class OAuthService {
 
     try {
       let userInfoUrl: string;
-      let headers: Record<string, string> = {
+      const headers: Record<string, string> = {
         Authorization: `Bearer ${accessToken}`,
       };
 
@@ -398,12 +411,10 @@ export class OAuthService {
           throw new BadRequestException(`Unsupported OAuth provider: ${provider}`);
       }
 
-      const response = await firstValueFrom(
-        this.httpService.get(userInfoUrl, { headers }),
-      );
+      const response = await firstValueFrom(this.httpService.get(userInfoUrl, { headers }));
 
       const data = response.data;
-      
+
       return this.normalizeUserInfo(provider, data);
     } catch (error) {
       this.logger.error(`Failed to get user info from ${provider}`, error);

@@ -51,23 +51,46 @@ export class ContentModerationService {
   };
 
   // Ingredient safety database
-  private readonly ingredientSafety: Record<string, { safe: boolean; reason?: string; alternatives?: string[] }> = {
+  private readonly ingredientSafety: Record<
+    string,
+    { safe: boolean; reason?: string; alternatives?: string[] }
+  > = {
     // Unsafe/banned ingredients
-    'raw eggs': { safe: false, reason: 'Salmonella risk', alternatives: ['pasteurized eggs', 'egg substitute'] },
+    'raw eggs': {
+      safe: false,
+      reason: 'Salmonella risk',
+      alternatives: ['pasteurized eggs', 'egg substitute'],
+    },
     'raw chicken': { safe: false, reason: 'Must be cooked', alternatives: ['cooked chicken'] },
-    'raw fish': { safe: false, reason: 'Parasite risk unless sushi-grade', alternatives: ['cooked fish', 'sushi-grade fish'] },
-    'unpasteurized dairy': { safe: false, reason: 'Bacterial contamination risk', alternatives: ['pasteurized dairy'] },
-    'wild mushrooms': { safe: false, reason: 'Poisoning risk', alternatives: ['store-bought mushrooms'] },
-    
+    'raw fish': {
+      safe: false,
+      reason: 'Parasite risk unless sushi-grade',
+      alternatives: ['cooked fish', 'sushi-grade fish'],
+    },
+    'unpasteurized dairy': {
+      safe: false,
+      reason: 'Bacterial contamination risk',
+      alternatives: ['pasteurized dairy'],
+    },
+    'wild mushrooms': {
+      safe: false,
+      reason: 'Poisoning risk',
+      alternatives: ['store-bought mushrooms'],
+    },
+
     // Allergen-heavy ingredients requiring warnings
     peanuts: { safe: true, reason: 'Major allergen - requires warning' },
     'tree nuts': { safe: true, reason: 'Major allergen - requires warning' },
     shellfish: { safe: true, reason: 'Major allergen - requires warning' },
-    
+
     // Health condition incompatible ingredients
     'high sodium': { safe: true, reason: 'Not suitable for hypertension' },
     'high sugar': { safe: true, reason: 'Not suitable for diabetes' },
-    'trans fats': { safe: false, reason: 'Health risk', alternatives: ['healthy fats', 'olive oil'] },
+    'trans fats': {
+      safe: false,
+      reason: 'Health risk',
+      alternatives: ['healthy fats', 'olive oil'],
+    },
   };
 
   async validateRecipe(recipeDto: CreateRecipeDto): Promise<ModerationResult> {
@@ -95,7 +118,9 @@ export class ContentModerationService {
     const severity = this.calculateSeverity(violations);
     const isValid = violations.length === 0;
 
-    this.logger.debug(`Recipe validation for "${recipeDto.name}": ${isValid ? 'PASSED' : 'FAILED'}`);
+    this.logger.debug(
+      `Recipe validation for "${recipeDto.name}": ${isValid ? 'PASSED' : 'FAILED'}`,
+    );
     if (!isValid) {
       this.logger.warn(`Recipe validation violations: ${violations.join(', ')}`);
     }
@@ -131,7 +156,10 @@ export class ContentModerationService {
     }
 
     // Check for quality score manipulation
-    if (updateDto.qualityScore !== undefined && updateDto.qualityScore > existingRecipe.qualityScore + 2) {
+    if (
+      updateDto.qualityScore !== undefined &&
+      updateDto.qualityScore > existingRecipe.qualityScore + 2
+    ) {
       warnings.push('Quality score increase seems unusual');
     }
 
@@ -160,7 +188,7 @@ export class ContentModerationService {
 
     // Check allergen compatibility
     if (userConstraints.allergies?.length > 0) {
-      userConstraints.allergies.forEach(allergen => {
+      userConstraints.allergies.forEach((allergen) => {
         if (recipe.hasAllergen(allergen)) {
           violations.push(`Recipe contains allergen: ${allergen}`);
         }
@@ -169,7 +197,7 @@ export class ContentModerationService {
 
     // Check dietary restriction compatibility
     if (userConstraints.dietaryRestrictions?.length > 0) {
-      const isCompatible = userConstraints.dietaryRestrictions.some(restriction => {
+      const isCompatible = userConstraints.dietaryRestrictions.some((restriction) => {
         return recipe.isDietTypeCompatible(restriction as any);
       });
       if (!isCompatible) {
@@ -179,7 +207,7 @@ export class ContentModerationService {
 
     // Check health condition compatibility
     if (userConstraints.healthConditions?.length > 0) {
-      userConstraints.healthConditions.forEach(condition => {
+      userConstraints.healthConditions.forEach((condition) => {
         if (!recipe.isHealthConditionFriendly(condition)) {
           warnings.push(`Recipe may not be suitable for ${condition}`);
         }
@@ -198,7 +226,7 @@ export class ContentModerationService {
   }
 
   private validateRequiredFields(recipeDto: CreateRecipeDto, violations: string[]): void {
-    this.config.requiredFields.forEach(field => {
+    this.config.requiredFields.forEach((field) => {
       if (!recipeDto[field as keyof CreateRecipeDto]) {
         violations.push(`Required field missing: ${field}`);
       }
@@ -230,11 +258,13 @@ export class ContentModerationService {
     }
 
     // Check reasonable time values
-    if (recipeDto.prepTimeMinutes > 480) { // 8 hours
+    if (recipeDto.prepTimeMinutes > 480) {
+      // 8 hours
       warnings.push('Unusually long prep time');
     }
 
-    if (recipeDto.cookTimeMinutes > 720) { // 12 hours
+    if (recipeDto.cookTimeMinutes > 720) {
+      // 12 hours
       warnings.push('Unusually long cook time');
     }
 
@@ -260,9 +290,9 @@ export class ContentModerationService {
   ): Promise<void> {
     for (const ingredient of ingredients) {
       const ingredientName = ingredient.ingredientName?.toLowerCase();
-      
+
       // Check against banned ingredients
-      if (this.config.bannedIngredients.some(banned => ingredientName.includes(banned))) {
+      if (this.config.bannedIngredients.some((banned) => ingredientName.includes(banned))) {
         violations.push(`Banned ingredient: ${ingredient.ingredientName}`);
       }
 
@@ -293,7 +323,7 @@ export class ContentModerationService {
       // Check for dangerous cooking instructions
       if (step.instruction) {
         const instruction = step.instruction.toLowerCase();
-        
+
         // Check for unsafe cooking practices
         if (instruction.includes('raw') && instruction.includes('chicken')) {
           violations.push(`Step ${index + 1}: Raw chicken is unsafe`);
@@ -321,7 +351,7 @@ export class ContentModerationService {
     const combinedText = textFields.join(' ').toLowerCase();
 
     // Check for restricted terms
-    this.config.restrictedTerms.forEach(term => {
+    this.config.restrictedTerms.forEach((term) => {
       if (combinedText.includes(term.toLowerCase())) {
         violations.push(`Restricted term found: ${term}`);
       }
@@ -329,7 +359,7 @@ export class ContentModerationService {
 
     // Check for medical claims
     const medicalTerms = ['cure', 'treat', 'diagnose', 'prevent', 'medical'];
-    medicalTerms.forEach(term => {
+    medicalTerms.forEach((term) => {
       if (combinedText.includes(term)) {
         warnings.push(`Potential medical claim detected: ${term}`);
       }
@@ -354,10 +384,10 @@ export class ContentModerationService {
 
   private calculateSeverity(violations: string[]): 'low' | 'medium' | 'high' | 'critical' {
     if (violations.length === 0) return 'low';
-    
+
     const criticalKeywords = ['unsafe', 'banned', 'dangerous', 'raw chicken'];
-    const hasCritical = violations.some(violation =>
-      criticalKeywords.some(keyword => violation.toLowerCase().includes(keyword))
+    const hasCritical = violations.some((violation) =>
+      criticalKeywords.some((keyword) => violation.toLowerCase().includes(keyword)),
     );
 
     if (hasCritical) return 'critical';
@@ -396,7 +426,7 @@ export class ContentModerationService {
     }
 
     // Check for high-risk cooking methods
-    recipe.steps?.forEach(step => {
+    recipe.steps?.forEach((step) => {
       if (step.cookingMethod === 'deep_fry') {
         specialInstructions.push('Use thermometer to maintain oil temperature');
       }

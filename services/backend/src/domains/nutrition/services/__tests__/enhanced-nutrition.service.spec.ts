@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EnhancedNutritionService, EnhancedRecipe, EnhancedMealPlanInput } from '../enhanced-nutrition.service';
+import {
+  EnhancedNutritionService,
+  EnhancedRecipe,
+  EnhancedMealPlanInput,
+} from '../enhanced-nutrition.service';
 import { NutritionCalculationService } from '../nutrition-calculation.service';
 import { CookingTransformationService } from '../cooking-transformation.service';
 import { GlycemicIndexService } from '../glycemic-index.service';
@@ -170,7 +174,7 @@ describe('EnhancedNutritionService', () => {
       expect(result.glycemicLoad).toBeDefined();
       expect(result.glycemicLoad.gl).toBe(4.25); // Half of 8.5 because 2 servings
       expect(result.ingredientAnalysis).toHaveLength(2);
-      
+
       // Check that cooking transformation was applied to rice but not tomato
       expect(mockCookingService.applyCookingTransformation).toHaveBeenCalledTimes(1);
       expect(mockCookingService.applyCookingTransformation).toHaveBeenCalledWith(
@@ -282,9 +286,11 @@ describe('EnhancedNutritionService', () => {
 
       const result = service.getCookingRecommendations(ingredients);
 
-      expect(result.recommendations.some(rec => 
-        rec.includes('Steam or microwave to preserve vitamin C')
-      )).toBe(true);
+      expect(
+        result.recommendations.some((rec) =>
+          rec.includes('Steam or microwave to preserve vitamin C'),
+        ),
+      ).toBe(true);
       expect(result.alternativeCookingMethods[mockTomatoIngredient.foodId]).toContain(
         CookingMethod.STEAMED,
       );
@@ -303,9 +309,11 @@ describe('EnhancedNutritionService', () => {
 
       const result = service.getCookingRecommendations(ingredients);
 
-      expect(result.recommendations.some(rec => 
-        rec.includes('Avoid prolonged boiling to preserve folate')
-      )).toBe(true);
+      expect(
+        result.recommendations.some((rec) =>
+          rec.includes('Avoid prolonged boiling to preserve folate'),
+        ),
+      ).toBe(true);
       expect(result.alternativeCookingMethods[mockTomatoIngredient.foodId]).toContain(
         CookingMethod.STEAMED,
       );
@@ -324,9 +332,11 @@ describe('EnhancedNutritionService', () => {
 
       const result = service.getCookingRecommendations(ingredients);
 
-      expect(result.recommendations.some(rec => 
-        rec.includes('Light cooking preserves fiber structure')
-      )).toBe(true);
+      expect(
+        result.recommendations.some((rec) =>
+          rec.includes('Light cooking preserves fiber structure'),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -352,9 +362,11 @@ describe('EnhancedNutritionService', () => {
       expect(result.optimizedRecipe.ingredients[0].cookingParams?.method).toBe(
         CookingMethod.STEAMED,
       );
-      expect(result.improvements.some(imp => 
-        imp.includes('Changed Fresh Tomato from boiling to steaming')
-      )).toBe(true);
+      expect(
+        result.improvements.some((imp) =>
+          imp.includes('Changed Fresh Tomato from boiling to steaming'),
+        ),
+      ).toBe(true);
       expect(result.nutritionImprovement).toBeGreaterThan(0);
     });
 
@@ -377,9 +389,9 @@ describe('EnhancedNutritionService', () => {
       });
 
       expect(result.optimizedRecipe.ingredients[0].cookingParams?.addedSalt).toBe(2); // Reduced by 50%
-      expect(result.improvements.some(imp => 
-        imp.includes('Reduced salt for Basmati Rice by 50%')
-      )).toBe(true);
+      expect(
+        result.improvements.some((imp) => imp.includes('Reduced salt for Basmati Rice by 50%')),
+      ).toBe(true);
     });
   });
 

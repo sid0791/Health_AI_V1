@@ -1,6 +1,20 @@
-import { IsString, IsEnum, IsOptional, IsArray, IsNumber, IsBoolean, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsArray,
+  IsNumber,
+  IsBoolean,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { ExerciseCategory, DifficultyLevel, MuscleGroup, EquipmentType } from '../entities/exercise.entity';
+import {
+  ExerciseCategory,
+  DifficultyLevel,
+  MuscleGroup,
+  EquipmentType,
+} from '../entities/exercise.entity';
 
 export class CreateExerciseDto {
   @IsString()

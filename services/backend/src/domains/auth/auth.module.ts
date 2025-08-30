@@ -37,12 +37,7 @@ import { UsersModule } from '../users/users.module';
 @Module({
   imports: [
     // TypeORM entities
-    TypeOrmModule.forFeature([
-      UserSession,
-      UserOTP,
-      UserOAuthAccount,
-      AuditLog,
-    ]),
+    TypeOrmModule.forFeature([UserSession, UserOTP, UserOAuthAccount, AuditLog]),
 
     // JWT configuration
     JwtModule.registerAsync({
@@ -83,10 +78,7 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
   ],
 
-  controllers: [
-    AuthController,
-    ConsentController,
-  ],
+  controllers: [AuthController, ConsentController],
 
   providers: [
     // Core services

@@ -53,18 +53,13 @@ export class AuthService {
   ): Promise<{ otpId: string; expiresAt: Date }> {
     try {
       // Find or create user
-      let user = await this.usersService.findByPhone(phone);
-      
+      const user = await this.usersService.findByPhone(phone);
+
       // Generate OTP
-      const result = await this.otpService.generateOTP(
-        phone,
-        OTPType.LOGIN,
-        user?.id,
-        context,
-      );
+      const result = await this.otpService.generateOTP(phone, OTPType.LOGIN, user?.id, context);
 
       this.logger.log(`Login OTP sent to phone ${this.maskPhone(phone)}`);
-      
+
       return result;
     } catch (error) {
       this.logger.error('Failed to send login OTP', error);
@@ -87,12 +82,7 @@ export class AuthService {
   ): Promise<LoginResult> {
     try {
       // Verify OTP
-      const otpResult = await this.otpService.verifyOTP(
-        phone,
-        otpCode,
-        OTPType.LOGIN,
-        context,
-      );
+      const otpResult = await this.otpService.verifyOTP(phone, otpCode, OTPType.LOGIN, context);
 
       if (!otpResult.verified) {
         throw new UnauthorizedException('Invalid OTP');
@@ -154,7 +144,7 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error('Failed to verify OTP and login', error);
-      
+
       await this.auditService.logAuthEvent(
         AuditEventType.LOGIN_FAILED,
         `Phone OTP login failed for ${this.maskPhone(phone)}`,
@@ -170,7 +160,7 @@ export class AuthService {
         },
         false,
       );
-      
+
       throw error;
     }
   }
@@ -238,14 +228,10 @@ export class AuthService {
     context?: AuthContext,
   ): Promise<TokenPair> {
     try {
-      const tokens = await this.jwtService.refreshTokens(
-        refreshToken,
-        deviceId,
-        context,
-      );
+      const tokens = await this.jwtService.refreshTokens(refreshToken, deviceId, context);
 
       this.logger.log('JWT tokens refreshed successfully');
-      
+
       return tokens;
     } catch (error) {
       this.logger.error('Failed to refresh tokens', error);
@@ -316,11 +302,7 @@ export class AuthService {
   /**
    * Disconnect OAuth account from user
    */
-  async disconnectOAuthAccount(
-    userId: string,
-    provider: OAuthProvider,
-    context?: AuthContext,
-  ) {
+  async disconnectOAuthAccount(userId: string, provider: OAuthProvider, context?: AuthContext) {
     return this.oauthService.disconnectOAuthAccount(userId, provider, context);
   }
 

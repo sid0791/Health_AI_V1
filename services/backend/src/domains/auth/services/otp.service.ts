@@ -65,9 +65,10 @@ export class OTPService {
       await this.invalidateExistingOTPs(phone, type);
 
       // Generate OTP code
-      const otpCode = this.configService.get<string>('NODE_ENV') === 'development' 
-        ? '123456' // Fixed OTP for development
-        : this.generateOTPCode();
+      const otpCode =
+        this.configService.get<string>('NODE_ENV') === 'development'
+          ? '123456' // Fixed OTP for development
+          : this.generateOTPCode();
 
       // Create OTP record
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -198,7 +199,9 @@ export class OTPService {
         { phone: this.maskPhone(phone), type },
       );
 
-      this.logger.log(`OTP verified successfully for phone ${this.maskPhone(phone)}, type: ${type}`);
+      this.logger.log(
+        `OTP verified successfully for phone ${this.maskPhone(phone)}, type: ${type}`,
+      );
 
       return {
         userId: otp.userId,
@@ -215,7 +218,7 @@ export class OTPService {
    */
   private async checkRateLimit(phone: string): Promise<void> {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    
+
     const recentOTPs = await this.otpRepository.count({
       where: {
         phone,
@@ -226,7 +229,7 @@ export class OTPService {
     });
 
     const maxOTPsPerHour = this.configService.get<number>('MAX_OTPS_PER_HOUR', 3);
-    
+
     if (recentOTPs >= maxOTPsPerHour) {
       throw new TooManyRequestsException('Too many OTP requests. Please try again later.');
     }
@@ -261,7 +264,7 @@ export class OTPService {
   private async sendOTPSMS(phone: string, otpCode: string, type: OTPType): Promise<void> {
     try {
       const message = this.generateOTPMessage(otpCode, type);
-      
+
       if (this.configService.get<string>('NODE_ENV') === 'development') {
         // In development, just log the OTP
         this.logger.log(`[DEVELOPMENT] OTP for ${this.maskPhone(phone)}: ${otpCode}`);
@@ -271,8 +274,9 @@ export class OTPService {
 
       // In production, use actual SMS service
       // TODO: Implement actual Twilio SMS sending
-      this.logger.log(`SMS sent to ${this.maskPhone(phone)} with OTP: ${otpCode.substring(0, 2)}****`);
-      
+      this.logger.log(
+        `SMS sent to ${this.maskPhone(phone)} with OTP: ${otpCode.substring(0, 2)}****`,
+      );
     } catch (error) {
       this.logger.error('Failed to send OTP SMS', error);
       throw new BadRequestException('Failed to send OTP. Please try again.');
@@ -284,7 +288,7 @@ export class OTPService {
    */
   private generateOTPMessage(otpCode: string, type: OTPType): string {
     const baseMessage = `Your HealthCoachAI verification code is: ${otpCode}`;
-    
+
     switch (type) {
       case OTPType.LOGIN:
         return `${baseMessage}. Use this code to sign in to your account. Valid for 10 minutes.`;
@@ -335,7 +339,7 @@ export class OTPService {
    */
   async getOTPStatistics(hours: number = 24): Promise<Record<string, any>> {
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-    
+
     const totalGenerated = await this.otpRepository.count({
       where: {
         createdAt: {

@@ -21,7 +21,7 @@ export class SendOTPDto {
 
   @ApiProperty({
     description: 'Device name for display',
-    example: 'John\'s iPhone',
+    example: "John's iPhone",
     required: false,
   })
   @IsOptional()
@@ -67,7 +67,7 @@ export class VerifyOTPDto {
 
   @ApiProperty({
     description: 'Device name for display',
-    example: 'John\'s iPhone',
+    example: "John's iPhone",
     required: false,
   })
   @IsOptional()

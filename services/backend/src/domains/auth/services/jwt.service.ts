@@ -45,10 +45,7 @@ export class JWTService {
   /**
    * Generate JWT tokens for user
    */
-  async generateTokens(
-    user: User,
-    sessionInfo: SessionInfo,
-  ): Promise<TokenPair> {
+  async generateTokens(user: User, sessionInfo: SessionInfo): Promise<TokenPair> {
     try {
       // Create session record
       const session = await this.createSession(user, sessionInfo);
@@ -68,7 +65,7 @@ export class JWTService {
 
       // Generate refresh token
       const refreshToken = this.generateRefreshToken();
-      
+
       // Update session with refresh token
       session.refreshToken = refreshToken;
       await this.sessionRepository.save(session);
@@ -144,7 +141,7 @@ export class JWTService {
             ipAddress: context?.ipAddress,
             userAgent: context?.userAgent,
           },
-          { 
+          {
             expectedDeviceId: session.deviceId,
             providedDeviceId: deviceId,
           },
@@ -175,7 +172,7 @@ export class JWTService {
       // Generate new refresh token
       const newRefreshToken = this.generateRefreshToken();
       session.refreshToken = newRefreshToken;
-      
+
       await this.sessionRepository.save(session);
 
       // Audit log
@@ -286,7 +283,7 @@ export class JWTService {
       );
 
       this.logger.log(`${result.affected || 0} sessions revoked for user ${userId}`);
-      
+
       return result.affected || 0;
     } catch (error) {
       this.logger.error('Failed to revoke all sessions', error, { userId });
@@ -320,7 +317,7 @@ export class JWTService {
    */
   private async createSession(user: User, sessionInfo: SessionInfo): Promise<UserSession> {
     const expiresAt = new Date(Date.now() + this.refreshTokenTTL * 1000);
-    
+
     const session = this.sessionRepository.create({
       userId: user.id,
       refreshToken: '', // Will be set later
@@ -378,7 +375,7 @@ export class JWTService {
       where: { isActive: true },
     });
     const expiredSessions = await this.sessionRepository.count({
-      where: { 
+      where: {
         expiresAt: {
           $lt: new Date(),
         } as any,

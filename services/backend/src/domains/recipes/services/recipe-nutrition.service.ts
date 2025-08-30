@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Recipe } from '../entities/recipe.entity';
 import { RecipeNutrition, NutrientType } from '../entities/recipe-nutrition.entity';
-import { EnhancedNutritionService, EnhancedRecipe, EnhancedIngredient } from '../../nutrition/services/enhanced-nutrition.service';
+import {
+  EnhancedNutritionService,
+  EnhancedRecipe,
+  EnhancedIngredient,
+} from '../../nutrition/services/enhanced-nutrition.service';
 import { DataSource } from 'typeorm';
 
 export interface RecipeNutritionSummary {
@@ -57,7 +61,6 @@ export class RecipeNutritionService {
 
       this.logger.debug(`Nutrition calculation completed for recipe: ${recipe.id}`);
       return summary;
-
     } catch (error) {
       this.logger.error(`Failed to calculate nutrition for recipe ${recipe.id}: ${error.message}`);
       throw new Error(`Nutrition calculation failed: ${error.message}`);
@@ -97,7 +100,9 @@ export class RecipeNutritionService {
     return this.reconstructSummaryFromStored(recipe);
   }
 
-  async batchCalculateNutrition(recipeIds: string[]): Promise<{ successful: string[]; failed: string[] }> {
+  async batchCalculateNutrition(
+    recipeIds: string[],
+  ): Promise<{ successful: string[]; failed: string[] }> {
     const successful: string[] = [];
     const failed: string[] = [];
 
@@ -106,70 +111,76 @@ export class RecipeNutritionService {
         await this.recalculateNutrition(recipeId);
         successful.push(recipeId);
       } catch (error) {
-        this.logger.warn(`Batch nutrition calculation failed for recipe ${recipeId}: ${error.message}`);
+        this.logger.warn(
+          `Batch nutrition calculation failed for recipe ${recipeId}: ${error.message}`,
+        );
         failed.push(recipeId);
       }
     }
 
-    this.logger.debug(`Batch nutrition calculation: ${successful.length} successful, ${failed.length} failed`);
+    this.logger.debug(
+      `Batch nutrition calculation: ${successful.length} successful, ${failed.length} failed`,
+    );
     return { successful, failed };
   }
 
   private convertToEnhancedRecipe(recipe: Recipe): EnhancedRecipe {
-    const enhancedIngredients: EnhancedIngredient[] = recipe.ingredients.map((ingredient, index) => ({
-      foodId: ingredient.usdaFoodId || ingredient.ifctFoodId || `ingredient_${index}`,
-      name: ingredient.ingredientName,
-      rawWeight: ingredient.quantity * this.getGramConversionFactor(ingredient.unit),
-      rawNutrients: {
-        energy: ingredient.caloriesPerUnit || 0,
-        protein: ingredient.proteinGrams || 0,
-        carbohydrates: ingredient.carbsGrams || 0,
-        fat: ingredient.fatGrams || 0,
-        fiber: ingredient.fiberGrams || 0,
-        sugar: 0, // Default value
-        // Add default values for other nutrients
-        calcium: 0,
-        iron: 0,
-        magnesium: 0,
-        phosphorus: 0,
-        potassium: 0,
-        sodium: 0,
-        zinc: 0,
-        vitaminA: 0,
-        vitaminC: 0,
-        vitaminD: 0,
-        vitaminE: 0,
-        vitaminK: 0,
-        thiamin: 0,
-        riboflavin: 0,
-        niacin: 0,
-        vitaminB6: 0,
-        folate: 0,
-        vitaminB12: 0,
-        copper: 0,
-        manganese: 0,
-        selenium: 0,
-        iodine: 0,
-      },
-      cookingParams: this.getCookingParamsFromSteps(recipe.steps),
-      foodComposition: {
-        totalCarbohydrates: ingredient.carbsGrams || 0,
-        fiber: ingredient.fiberGrams || 0,
-        sugar: 0,
-        starch: Math.max(0, (ingredient.carbsGrams || 0) - (ingredient.fiberGrams || 0)),
-        protein: ingredient.proteinGrams || 0,
-        fat: ingredient.fatGrams || 0,
-        processingLevel: 'minimal',
-        foodForm: 'solid',
-      },
-    }));
+    const enhancedIngredients: EnhancedIngredient[] = recipe.ingredients.map(
+      (ingredient, index) => ({
+        foodId: ingredient.usdaFoodId || ingredient.ifctFoodId || `ingredient_${index}`,
+        name: ingredient.ingredientName,
+        rawWeight: ingredient.quantity * this.getGramConversionFactor(ingredient.unit),
+        rawNutrients: {
+          energy: ingredient.caloriesPerUnit || 0,
+          protein: ingredient.proteinGrams || 0,
+          carbohydrates: ingredient.carbsGrams || 0,
+          fat: ingredient.fatGrams || 0,
+          fiber: ingredient.fiberGrams || 0,
+          sugar: 0, // Default value
+          // Add default values for other nutrients
+          calcium: 0,
+          iron: 0,
+          magnesium: 0,
+          phosphorus: 0,
+          potassium: 0,
+          sodium: 0,
+          zinc: 0,
+          vitaminA: 0,
+          vitaminC: 0,
+          vitaminD: 0,
+          vitaminE: 0,
+          vitaminK: 0,
+          thiamin: 0,
+          riboflavin: 0,
+          niacin: 0,
+          vitaminB6: 0,
+          folate: 0,
+          vitaminB12: 0,
+          copper: 0,
+          manganese: 0,
+          selenium: 0,
+          iodine: 0,
+        },
+        cookingParams: this.getCookingParamsFromSteps(recipe.steps),
+        foodComposition: {
+          totalCarbohydrates: ingredient.carbsGrams || 0,
+          fiber: ingredient.fiberGrams || 0,
+          sugar: 0,
+          starch: Math.max(0, (ingredient.carbsGrams || 0) - (ingredient.fiberGrams || 0)),
+          protein: ingredient.proteinGrams || 0,
+          fat: ingredient.fatGrams || 0,
+          processingLevel: 'minimal',
+          foodForm: 'solid',
+        },
+      }),
+    );
 
     return {
       recipeId: recipe.id,
       name: recipe.name,
       servings: recipe.servingsCount,
       ingredients: enhancedIngredients,
-      instructions: recipe.steps?.map(step => step.instruction) || [],
+      instructions: recipe.steps?.map((step) => step.instruction) || [],
       totalCookingTime: recipe.cookTimeMinutes,
       difficulty: recipe.difficultyLevel as 'easy' | 'medium' | 'hard',
     };
@@ -179,30 +190,30 @@ export class RecipeNutritionService {
     // Simple unit conversion to grams
     // In production, this should be a comprehensive unit conversion service
     const conversions: Record<string, number> = {
-      'g': 1,
-      'gram': 1,
-      'grams': 1,
-      'kg': 1000,
-      'kilogram': 1000,
-      'lb': 453.592,
-      'pound': 453.592,
-      'oz': 28.3495,
-      'ounce': 28.3495,
-      'ml': 1, // Approximate for water-like liquids
-      'liter': 1000,
-      'l': 1000,
-      'cup': 240, // Approximate
-      'tbsp': 15,
-      'tablespoon': 15,
-      'tsp': 5,
-      'teaspoon': 5,
-      'piece': 100, // Default estimate
-      'pcs': 100,
-      'small': 50,
-      'medium': 100,
-      'large': 150,
+      g: 1,
+      gram: 1,
+      grams: 1,
+      kg: 1000,
+      kilogram: 1000,
+      lb: 453.592,
+      pound: 453.592,
+      oz: 28.3495,
+      ounce: 28.3495,
+      ml: 1, // Approximate for water-like liquids
+      liter: 1000,
+      l: 1000,
+      cup: 240, // Approximate
+      tbsp: 15,
+      tablespoon: 15,
+      tsp: 5,
+      teaspoon: 5,
+      piece: 100, // Default estimate
+      pcs: 100,
+      small: 50,
+      medium: 100,
+      large: 150,
     };
-    
+
     return conversions[unit.toLowerCase()] || 100; // Default to 100g if unknown
   }
 
@@ -210,7 +221,7 @@ export class RecipeNutritionService {
     if (!steps || steps.length === 0) return undefined;
 
     // Extract cooking parameters from recipe steps
-    const cookingStep = steps.find(step => step.cookingMethod);
+    const cookingStep = steps.find((step) => step.cookingMethod);
     if (!cookingStep) return undefined;
 
     return {
@@ -298,14 +309,29 @@ export class RecipeNutritionService {
 
     // Store macronutrients
     const macros = [
-      { name: 'calories', amount: summary.caloriesPerServing, unit: 'kcal', type: NutrientType.MACRO },
-      { name: 'protein', amount: summary.macronutrients.protein, unit: 'g', type: NutrientType.MACRO },
-      { name: 'carbohydrates', amount: summary.macronutrients.carbohydrates, unit: 'g', type: NutrientType.MACRO },
+      {
+        name: 'calories',
+        amount: summary.caloriesPerServing,
+        unit: 'kcal',
+        type: NutrientType.MACRO,
+      },
+      {
+        name: 'protein',
+        amount: summary.macronutrients.protein,
+        unit: 'g',
+        type: NutrientType.MACRO,
+      },
+      {
+        name: 'carbohydrates',
+        amount: summary.macronutrients.carbohydrates,
+        unit: 'g',
+        type: NutrientType.MACRO,
+      },
       { name: 'fat', amount: summary.macronutrients.fat, unit: 'g', type: NutrientType.MACRO },
       { name: 'fiber', amount: summary.macronutrients.fiber, unit: 'g', type: NutrientType.MACRO },
     ];
 
-    macros.forEach(macro => {
+    macros.forEach((macro) => {
       nutritionEntries.push({
         recipeId,
         nutrientName: macro.name,
@@ -333,7 +359,7 @@ export class RecipeNutritionService {
       { name: 'zinc', type: NutrientType.MINERAL, unit: 'mg' },
     ];
 
-    micronutrients.forEach(nutrient => {
+    micronutrients.forEach((nutrient) => {
       const amount = cookedNutrients[nutrient.name] || 0;
       if (amount > 0) {
         nutritionEntries.push({
@@ -360,7 +386,7 @@ export class RecipeNutritionService {
     summary: RecipeNutritionSummary,
   ): Promise<void> {
     const recipeRepository = this.dataSource.getRepository(Recipe);
-    
+
     await recipeRepository.update(recipeId, {
       caloriesPerServing: summary.caloriesPerServing,
       giValue: summary.glycemicInfo.giValue,
@@ -378,7 +404,7 @@ export class RecipeNutritionService {
 
   private reconstructSummaryFromStored(recipe: Recipe): RecipeNutritionSummary {
     const nutritionMap = new Map<string, RecipeNutrition>();
-    recipe.nutrition.forEach(n => nutritionMap.set(n.nutrientName, n));
+    recipe.nutrition.forEach((n) => nutritionMap.set(n.nutrientName, n));
 
     const macronutrients = {
       protein: nutritionMap.get('protein')?.amountPerServing || 0,
@@ -387,8 +413,8 @@ export class RecipeNutritionService {
       fiber: nutritionMap.get('fiber')?.amountPerServing || 0,
     };
 
-    const micronutrients = recipe.nutrition.filter(n => 
-      n.nutrientType === NutrientType.VITAMIN || n.nutrientType === NutrientType.MINERAL
+    const micronutrients = recipe.nutrition.filter(
+      (n) => n.nutrientType === NutrientType.VITAMIN || n.nutrientType === NutrientType.MINERAL,
     );
 
     return {

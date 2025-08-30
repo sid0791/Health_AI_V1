@@ -32,7 +32,6 @@ interface WorkoutValidationResult {
 
 @Injectable()
 export class SafetyValidationService {
-
   /**
    * Validate if an exercise is safe for a user
    */
@@ -46,55 +45,58 @@ export class SafetyValidationService {
 
     // Check health condition contraindications
     if (exercise.healthConditionsToAvoid && userProfile.healthConditions) {
-      const conflicts = exercise.healthConditionsToAvoid.filter(condition =>
-        userProfile.healthConditions.some(userCondition =>
-          userCondition.toLowerCase().includes(condition.toLowerCase()) ||
-          condition.toLowerCase().includes(userCondition.toLowerCase())
-        )
+      const conflicts = exercise.healthConditionsToAvoid.filter((condition) =>
+        userProfile.healthConditions.some(
+          (userCondition) =>
+            userCondition.toLowerCase().includes(condition.toLowerCase()) ||
+            condition.toLowerCase().includes(userCondition.toLowerCase()),
+        ),
       );
 
       if (conflicts.length > 0) {
         result.isValid = false;
         result.errors.push(
-          `Exercise "${exercise.name}" is contraindicated for your health conditions: ${conflicts.join(', ')}`
+          `Exercise "${exercise.name}" is contraindicated for your health conditions: ${conflicts.join(', ')}`,
         );
       }
     }
 
     // Check physical limitations
     if (exercise.contraindications && userProfile.physicalLimitations) {
-      const limitations = exercise.contraindications.filter(contraindication =>
-        userProfile.physicalLimitations.some(limitation =>
-          limitation.toLowerCase().includes(contraindication.toLowerCase()) ||
-          contraindication.toLowerCase().includes(limitation.toLowerCase())
-        )
+      const limitations = exercise.contraindications.filter((contraindication) =>
+        userProfile.physicalLimitations.some(
+          (limitation) =>
+            limitation.toLowerCase().includes(contraindication.toLowerCase()) ||
+            contraindication.toLowerCase().includes(limitation.toLowerCase()),
+        ),
       );
 
       if (limitations.length > 0) {
         result.warnings.push(
-          `Exercise "${exercise.name}" may be challenging due to: ${limitations.join(', ')}`
+          `Exercise "${exercise.name}" may be challenging due to: ${limitations.join(', ')}`,
         );
         result.recommendations.push(
-          `Consider modifications or alternative exercises for this movement`
+          `Consider modifications or alternative exercises for this movement`,
         );
       }
     }
 
     // Check injury history warnings
     if (exercise.injuryWarnings && userProfile.injuryHistory) {
-      const injuryRisks = exercise.injuryWarnings.filter(warning =>
-        userProfile.injuryHistory.some(injury =>
-          warning.toLowerCase().includes(injury.toLowerCase()) ||
-          injury.toLowerCase().includes(warning.toLowerCase())
-        )
+      const injuryRisks = exercise.injuryWarnings.filter((warning) =>
+        userProfile.injuryHistory.some(
+          (injury) =>
+            warning.toLowerCase().includes(injury.toLowerCase()) ||
+            injury.toLowerCase().includes(warning.toLowerCase()),
+        ),
       );
 
       if (injuryRisks.length > 0) {
         result.warnings.push(
-          `Exercise "${exercise.name}" may aggravate previous injuries: ${injuryRisks.join(', ')}`
+          `Exercise "${exercise.name}" may aggravate previous injuries: ${injuryRisks.join(', ')}`,
         );
         result.recommendations.push(
-          `Start with lighter weights/intensity and focus on proper form`
+          `Start with lighter weights/intensity and focus on proper form`,
         );
       }
     }
@@ -103,10 +105,10 @@ export class SafetyValidationService {
     if (!exercise.isSuitableForLevel(this.mapExperienceToDifficulty(userProfile.experienceLevel))) {
       if (this.mapExperienceToDifficulty(userProfile.experienceLevel) < exercise.difficultyLevel) {
         result.warnings.push(
-          `Exercise "${exercise.name}" may be too advanced for your current experience level`
+          `Exercise "${exercise.name}" may be too advanced for your current experience level`,
         );
         result.recommendations.push(
-          `Consider starting with regression exercises or getting proper instruction`
+          `Consider starting with regression exercises or getting proper instruction`,
         );
       }
     }
@@ -114,17 +116,20 @@ export class SafetyValidationService {
     // Age-specific considerations
     if (userProfile.age) {
       if (userProfile.age >= 65) {
-        if (exercise.category === ExerciseCategory.CARDIO || exercise.tags?.includes('high-impact')) {
+        if (
+          exercise.category === ExerciseCategory.CARDIO ||
+          exercise.tags?.includes('high-impact')
+        ) {
           result.warnings.push(
-            `High-impact exercise "${exercise.name}" - ensure proper warm-up and consider impact modifications`
+            `High-impact exercise "${exercise.name}" - ensure proper warm-up and consider impact modifications`,
           );
         }
       }
-      
+
       if (userProfile.age < 18) {
         if (exercise.category === 'resistance' && exercise.tags?.includes('heavy-weight')) {
           result.warnings.push(
-            `Heavy resistance exercise "${exercise.name}" - focus on form and gradual progression`
+            `Heavy resistance exercise "${exercise.name}" - focus on form and gradual progression`,
           );
         }
       }
@@ -134,7 +139,7 @@ export class SafetyValidationService {
     if (result.warnings.length > 0) {
       result.recommendations.push(
         'Consult with a fitness professional if unsure about exercise modifications',
-        'Stop immediately if you experience pain, dizziness, or unusual discomfort'
+        'Stop immediately if you experience pain, dizziness, or unusual discomfort',
       );
     }
 
@@ -147,7 +152,7 @@ export class SafetyValidationService {
   validateWorkout(
     workout: FitnessPlanWorkout,
     exercises: FitnessPlanExercise[],
-    userProfile: UserProfile
+    userProfile: UserProfile,
   ): WorkoutValidationResult {
     const result: WorkoutValidationResult = {
       isValid: true,
@@ -165,7 +170,7 @@ export class SafetyValidationService {
 
     for (const exercise of exercises) {
       totalSets += exercise.targetSets;
-      
+
       if (exercise.targetRepsPerSet) {
         totalReps += exercise.targetSets * exercise.targetRepsPerSet;
       } else if (exercise.targetRepsRangeMin && exercise.targetRepsRangeMax) {
@@ -179,12 +184,14 @@ export class SafetyValidationService {
     }
 
     result.totalVolume = totalSets;
-    result.intensityScore = exercises.reduce((sum, ex) => sum + (ex.intensityLevel || 5), 0) / exercises.length;
+    result.intensityScore =
+      exercises.reduce((sum, ex) => sum + (ex.intensityLevel || 5), 0) / exercises.length;
 
     // Estimate workout duration
     const exerciseTime = exercises.reduce((total, exercise) => {
-      const setsTime = exercise.targetSets * (exercise.targetDurationSeconds || 
-        ((exercise.targetRepsPerSet || 10) * 3)); // 3 seconds per rep estimate
+      const setsTime =
+        exercise.targetSets *
+        (exercise.targetDurationSeconds || (exercise.targetRepsPerSet || 10) * 3); // 3 seconds per rep estimate
       const restTime = exercise.targetSets * (exercise.restBetweenSets || 60);
       return total + setsTime + restTime;
     }, 0);
@@ -194,48 +201,48 @@ export class SafetyValidationService {
 
     // Validate volume constraints based on experience level
     const volumeLimits = this.getVolumeLimits(userProfile.experienceLevel);
-    
+
     if (totalSets > volumeLimits.maxSets) {
       result.errors.push(
-        `Workout volume too high: ${totalSets} sets exceeds recommended maximum of ${volumeLimits.maxSets} for your experience level`
+        `Workout volume too high: ${totalSets} sets exceeds recommended maximum of ${volumeLimits.maxSets} for your experience level`,
       );
       result.isValid = false;
     } else if (totalSets > volumeLimits.warningThreshold) {
       result.warnings.push(
-        `High workout volume: ${totalSets} sets is approaching your limit. Ensure adequate recovery`
+        `High workout volume: ${totalSets} sets is approaching your limit. Ensure adequate recovery`,
       );
     }
 
     // Validate intensity
     if (result.intensityScore > 9) {
       result.warnings.push(
-        `Very high workout intensity (${result.intensityScore.toFixed(1)}/10). Consider reducing intensity or increasing rest periods`
+        `Very high workout intensity (${result.intensityScore.toFixed(1)}/10). Consider reducing intensity or increasing rest periods`,
       );
     }
 
     if (highIntensityExercises > 3 && userProfile.experienceLevel === ExperienceLevel.BEGINNER) {
       result.warnings.push(
-        `Too many high-intensity exercises for beginner level. Consider reducing intensity`
+        `Too many high-intensity exercises for beginner level. Consider reducing intensity`,
       );
     }
 
     // Validate duration
     const durationLimits = this.getDurationLimits(userProfile.experienceLevel);
-    
+
     if (result.estimatedDuration > durationLimits.max) {
       result.errors.push(
-        `Workout too long: ${result.estimatedDuration} minutes exceeds recommended maximum of ${durationLimits.max} minutes`
+        `Workout too long: ${result.estimatedDuration} minutes exceeds recommended maximum of ${durationLimits.max} minutes`,
       );
       result.isValid = false;
     } else if (result.estimatedDuration > durationLimits.warning) {
       result.warnings.push(
-        `Long workout: ${result.estimatedDuration} minutes. Ensure you have adequate time and energy`
+        `Long workout: ${result.estimatedDuration} minutes. Ensure you have adequate time and energy`,
       );
     }
 
     if (result.estimatedDuration < durationLimits.min) {
       result.warnings.push(
-        `Short workout: ${result.estimatedDuration} minutes may not provide adequate stimulus`
+        `Short workout: ${result.estimatedDuration} minutes may not provide adequate stimulus`,
       );
     }
 
@@ -278,9 +285,9 @@ export class SafetyValidationService {
     const frequencyValidation = this.validateWorkoutFrequency(
       plan.workoutsPerWeek,
       plan.planType,
-      userProfile.experienceLevel
+      userProfile.experienceLevel,
     );
-    
+
     if (!frequencyValidation.isValid) {
       result.errors.push(...frequencyValidation.errors);
       result.isValid = false;
@@ -291,17 +298,15 @@ export class SafetyValidationService {
     if (plan.progressiveOverloadEnabled) {
       if (plan.autoProgressionRate > 1.15) {
         result.warnings.push(
-          `Progression rate of ${((plan.autoProgressionRate - 1) * 100).toFixed(1)}% per week may be too aggressive`
+          `Progression rate of ${((plan.autoProgressionRate - 1) * 100).toFixed(1)}% per week may be too aggressive`,
         );
       }
 
       if (plan.deloadWeekFrequency < 3) {
-        result.warnings.push(
-          'Deload weeks scheduled too frequently - may impede progress'
-        );
+        result.warnings.push('Deload weeks scheduled too frequently - may impede progress');
       } else if (plan.deloadWeekFrequency > 8) {
         result.warnings.push(
-          'Deload weeks scheduled infrequently - may increase injury risk with fatigue accumulation'
+          'Deload weeks scheduled infrequently - may increase injury risk with fatigue accumulation',
         );
       }
     }
@@ -317,7 +322,7 @@ export class SafetyValidationService {
         result.recommendations.push(
           'Include balance and fall prevention exercises',
           'Prioritize functional movements and flexibility',
-          'Allow extra recovery time between sessions'
+          'Allow extra recovery time between sessions',
         );
       }
 
@@ -325,7 +330,7 @@ export class SafetyValidationService {
         result.recommendations.push(
           'Focus on movement quality over intensity',
           'Include diverse movement patterns for athletic development',
-          'Avoid excessive specialization'
+          'Avoid excessive specialization',
         );
       }
     }
@@ -341,15 +346,15 @@ export class SafetyValidationService {
     adherenceScore: number,
     userFeedback?: {
       difficultyRating?: number; // 1-5 scale
-      fatigueLevel?: number;     // 1-5 scale
-      enjoymentLevel?: number;   // 1-5 scale
-    }
+      fatigueLevel?: number; // 1-5 scale
+      enjoymentLevel?: number; // 1-5 scale
+    },
   ): {
     shouldProgress: boolean;
     shouldDeload: boolean;
     recommendations: string[];
     adjustments: {
-      volumeAdjustment: number;    // Percentage change
+      volumeAdjustment: number; // Percentage change
       intensityAdjustment: number; // Percentage change
       frequencyAdjustment: number; // Workout per week change
     };
@@ -357,7 +362,7 @@ export class SafetyValidationService {
     const recommendations: string[] = [];
     let shouldProgress = false;
     let shouldDeload = false;
-    
+
     const adjustments = {
       volumeAdjustment: 0,
       intensityAdjustment: 0,
@@ -417,7 +422,7 @@ export class SafetyValidationService {
     sets: number,
     reps: number,
     weight?: number,
-    userProfile?: UserProfile
+    userProfile?: UserProfile,
   ): SafetyValidationResult {
     const result: SafetyValidationResult = {
       isValid: true,
@@ -455,7 +460,7 @@ export class SafetyValidationService {
 
       if (userProfile?.currentWeight && weight > userProfile.currentWeight * 3) {
         result.warnings.push(
-          'Exercise weight is very high relative to body weight - ensure proper form and spotting'
+          'Exercise weight is very high relative to body weight - ensure proper form and spotting',
         );
       }
     }
@@ -498,7 +503,7 @@ export class SafetyValidationService {
   private validateWorkoutFrequency(
     frequency: number,
     planType: FitnessPlanType,
-    experienceLevel: ExperienceLevel
+    experienceLevel: ExperienceLevel,
   ): { isValid: boolean; warnings: string[]; errors: string[] } {
     const result = { isValid: true, warnings: [], errors: [] };
 
@@ -523,7 +528,7 @@ export class SafetyValidationService {
 
     if (frequency > maxFrequency[experienceLevel]) {
       result.warnings.push(
-        `${frequency} workouts/week may be too much for ${experienceLevel} level`
+        `${frequency} workouts/week may be too much for ${experienceLevel} level`,
       );
     }
 
@@ -540,13 +545,11 @@ export class SafetyValidationService {
     if (recommendation) {
       if (frequency < recommendation.min) {
         result.warnings.push(
-          `${frequency} workouts/week may be insufficient for ${planType} goals`
+          `${frequency} workouts/week may be insufficient for ${planType} goals`,
         );
       }
       if (frequency > recommendation.max) {
-        result.warnings.push(
-          `${frequency} workouts/week may be excessive for ${planType} goals`
-        );
+        result.warnings.push(`${frequency} workouts/week may be excessive for ${planType} goals`);
       }
     }
 
@@ -555,7 +558,7 @@ export class SafetyValidationService {
 
   private checkMuscleGroupBalance(exercises: FitnessPlanExercise[]): { warnings: string[] } {
     const warnings: string[] = [];
-    
+
     // Count exercises by movement pattern
     let pushingMovements = 0;
     let pullingMovements = 0;
@@ -566,7 +569,7 @@ export class SafetyValidationService {
       // This would ideally check the actual exercise data
       // For now, using exercise name patterns
       const name = exercise.exerciseName.toLowerCase();
-      
+
       if (name.includes('press') || name.includes('push')) {
         pushingMovements++;
       }
@@ -585,9 +588,11 @@ export class SafetyValidationService {
     if (pushingMovements > pullingMovements * 1.5) {
       warnings.push('More pushing than pulling exercises - may lead to muscle imbalances');
     }
-    
+
     if (pullingMovements > pushingMovements * 1.5) {
-      warnings.push('More pulling than pushing exercises - consider adding horizontal/vertical pressing');
+      warnings.push(
+        'More pulling than pushing exercises - consider adding horizontal/vertical pressing',
+      );
     }
 
     return { warnings };
@@ -595,10 +600,10 @@ export class SafetyValidationService {
 
   private validateExerciseOrder(exercises: FitnessPlanExercise[]): { warnings: string[] } {
     const warnings: string[] = [];
-    
+
     // Check if compound movements come before isolation
     let foundIsolation = false;
-    
+
     for (const exercise of exercises) {
       if (exercise.exerciseType === 'isolation') {
         foundIsolation = true;
@@ -613,7 +618,7 @@ export class SafetyValidationService {
 
   private validateGoalsAlignment(
     plan: FitnessPlan,
-    userProfile: UserProfile
+    userProfile: UserProfile,
   ): { warnings: string[]; recommendations: string[] } {
     const warnings: string[] = [];
     const recommendations: string[] = [];

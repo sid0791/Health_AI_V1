@@ -187,7 +187,7 @@ export class UsersService {
 
     const savedUser = await this.usersRepository.save(user);
     this.logger.log(`User created from phone with ID: ${savedUser.id}`);
-    
+
     return savedUser;
   }
 

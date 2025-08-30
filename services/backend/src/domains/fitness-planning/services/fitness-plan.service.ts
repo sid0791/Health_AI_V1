@@ -1,19 +1,24 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, Between } from 'typeorm';
 import { FitnessPlan, FitnessPlanStatus } from '../entities/fitness-plan.entity';
 import { FitnessPlanWeek } from '../entities/fitness-plan-week.entity';
 import { FitnessPlanWorkout } from '../entities/fitness-plan-workout.entity';
 import { FitnessPlanExercise } from '../entities/fitness-plan-exercise.entity';
-import { 
-  CreateFitnessPlanDto, 
-  UpdateFitnessPlanDto, 
+import {
+  CreateFitnessPlanDto,
+  UpdateFitnessPlanDto,
   FitnessPlanFilterDto,
   GenerateFitnessPlanDto,
   FitnessPlanResponseDto,
   FitnessPlanStatsDto,
   WorkoutProgressDto,
-  PlanProgressSummaryDto
+  PlanProgressSummaryDto,
 } from '../dto/fitness-plan.dto';
 import { FitnessPlanGeneratorService } from './fitness-plan-generator.service';
 
@@ -42,13 +47,13 @@ export class FitnessPlanService {
     }
 
     const endDate = new Date(createDto.startDate);
-    endDate.setDate(endDate.getDate() + (createDto.durationWeeks * 7));
+    endDate.setDate(endDate.getDate() + createDto.durationWeeks * 7);
 
     const plan = this.fitnessPlanRepository.create({
       ...createDto,
       userId,
       endDate,
-      restDaysPerWeek: createDto.restDaysPerWeek ?? (7 - (createDto.workoutsPerWeek || 3)),
+      restDaysPerWeek: createDto.restDaysPerWeek ?? 7 - (createDto.workoutsPerWeek || 3),
       workoutLocation: createDto.workoutLocation || 'home',
       maxWorkoutDurationMinutes: createDto.maxWorkoutDurationMinutes || 60,
       workoutIntensityPreference: createDto.workoutIntensityPreference || 'moderate',
@@ -68,7 +73,10 @@ export class FitnessPlanService {
   /**
    * Generate an AI-powered fitness plan
    */
-  async generateFitnessPlan(userId: string, generateDto: GenerateFitnessPlanDto): Promise<FitnessPlan> {
+  async generateFitnessPlan(
+    userId: string,
+    generateDto: GenerateFitnessPlanDto,
+  ): Promise<FitnessPlan> {
     const planParams = {
       planType: generateDto.planType,
       experienceLevel: generateDto.experienceLevel,
@@ -115,7 +123,7 @@ export class FitnessPlanService {
    */
   async getUserFitnessPlans(
     userId: string,
-    filterDto: FitnessPlanFilterDto
+    filterDto: FitnessPlanFilterDto,
   ): Promise<{
     plans: FitnessPlan[];
     total: number;
@@ -140,7 +148,7 @@ export class FitnessPlanService {
       limit = 20,
       offset = 0,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = filterDto;
 
     const queryBuilder = this.fitnessPlanRepository.createQueryBuilder('plan');
@@ -154,10 +162,9 @@ export class FitnessPlanService {
 
     // Apply filters
     if (search) {
-      queryBuilder.andWhere(
-        '(plan.planName ILIKE :search OR plan.planDescription ILIKE :search)',
-        { search: `%${search}%` }
-      );
+      queryBuilder.andWhere('(plan.planName ILIKE :search OR plan.planDescription ILIKE :search)', {
+        search: `%${search}%`,
+      });
     }
 
     if (planType) {
@@ -181,11 +188,15 @@ export class FitnessPlanService {
     }
 
     if (maxWorkoutDuration) {
-      queryBuilder.andWhere('plan.maxWorkoutDurationMinutes <= :maxWorkoutDuration', { maxWorkoutDuration });
+      queryBuilder.andWhere('plan.maxWorkoutDurationMinutes <= :maxWorkoutDuration', {
+        maxWorkoutDuration,
+      });
     }
 
     if (availableEquipment && availableEquipment.length > 0) {
-      queryBuilder.andWhere('plan.availableEquipment && :availableEquipment', { availableEquipment });
+      queryBuilder.andWhere('plan.availableEquipment && :availableEquipment', {
+        availableEquipment,
+      });
     }
 
     if (focusAreas && focusAreas.length > 0) {
@@ -213,10 +224,18 @@ export class FitnessPlanService {
 
     // Apply sorting
     const allowedSortFields = [
-      'planName', 'planType', 'status', 'experienceLevel', 'startDate', 
-      'durationWeeks', 'adherenceScore', 'satisfactionRating', 'createdAt', 'updatedAt'
+      'planName',
+      'planType',
+      'status',
+      'experienceLevel',
+      'startDate',
+      'durationWeeks',
+      'adherenceScore',
+      'satisfactionRating',
+      'createdAt',
+      'updatedAt',
     ];
-    
+
     if (allowedSortFields.includes(sortBy)) {
       queryBuilder.orderBy(`plan.${sortBy}`, sortOrder.toUpperCase() as 'ASC' | 'DESC');
     } else {
@@ -232,7 +251,7 @@ export class FitnessPlanService {
       plans,
       total,
       page: Math.floor(offset / limit) + 1,
-      limit
+      limit,
     };
   }
 
@@ -242,7 +261,7 @@ export class FitnessPlanService {
   async updateFitnessPlan(
     id: string,
     updateDto: UpdateFitnessPlanDto,
-    userId?: string
+    userId?: string,
   ): Promise<FitnessPlan> {
     const plan = await this.getFitnessPlanById(id, userId);
 
@@ -254,7 +273,7 @@ export class FitnessPlanService {
     // Update end date if duration changes
     if (updateDto.durationWeeks && updateDto.durationWeeks !== plan.durationWeeks) {
       const newEndDate = new Date(plan.startDate);
-      newEndDate.setDate(newEndDate.getDate() + (updateDto.durationWeeks * 7));
+      newEndDate.setDate(newEndDate.getDate() + updateDto.durationWeeks * 7);
       plan.endDate = newEndDate;
     }
 
@@ -272,7 +291,7 @@ export class FitnessPlanService {
    */
   async deleteFitnessPlan(id: string, userId?: string): Promise<void> {
     const plan = await this.getFitnessPlanById(id, userId);
-    
+
     if (plan.status === FitnessPlanStatus.ACTIVE) {
       throw new BadRequestException('Cannot delete an active plan. Complete or cancel it first.');
     }
@@ -285,7 +304,7 @@ export class FitnessPlanService {
    */
   async activateFitnessPlan(id: string, userId?: string): Promise<FitnessPlan> {
     const plan = await this.getFitnessPlanById(id, userId);
-    
+
     if (plan.status === FitnessPlanStatus.ACTIVE) {
       throw new BadRequestException('Plan is already active');
     }
@@ -293,7 +312,7 @@ export class FitnessPlanService {
     // Deactivate any other active plans for this user
     await this.fitnessPlanRepository.update(
       { userId: plan.userId, status: FitnessPlanStatus.ACTIVE },
-      { status: FitnessPlanStatus.PAUSED }
+      { status: FitnessPlanStatus.PAUSED },
     );
 
     plan.activate();
@@ -305,7 +324,7 @@ export class FitnessPlanService {
    */
   async pauseFitnessPlan(id: string, userId?: string): Promise<FitnessPlan> {
     const plan = await this.getFitnessPlanById(id, userId);
-    
+
     if (plan.status !== FitnessPlanStatus.ACTIVE) {
       throw new BadRequestException('Only active plans can be paused');
     }
@@ -319,7 +338,7 @@ export class FitnessPlanService {
    */
   async resumeFitnessPlan(id: string, userId?: string): Promise<FitnessPlan> {
     const plan = await this.getFitnessPlanById(id, userId);
-    
+
     if (plan.status !== FitnessPlanStatus.PAUSED) {
       throw new BadRequestException('Only paused plans can be resumed');
     }
@@ -327,7 +346,7 @@ export class FitnessPlanService {
     // Deactivate any other active plans for this user
     await this.fitnessPlanRepository.update(
       { userId: plan.userId, status: FitnessPlanStatus.ACTIVE },
-      { status: FitnessPlanStatus.PAUSED }
+      { status: FitnessPlanStatus.PAUSED },
     );
 
     plan.resume();
@@ -339,7 +358,7 @@ export class FitnessPlanService {
    */
   async completeFitnessPlan(id: string, userId?: string): Promise<FitnessPlan> {
     const plan = await this.getFitnessPlanById(id, userId);
-    
+
     if (plan.status === FitnessPlanStatus.COMPLETED) {
       throw new BadRequestException('Plan is already completed');
     }
@@ -353,8 +372,11 @@ export class FitnessPlanService {
    */
   async cancelFitnessPlan(id: string, userId?: string): Promise<FitnessPlan> {
     const plan = await this.getFitnessPlanById(id, userId);
-    
-    if (plan.status === FitnessPlanStatus.COMPLETED || plan.status === FitnessPlanStatus.CANCELLED) {
+
+    if (
+      plan.status === FitnessPlanStatus.COMPLETED ||
+      plan.status === FitnessPlanStatus.CANCELLED
+    ) {
       throw new BadRequestException('Cannot cancel a completed or already cancelled plan');
     }
 
@@ -365,19 +387,16 @@ export class FitnessPlanService {
   /**
    * Record workout progress
    */
-  async recordWorkoutProgress(
-    progressDto: WorkoutProgressDto,
-    userId?: string
-  ): Promise<void> {
+  async recordWorkoutProgress(progressDto: WorkoutProgressDto, userId?: string): Promise<void> {
     const plan = await this.getFitnessPlanById(progressDto.planId, userId);
-    
+
     if (plan.status !== FitnessPlanStatus.ACTIVE) {
       throw new BadRequestException('Can only record progress for active plans');
     }
 
     // Update plan progress
     plan.updateProgress(1, progressDto.caloriesBurned, progressDto.durationMinutes);
-    
+
     // Update satisfaction rating if provided
     if (progressDto.satisfactionRating) {
       plan.updateSatisfactionRating(progressDto.satisfactionRating);
@@ -389,7 +408,7 @@ export class FitnessPlanService {
     if (progressDto.exerciseProgress) {
       for (const exerciseProgress of progressDto.exerciseProgress) {
         const exercise = await this.exerciseRepository.findOne({
-          where: { id: exerciseProgress.exerciseId }
+          where: { id: exerciseProgress.exerciseId },
         });
 
         if (exercise) {
@@ -411,15 +430,15 @@ export class FitnessPlanService {
    */
   async getPlanProgressSummary(planId: string, userId?: string): Promise<PlanProgressSummaryDto> {
     const plan = await this.getFitnessPlanById(planId, userId);
-    
+
     const currentWeek = plan.getCurrentWeek();
     const nextWeek = currentWeek + 1;
-    
+
     // Get strength progress (simplified - would need actual tracking)
     const strengthProgress = await this.getStrengthProgress(planId);
-    
+
     // Get next week preview
-    const nextWeekData = plan.weeks?.find(w => w.weekNumber === nextWeek);
+    const nextWeekData = plan.weeks?.find((w) => w.weekNumber === nextWeek);
     const nextWeekPreview = {
       weekNumber: nextWeek,
       plannedWorkouts: nextWeekData?.plannedWorkouts || plan.workoutsPerWeek,
@@ -455,10 +474,10 @@ export class FitnessPlanService {
       changeExercises?: string[];
       adjustVolume?: number;
     },
-    userId?: string
+    userId?: string,
   ): Promise<FitnessPlanWeek> {
     const plan = await this.getFitnessPlanById(planId, userId);
-    
+
     if (plan.status !== FitnessPlanStatus.ACTIVE && plan.status !== FitnessPlanStatus.DRAFT) {
       throw new BadRequestException('Can only adapt active or draft plans');
     }
@@ -466,7 +485,7 @@ export class FitnessPlanService {
     const adaptedWeek = await this.planGeneratorService.regenerateWeek(
       planId,
       weekNumber,
-      adaptations
+      adaptations,
     );
 
     // Mark plan as adapted
@@ -486,8 +505,8 @@ export class FitnessPlanService {
 
     const stats: FitnessPlanStatsDto = {
       totalPlans: plans.length,
-      activeNow: plans.filter(p => p.isActive()).length,
-      completed: plans.filter(p => p.status === FitnessPlanStatus.COMPLETED).length,
+      activeNow: plans.filter((p) => p.isActive()).length,
+      completed: plans.filter((p) => p.status === FitnessPlanStatus.COMPLETED).length,
       byType: {} as any,
       byStatus: {} as any,
       byExperienceLevel: {} as any,
@@ -501,18 +520,30 @@ export class FitnessPlanService {
 
     // Calculate aggregated statistics
     const totalAdherence = plans.reduce((sum, plan) => sum + plan.adherenceScore, 0);
-    const plansWithSatisfaction = plans.filter(p => p.satisfactionRating);
-    const totalSatisfaction = plansWithSatisfaction.reduce((sum, plan) => sum + (plan.satisfactionRating || 0), 0);
+    const plansWithSatisfaction = plans.filter((p) => p.satisfactionRating);
+    const totalSatisfaction = plansWithSatisfaction.reduce(
+      (sum, plan) => sum + (plan.satisfactionRating || 0),
+      0,
+    );
 
     stats.averageAdherence = plans.length > 0 ? totalAdherence / plans.length : 0;
-    stats.averageSatisfaction = plansWithSatisfaction.length > 0 ? totalSatisfaction / plansWithSatisfaction.length : 0;
-    stats.totalWorkoutsCompleted = plans.reduce((sum, plan) => sum + plan.totalWorkoutsCompleted, 0);
+    stats.averageSatisfaction =
+      plansWithSatisfaction.length > 0 ? totalSatisfaction / plansWithSatisfaction.length : 0;
+    stats.totalWorkoutsCompleted = plans.reduce(
+      (sum, plan) => sum + plan.totalWorkoutsCompleted,
+      0,
+    );
     stats.totalCaloriesBurned = plans.reduce((sum, plan) => sum + plan.totalCaloriesBurned, 0);
 
     // Get best performing plans (top 3 by adherence and satisfaction)
     stats.bestPerformingPlans = plans
-      .filter(p => p.adherenceScore > 0)
-      .sort((a, b) => (b.adherenceScore + (b.satisfactionRating || 0)) - (a.adherenceScore + (a.satisfactionRating || 0)))
+      .filter((p) => p.adherenceScore > 0)
+      .sort(
+        (a, b) =>
+          b.adherenceScore +
+          (b.satisfactionRating || 0) -
+          (a.adherenceScore + (a.satisfactionRating || 0)),
+      )
       .slice(0, 3) as any;
 
     return stats;
@@ -524,10 +555,10 @@ export class FitnessPlanService {
   async cloneFitnessPlan(
     planId: string,
     newPlanName: string,
-    userId: string
+    userId: string,
   ): Promise<FitnessPlan> {
     const originalPlan = await this.getFitnessPlanById(planId);
-    
+
     // Create new plan based on original
     const clonedPlan = this.fitnessPlanRepository.create({
       ...originalPlan,
@@ -553,7 +584,7 @@ export class FitnessPlanService {
 
     // Calculate new end date
     clonedPlan.endDate = new Date();
-    clonedPlan.endDate.setDate(clonedPlan.startDate.getDate() + (clonedPlan.durationWeeks * 7));
+    clonedPlan.endDate.setDate(clonedPlan.startDate.getDate() + clonedPlan.durationWeeks * 7);
 
     return await this.fitnessPlanRepository.save(clonedPlan);
   }

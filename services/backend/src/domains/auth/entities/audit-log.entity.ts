@@ -16,29 +16,39 @@ export enum AuditEventType {
   LOGOUT = 'logout',
   TOKEN_REFRESH = 'token_refresh',
   PASSWORD_CHANGE = 'password_change',
-  
+
   // OTP events
   OTP_GENERATED = 'otp_generated',
   OTP_VERIFIED = 'otp_verified',
   OTP_FAILED = 'otp_failed',
-  
+
   // OAuth events
   OAUTH_CONNECTED = 'oauth_connected',
   OAUTH_DISCONNECTED = 'oauth_disconnected',
-  
+
   // Consent events
   CONSENT_GRANTED = 'consent_granted',
   CONSENT_WITHDRAWN = 'consent_withdrawn',
-  
+
   // Data events
   DATA_EXPORT_REQUESTED = 'data_export_requested',
   DATA_DELETE_REQUESTED = 'data_delete_requested',
   DATA_ACCESS = 'data_access',
-  
+
+  // Onboarding events
+  ONBOARDING_STARTED = 'onboarding_started',
+  ONBOARDING_BASIC_INFO_SAVED = 'onboarding_basic_info_saved',
+  ONBOARDING_LIFESTYLE_SAVED = 'onboarding_lifestyle_saved',
+  ONBOARDING_HEALTH_SAVED = 'onboarding_health_saved',
+  ONBOARDING_PREFERENCES_SAVED = 'onboarding_preferences_saved',
+  ONBOARDING_COMPLETED = 'onboarding_completed',
+  ONBOARDING_STEP_SKIPPED = 'onboarding_step_skipped',
+  ONBOARDING_RESTARTED = 'onboarding_restarted',
+
   // Privacy events
   DLP_TRIGGERED = 'dlp_triggered',
   PSEUDONYMIZATION_APPLIED = 'pseudonymization_applied',
-  
+
   // Security events
   RATE_LIMIT_EXCEEDED = 'rate_limit_exceeded',
   SUSPICIOUS_ACTIVITY = 'suspicious_activity',

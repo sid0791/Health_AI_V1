@@ -1,4 +1,15 @@
-import { IsString, IsArray, IsOptional, IsNumber, IsEnum, IsBoolean, ValidateNested, IsUrl, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsArray,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+  IsBoolean,
+  ValidateNested,
+  IsUrl,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { DietType, MealType, DifficultyLevel } from '../entities/recipe.entity';
 

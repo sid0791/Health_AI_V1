@@ -1,6 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SafetyValidationService } from '../safety-validation.service';
-import { Exercise, DifficultyLevel, ExerciseCategory, MuscleGroup } from '../../entities/exercise.entity';
+import {
+  Exercise,
+  DifficultyLevel,
+  ExerciseCategory,
+  MuscleGroup,
+} from '../../entities/exercise.entity';
 import { FitnessPlan, ExperienceLevel, FitnessPlanType } from '../../entities/fitness-plan.entity';
 import { FitnessPlanWorkout } from '../../entities/fitness-plan-workout.entity';
 import { FitnessPlanExercise, ExerciseType } from '../../entities/fitness-plan-exercise.entity';
@@ -67,7 +72,7 @@ describe('SafetyValidationService', () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        expect.stringContaining('is contraindicated for your health conditions')
+        expect.stringContaining('is contraindicated for your health conditions'),
       );
     });
 
@@ -80,9 +85,7 @@ describe('SafetyValidationService', () => {
       const result = service.validateExerciseForUser(mockExercise, userWithLimitations);
 
       expect(result.isValid).toBe(true);
-      expect(result.warnings).toContain(
-        expect.stringContaining('may be challenging due to')
-      );
+      expect(result.warnings).toContain(expect.stringContaining('may be challenging due to'));
     });
 
     it('should warn about injury history', () => {
@@ -94,9 +97,7 @@ describe('SafetyValidationService', () => {
       const result = service.validateExerciseForUser(mockExercise, userWithInjuryHistory);
 
       expect(result.isValid).toBe(true);
-      expect(result.warnings).toContain(
-        expect.stringContaining('may aggravate previous injuries')
-      );
+      expect(result.warnings).toContain(expect.stringContaining('may aggravate previous injuries'));
     });
 
     it('should provide age-specific warnings for elderly users', () => {
@@ -114,7 +115,7 @@ describe('SafetyValidationService', () => {
       const result = service.validateExerciseForUser(highImpactExercise, elderlyUser);
 
       expect(result.warnings).toContain(
-        expect.stringContaining('ensure proper warm-up and consider impact modifications')
+        expect.stringContaining('ensure proper warm-up and consider impact modifications'),
       );
     });
 
@@ -132,7 +133,7 @@ describe('SafetyValidationService', () => {
       const result = service.validateExerciseForUser(heavyWeightExercise, youngUser);
 
       expect(result.warnings).toContain(
-        expect.stringContaining('focus on form and gradual progression')
+        expect.stringContaining('focus on form and gradual progression'),
       );
     });
   });
@@ -179,9 +180,7 @@ describe('SafetyValidationService', () => {
 
       const result = service.validateWorkout(mockWorkout, highVolumeExercises, mockUserProfile);
 
-      expect(result.warnings).toContain(
-        expect.stringContaining('High workout volume')
-      );
+      expect(result.warnings).toContain(expect.stringContaining('High workout volume'));
     });
 
     it('should error on excessive volume', () => {
@@ -198,22 +197,18 @@ describe('SafetyValidationService', () => {
       const result = service.validateWorkout(mockWorkout, excessiveVolumeExercises, beginnerUser);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain(
-        expect.stringContaining('Workout volume too high')
-      );
+      expect(result.errors).toContain(expect.stringContaining('Workout volume too high'));
     });
 
     it('should warn about very high intensity', () => {
-      const highIntensityExercises = mockExercises.map(ex => ({
+      const highIntensityExercises = mockExercises.map((ex) => ({
         ...ex,
         intensityLevel: 10,
       }));
 
       const result = service.validateWorkout(mockWorkout, highIntensityExercises, mockUserProfile);
 
-      expect(result.warnings).toContain(
-        expect.stringContaining('Very high workout intensity')
-      );
+      expect(result.warnings).toContain(expect.stringContaining('Very high workout intensity'));
     });
   });
 
@@ -243,9 +238,7 @@ describe('SafetyValidationService', () => {
 
       const result = service.validateFitnessPlan(longPlan, mockUserProfile);
 
-      expect(result.warnings).toContain(
-        expect.stringContaining('Plan duration exceeds 1 year')
-      );
+      expect(result.warnings).toContain(expect.stringContaining('Plan duration exceeds 1 year'));
     });
 
     it('should warn about very short plans', () => {
@@ -256,22 +249,18 @@ describe('SafetyValidationService', () => {
 
       const result = service.validateFitnessPlan(shortPlan, mockUserProfile);
 
-      expect(result.warnings).toContain(
-        expect.stringContaining('Plan duration is very short')
-      );
+      expect(result.warnings).toContain(expect.stringContaining('Plan duration is very short'));
     });
 
     it('should warn about aggressive progression rates', () => {
       const aggressivePlan = {
         ...mockPlan,
-        autoProgressionRate: 1.20, // 20% per week
+        autoProgressionRate: 1.2, // 20% per week
       };
 
       const result = service.validateFitnessPlan(aggressivePlan, mockUserProfile);
 
-      expect(result.warnings).toContain(
-        expect.stringContaining('may be too aggressive')
-      );
+      expect(result.warnings).toContain(expect.stringContaining('may be too aggressive'));
     });
 
     it('should warn about infrequent deload weeks', () => {
@@ -283,67 +272,37 @@ describe('SafetyValidationService', () => {
       const result = service.validateFitnessPlan(infrequentDeloadPlan, mockUserProfile);
 
       expect(result.warnings).toContain(
-        expect.stringContaining('Deload weeks scheduled infrequently')
+        expect.stringContaining('Deload weeks scheduled infrequently'),
       );
     });
   });
 
   describe('validateExerciseParameters', () => {
     it('should validate reasonable exercise parameters', () => {
-      const result = service.validateExerciseParameters(
-        'Squats',
-        3,
-        12,
-        60,
-        mockUserProfile
-      );
+      const result = service.validateExerciseParameters('Squats', 3, 12, 60, mockUserProfile);
 
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
 
     it('should error on invalid sets', () => {
-      const result = service.validateExerciseParameters(
-        'Squats',
-        0,
-        12,
-        60,
-        mockUserProfile
-      );
+      const result = service.validateExerciseParameters('Squats', 0, 12, 60, mockUserProfile);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain(
-        expect.stringContaining('Invalid number of sets')
-      );
+      expect(result.errors).toContain(expect.stringContaining('Invalid number of sets'));
     });
 
     it('should error on invalid reps', () => {
-      const result = service.validateExerciseParameters(
-        'Squats',
-        3,
-        0,
-        60,
-        mockUserProfile
-      );
+      const result = service.validateExerciseParameters('Squats', 3, 0, 60, mockUserProfile);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain(
-        expect.stringContaining('Invalid number of reps')
-      );
+      expect(result.errors).toContain(expect.stringContaining('Invalid number of reps'));
     });
 
     it('should warn about very high rep ranges', () => {
-      const result = service.validateExerciseParameters(
-        'Squats',
-        3,
-        50,
-        60,
-        mockUserProfile
-      );
+      const result = service.validateExerciseParameters('Squats', 3, 50, 60, mockUserProfile);
 
-      expect(result.warnings).toContain(
-        expect.stringContaining('Very high rep range')
-      );
+      expect(result.warnings).toContain(expect.stringContaining('Very high rep range'));
     });
 
     it('should warn about very heavy weights', () => {
@@ -352,27 +311,19 @@ describe('SafetyValidationService', () => {
         3,
         12,
         250, // 250kg for 70kg person
-        mockUserProfile
+        mockUserProfile,
       );
 
       expect(result.warnings).toContain(
-        expect.stringContaining('Exercise weight is very high relative to body weight')
+        expect.stringContaining('Exercise weight is very high relative to body weight'),
       );
     });
 
     it('should error on negative weight', () => {
-      const result = service.validateExerciseParameters(
-        'Squats',
-        3,
-        12,
-        -10,
-        mockUserProfile
-      );
+      const result = service.validateExerciseParameters('Squats', 3, 12, -10, mockUserProfile);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain(
-        expect.stringContaining('Weight cannot be negative')
-      );
+      expect(result.errors).toContain(expect.stringContaining('Weight cannot be negative'));
     });
   });
 
@@ -386,14 +337,12 @@ describe('SafetyValidationService', () => {
       const result = service.getProgressionRecommendations(
         mockCurrentPlan,
         90, // High adherence
-        { difficultyRating: 2 } // Easy
+        { difficultyRating: 2 }, // Easy
       );
 
       expect(result.shouldProgress).toBe(true);
       expect(result.adjustments.volumeAdjustment).toBe(5);
-      expect(result.recommendations).toContain(
-        expect.stringContaining('Ready for progression')
-      );
+      expect(result.recommendations).toContain(expect.stringContaining('Ready for progression'));
     });
 
     it('should recommend volume reduction for low adherence', () => {
@@ -403,48 +352,37 @@ describe('SafetyValidationService', () => {
       );
 
       expect(result.adjustments.volumeAdjustment).toBe(-10);
-      expect(result.recommendations).toContain(
-        expect.stringContaining('Consider reducing volume')
-      );
+      expect(result.recommendations).toContain(expect.stringContaining('Consider reducing volume'));
     });
 
     it('should recommend deload for high fatigue', () => {
       const result = service.getProgressionRecommendations(
         mockCurrentPlan,
         85,
-        { fatigueLevel: 5 } // Very high fatigue
+        { fatigueLevel: 5 }, // Very high fatigue
       );
 
       expect(result.shouldDeload).toBe(true);
       expect(result.adjustments.volumeAdjustment).toBe(-15);
-      expect(result.recommendations).toContain(
-        expect.stringContaining('High fatigue detected')
-      );
+      expect(result.recommendations).toContain(expect.stringContaining('High fatigue detected'));
     });
 
     it('should recommend deload on scheduled week', () => {
-      const result = service.getProgressionRecommendations(
-        mockCurrentPlan,
-        85
-      );
+      const result = service.getProgressionRecommendations(mockCurrentPlan, 85);
 
       expect(result.shouldDeload).toBe(true);
-      expect(result.recommendations).toContain(
-        expect.stringContaining('Scheduled deload week')
-      );
+      expect(result.recommendations).toContain(expect.stringContaining('Scheduled deload week'));
     });
 
     it('should recommend intensity reduction for high difficulty', () => {
       const result = service.getProgressionRecommendations(
         mockCurrentPlan,
         85,
-        { difficultyRating: 5 } // Very difficult
+        { difficultyRating: 5 }, // Very difficult
       );
 
       expect(result.adjustments.intensityAdjustment).toBe(-5);
-      expect(result.recommendations).toContain(
-        expect.stringContaining('Reduce intensity')
-      );
+      expect(result.recommendations).toContain(expect.stringContaining('Reduce intensity'));
     });
   });
 });

@@ -37,7 +37,7 @@ export class PersonalizationRulesService {
     vegetarian: DietType.VEGETARIAN,
     vegan: DietType.VEGAN,
     'non-vegetarian': DietType.NON_VEGETARIAN,
-    'non_vegetarian': DietType.NON_VEGETARIAN,
+    non_vegetarian: DietType.NON_VEGETARIAN,
     jain: DietType.JAIN,
     halal: DietType.HALAL,
     keto: DietType.KETO,
@@ -48,7 +48,7 @@ export class PersonalizationRulesService {
   private readonly healthConditionMap: Record<string, keyof HealthConditionMapping> = {
     diabetes: 'diabetes',
     'type-2-diabetes': 'diabetes',
-    't2dm': 'diabetes',
+    t2dm: 'diabetes',
     hypertension: 'hypertension',
     'high-blood-pressure': 'hypertension',
     'blood-pressure': 'hypertension',
@@ -117,38 +117,40 @@ export class PersonalizationRulesService {
 
     // Apply allergen exclusions
     const excludedIngredients = new Set<string>();
-    
+
     // Add user-specified ingredient exclusions
     if (options.excludedIngredients?.length > 0) {
-      options.excludedIngredients.forEach(ingredient => excludedIngredients.add(ingredient.toLowerCase()));
+      options.excludedIngredients.forEach((ingredient) =>
+        excludedIngredients.add(ingredient.toLowerCase()),
+      );
     }
 
     // Add allergen-based exclusions
     if (options.allergies?.length > 0) {
-      options.allergies.forEach(allergen => {
+      options.allergies.forEach((allergen) => {
         const ingredients = this.allergenMap[allergen.toLowerCase()];
         if (ingredients) {
-          ingredients.forEach(ingredient => excludedIngredients.add(ingredient));
+          ingredients.forEach((ingredient) => excludedIngredients.add(ingredient));
         }
       });
     }
 
     // Add intolerance-based exclusions
     if (options.intolerances?.length > 0) {
-      options.intolerances.forEach(intolerance => {
+      options.intolerances.forEach((intolerance) => {
         const ingredients = this.allergenMap[intolerance.toLowerCase()];
         if (ingredients) {
-          ingredients.forEach(ingredient => excludedIngredients.add(ingredient));
+          ingredients.forEach((ingredient) => excludedIngredients.add(ingredient));
         }
       });
     }
 
     // Add religion-based restrictions
     if (options.religionBasedRestrictions?.length > 0) {
-      options.religionBasedRestrictions.forEach(religion => {
+      options.religionBasedRestrictions.forEach((religion) => {
         const restrictions = this.religionRestrictions[religion.toLowerCase()];
         if (restrictions) {
-          restrictions.forEach(ingredient => excludedIngredients.add(ingredient));
+          restrictions.forEach((ingredient) => excludedIngredients.add(ingredient));
         }
       });
     }
@@ -177,8 +179,8 @@ export class PersonalizationRulesService {
 
   private mapDietaryRestrictions(restrictions: string[]): DietType[] {
     const dietTypes: DietType[] = [];
-    
-    restrictions.forEach(restriction => {
+
+    restrictions.forEach((restriction) => {
       const dietType = this.dietTypeMap[restriction.toLowerCase()];
       if (dietType && !dietTypes.includes(dietType)) {
         dietTypes.push(dietType);
@@ -193,10 +195,12 @@ export class PersonalizationRulesService {
     return dietTypes;
   }
 
-  private mapHealthConditions(conditions: string[]): RecipeFilterOptions['isHealthConditionFriendly'] {
+  private mapHealthConditions(
+    conditions: string[],
+  ): RecipeFilterOptions['isHealthConditionFriendly'] {
     const healthFilter: any = {};
 
-    conditions.forEach(condition => {
+    conditions.forEach((condition) => {
       const mappedCondition = this.healthConditionMap[condition.toLowerCase()];
       if (mappedCondition) {
         switch (mappedCondition) {
@@ -292,22 +296,24 @@ export class PersonalizationRulesService {
     // Check diet type compatibility
     if (options.dietaryRestrictions?.length > 0) {
       const requiredDietTypes = this.mapDietaryRestrictions(options.dietaryRestrictions);
-      const hasCompatibleDiet = requiredDietTypes.some(dietType => recipe.dietType?.includes(dietType));
+      const hasCompatibleDiet = requiredDietTypes.some((dietType) =>
+        recipe.dietType?.includes(dietType),
+      );
       if (!hasCompatibleDiet) return false;
     }
 
     // Check allergen exclusions
     if (options.allergies?.length > 0) {
-      const hasAllergen = options.allergies.some(allergen => recipe.hasAllergen(allergen));
+      const hasAllergen = options.allergies.some((allergen) => recipe.hasAllergen(allergen));
       if (hasAllergen) return false;
     }
 
     // Check excluded ingredients
     if (options.excludedIngredients?.length > 0) {
       const hasExcludedIngredient = recipe.ingredients?.some((ingredient: any) =>
-        options.excludedIngredients.some(excluded =>
-          ingredient.ingredientName.toLowerCase().includes(excluded.toLowerCase())
-        )
+        options.excludedIngredients.some((excluded) =>
+          ingredient.ingredientName.toLowerCase().includes(excluded.toLowerCase()),
+        ),
       );
       if (hasExcludedIngredient) return false;
     }
@@ -337,7 +343,7 @@ export class PersonalizationRulesService {
 
     // Health condition alignment bonus
     if (options.healthConditions?.length > 0) {
-      options.healthConditions.forEach(condition => {
+      options.healthConditions.forEach((condition) => {
         if (recipe.isHealthConditionFriendly(condition)) {
           score += 15;
         }
