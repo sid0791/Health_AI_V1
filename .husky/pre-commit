@@ -15,8 +15,7 @@ else
   echo "💡 Install gitleaks: https://github.com/zricethezav/gitleaks#installation"
 fi
 
-# Validate commit message format
-echo "📝 Validating commit message format..."
-npx commitlint --edit "$1"
+# Note: Commit message validation happens in commit-msg hook, not pre-commit
+echo "📝 Pre-commit checks ready for commit message validation..."
 
 echo "✅ Pre-commit checks completed!"
