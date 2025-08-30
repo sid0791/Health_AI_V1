@@ -13,6 +13,7 @@ import { AppConfigService } from './config/app-config.service';
 // Domain modules
 import { UsersModule } from './domains/users/users.module';
 import { HealthReportsModule } from './domains/health-reports/health-reports.module';
+import { RecipeModule } from './domains/recipes/recipe.module';
 import { ExternalApiModule } from './external-apis/external-api.module';
 
 // Entity imports for TypeORM
@@ -169,6 +170,7 @@ import { MealLog } from './domains/logs/entities/meal-log.entity';
     // Domain Modules
     UsersModule,
     HealthReportsModule,
+    RecipeModule,
     ExternalApiModule,
 
     // Health Check Module
