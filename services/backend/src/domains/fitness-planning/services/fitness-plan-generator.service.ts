@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FitnessPlan, FitnessPlanType, ExperienceLevel } from '../entities/fitness-plan.entity';
 import { FitnessPlanWeek } from '../entities/fitness-plan-week.entity';
-import { FitnessPlanWorkout } from '../entities/fitness-plan-workout.entity';
-import { FitnessPlanExercise, ExerciseType } from '../entities/fitness-plan-exercise.entity';
+import { FitnessPlanWorkout, WorkoutType, WorkoutStatus } from '../entities/fitness-plan-workout.entity';
+import { FitnessPlanExercise, ExerciseType, ExerciseStatus } from '../entities/fitness-plan-exercise.entity';
 import { Exercise, DifficultyLevel, MuscleGroup, EquipmentType, ExerciseCategory } from '../entities/exercise.entity';
 import { ExerciseLibraryService } from './exercise-library.service';
 import { GenerateFitnessPlanDto } from '../dto/fitness-plan.dto';
@@ -158,7 +158,7 @@ export class FitnessPlanGeneratorService {
     // Get updated exercise library
     const availableExercises = await this.exerciseLibraryService.getSuitableExercises({
       experienceLevel: this.mapExperienceToDifficulty(plan.experienceLevel),
-      availableEquipment: plan.availableEquipment,
+      availableEquipment: plan.availableEquipment as EquipmentType[],
       healthConditions: plan.healthConditions,
       physicalLimitations: plan.physicalLimitations,
       preferredMuscleGroups: this.getFocusAreaMuscleGroups(plan.focusAreas),
@@ -176,7 +176,7 @@ export class FitnessPlanGeneratorService {
       durationWeeks: plan.durationWeeks,
       workoutsPerWeek: plan.workoutsPerWeek,
       maxWorkoutDurationMinutes: plan.maxWorkoutDurationMinutes,
-      availableEquipment: plan.availableEquipment,
+      availableEquipment: plan.availableEquipment as EquipmentType[],
       focusAreas: plan.focusAreas,
       healthConditions: plan.healthConditions,
       physicalLimitations: plan.physicalLimitations,
@@ -390,12 +390,14 @@ export class FitnessPlanGeneratorService {
 
     const workout = this.workoutRepository.create({
       weekId: week.id,
-      workoutNumber,
       workoutName: this.generateWorkoutName(targetMuscleGroups, workoutNumber),
-      targetMuscleGroups,
+      workoutType: WorkoutType.STRENGTH, // Default to strength
+      dayOfWeek: workoutNumber,
       estimatedDurationMinutes: params.maxWorkoutDurationMinutes,
+      primaryMuscleGroups: targetMuscleGroups.map(mg => mg.toString()),
       restBetweenSets: constraints.restBetweenSets,
       restBetweenExercises: constraints.restBetweenExercises,
+      status: WorkoutStatus.PLANNED,
     });
 
     const savedWorkout = await this.workoutRepository.save(workout);
@@ -428,7 +430,7 @@ export class FitnessPlanGeneratorService {
     sortOrder: number,
     isDeloadWeek: boolean
   ): Promise<FitnessPlanExercise> {
-    const exercise = this.exerciseRepository.create({
+    const exerciseData = {
       workoutId: workout.id,
       exerciseName: template.exercise.name,
       exerciseDescription: template.exercise.description,
@@ -441,13 +443,15 @@ export class FitnessPlanGeneratorService {
       targetRepsRangeMin: template.repsMin,
       targetRepsRangeMax: template.repsMax,
       targetDurationSeconds: template.durationSeconds,
-      restBetweenSets: template.restSeconds,
-      intensityLevel: isDeloadWeek ? template.intensity - 1 : template.intensity,
+      restTimeSeconds: template.restSeconds,
+      targetIntensityLevel: isDeloadWeek ? template.intensity - 1 : template.intensity,
       safetyNotes: template.exercise.safetyNotes,
       formCues: template.exercise.formCues,
-      videoUrl: template.exercise.videoUrl,
-      exerciseInstructions: template.exercise.instructions,
-    });
+      setupInstructions: template.exercise.instructions,
+      status: ExerciseStatus.PLANNED,
+    };
+
+    const exercise = this.exerciseRepository.create(exerciseData);
 
     // Record usage
     await this.exerciseLibraryService.recordExerciseUsage(template.exercise.id);

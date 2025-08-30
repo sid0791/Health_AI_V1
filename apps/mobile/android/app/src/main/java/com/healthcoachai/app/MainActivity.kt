@@ -1,29 +1,46 @@
 package com.healthcoachai.app
 
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import com.healthcoachai.app.ui.theme.HealthCoachAITheme
+import com.healthcoachai.app.ui.navigation.MainNavigation
+
 /**
- * MainActivity (Kotlin-only version for Phase 1)
- * * This is a simplified version for build system validation.
- * Android-specific implementation will be added in Phase 7.
+ * MainActivity - Main entry point for the HealthCoachAI Android app
+ * Implements Phase 7 requirements with Jetpack Compose navigation
  */
-class MainActivity {
-
-    fun onCreate() {
-        println("MainActivity created")
-        setupUserInterface()
-        initializeHealthFeatures()
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        
+        setContent {
+            HealthCoachAITheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    MainNavigation()
+                }
+            }
+        }
     }
+}
 
-    private fun setupUserInterface() {
-        // Set up the main content
-        val title = "HealthCoachAI"
-        val subtitle = "Your AI-Powered Health Coach"
-
-        println("Title: $title")
-        println("Subtitle: $subtitle")
-    }
-
-    private fun initializeHealthFeatures() {
-        // Initialize health-related features
-        println("Initializing health features...")
+@Preview(showBackground = true)
+@Composable
+fun MainPreview() {
+    HealthCoachAITheme {
+        MainNavigation()
     }
 }

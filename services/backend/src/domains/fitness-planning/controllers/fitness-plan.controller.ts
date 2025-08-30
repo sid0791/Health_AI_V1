@@ -16,6 +16,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { AuthenticatedRequest } from '../../auth/guards/optional-auth.guard';
 import '../../../types/express'; // Import type declarations
 import { FitnessPlanService } from '../services/fitness-plan.service';
 import { SafetyValidationService } from '../services/safety-validation.service';
@@ -47,9 +48,9 @@ export class FitnessPlanController {
   @HttpCode(HttpStatus.CREATED)
   async createFitnessPlan(
     @Body(ValidationPipe) createDto: CreateFitnessPlanDto,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id || 'test-user';
+    const userId = req.user?.userId || 'test-user';
     return await this.fitnessPlanService.createFitnessPlan(userId, createDto);
   }
 
@@ -61,9 +62,9 @@ export class FitnessPlanController {
   @HttpCode(HttpStatus.CREATED)
   async generateFitnessPlan(
     @Body(ValidationPipe) generateDto: GenerateFitnessPlanDto,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id || 'test-user';
+    const userId = req.user?.userId || 'test-user';
     return await this.fitnessPlanService.generateFitnessPlan(userId, generateDto);
   }
 
@@ -74,14 +75,14 @@ export class FitnessPlanController {
   @Get()
   async getUserFitnessPlans(
     @Query(ValidationPipe) filterDto: FitnessPlanFilterDto,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<{
     plans: FitnessPlan[];
     total: number;
     page: number;
     limit: number;
   }> {
-    const userId = req.user?.id || 'test-user';
+    const userId = req.user?.userId || 'test-user';
     return await this.fitnessPlanService.getUserFitnessPlans(userId, filterDto);
   }
 
@@ -92,9 +93,9 @@ export class FitnessPlanController {
   @Get(':id')
   async getFitnessPlanById(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     return await this.fitnessPlanService.getFitnessPlanById(id, userId);
   }
 
@@ -106,9 +107,9 @@ export class FitnessPlanController {
   async updateFitnessPlan(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(ValidationPipe) updateDto: UpdateFitnessPlanDto,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     return await this.fitnessPlanService.updateFitnessPlan(id, updateDto, userId);
   }
 
@@ -120,9 +121,9 @@ export class FitnessPlanController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteFitnessPlan(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<void> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     await this.fitnessPlanService.deleteFitnessPlan(id, userId);
   }
 
@@ -133,9 +134,9 @@ export class FitnessPlanController {
   @Post(':id/activate')
   async activateFitnessPlan(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     return await this.fitnessPlanService.activateFitnessPlan(id, userId);
   }
 
@@ -146,9 +147,9 @@ export class FitnessPlanController {
   @Post(':id/pause')
   async pauseFitnessPlan(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     return await this.fitnessPlanService.pauseFitnessPlan(id, userId);
   }
 
@@ -159,9 +160,9 @@ export class FitnessPlanController {
   @Post(':id/resume')
   async resumeFitnessPlan(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     return await this.fitnessPlanService.resumeFitnessPlan(id, userId);
   }
 
@@ -172,9 +173,9 @@ export class FitnessPlanController {
   @Post(':id/complete')
   async completeFitnessPlan(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     return await this.fitnessPlanService.completeFitnessPlan(id, userId);
   }
 
@@ -185,9 +186,9 @@ export class FitnessPlanController {
   @Post(':id/cancel')
   async cancelFitnessPlan(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     return await this.fitnessPlanService.cancelFitnessPlan(id, userId);
   }
 
@@ -199,9 +200,9 @@ export class FitnessPlanController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async recordWorkoutProgress(
     @Body(ValidationPipe) progressDto: WorkoutProgressDto,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<void> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     await this.fitnessPlanService.recordWorkoutProgress(progressDto, userId);
   }
 
@@ -212,9 +213,9 @@ export class FitnessPlanController {
   @Get(':id/progress')
   async getPlanProgressSummary(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<PlanProgressSummaryDto> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     return await this.fitnessPlanService.getPlanProgressSummary(id, userId);
   }
 
@@ -232,9 +233,9 @@ export class FitnessPlanController {
       changeExercises?: string[];
       adjustVolume?: number;
     },
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlanWeek> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     return await this.fitnessPlanService.adaptPlanWeek(id, weekNumber, adaptations, userId);
   }
 
@@ -244,9 +245,9 @@ export class FitnessPlanController {
    */
   @Get('stats/user')
   async getUserFitnessStats(
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlanStatsDto> {
-    const userId = req.user?.id || 'test-user';
+    const userId = req.user?.userId || 'test-user';
     return await this.fitnessPlanService.getUserFitnessStats(userId);
   }
 
@@ -258,9 +259,9 @@ export class FitnessPlanController {
   async cloneFitnessPlan(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() cloneDto: { newPlanName: string },
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<FitnessPlan> {
-    const userId = req.user?.id || 'test-user';
+    const userId = req.user?.userId || 'test-user';
     return await this.fitnessPlanService.cloneFitnessPlan(id, cloneDto.newPlanName, userId);
   }
 
@@ -280,14 +281,14 @@ export class FitnessPlanController {
       currentWeight?: number;
       fitnessGoals?: string[];
     },
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<{
     isValid: boolean;
     warnings: string[];
     errors: string[];
     recommendations: string[];
   }> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const plan = await this.fitnessPlanService.getFitnessPlanById(id, userId);
     
     return this.safetyValidationService.validateFitnessPlan(plan, userProfile as any);
@@ -306,7 +307,7 @@ export class FitnessPlanController {
       fatigueLevel?: number;
       enjoymentLevel?: number;
     },
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<{
     shouldProgress: boolean;
     shouldDeload: boolean;
@@ -317,7 +318,7 @@ export class FitnessPlanController {
       frequencyAdjustment: number;
     };
   }> {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const plan = await this.fitnessPlanService.getFitnessPlanById(id, userId);
     
     return this.safetyValidationService.getProgressionRecommendations(

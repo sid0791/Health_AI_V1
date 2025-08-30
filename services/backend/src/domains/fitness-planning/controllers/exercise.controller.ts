@@ -16,6 +16,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { AuthenticatedRequest } from '../../auth/guards/optional-auth.guard';
 import '../../../types/express'; // Import type declarations
 import { ExerciseLibraryService } from '../services/exercise-library.service';
 import { 
@@ -39,10 +40,10 @@ export class ExerciseController {
   @HttpCode(HttpStatus.CREATED)
   async createExercise(
     @Body(ValidationPipe) createExerciseDto: CreateExerciseDto,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<Exercise> {
     // In a real app, you'd extract user ID from JWT token
-    const createdBy = req.user?.id || 'system';
+    const createdBy = req.user?.userId || 'system';
     return await this.exerciseLibraryService.createExercise(createExerciseDto, createdBy);
   }
 
@@ -206,9 +207,9 @@ export class ExerciseController {
   @Post(':id/approve')
   async approveExercise(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ): Promise<Exercise> {
-    const approvedBy = req.user?.id || 'admin';
+    const approvedBy = req.user?.userId || 'admin';
     return await this.exerciseLibraryService.approveExercise(id, approvedBy);
   }
 
