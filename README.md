@@ -16,6 +16,9 @@
 	  <a href="https://hub.docker.com/r/zricethezav/gitleaks">
 		  <img src="https://img.shields.io/docker/pulls/zricethezav/gitleaks.svg" />
 	  </a>
+	  <a href="https://www.jit.io/jit-open-source-gitleaks?utm_source=github&utm_medium=badge&utm_campaign=GitleaksReadme&utm_id=oss&items=item-secret-detection">
+<img src="https://img.shields.io/badge/Secured%20by-Jit-B8287F?style=?style=plastic" />
+	  </a>
 	  <a href="https://github.com/zricethezav/gitleaks-action">
         	<img alt="gitleaks badge" src="https://img.shields.io/badge/protected%20by-gitleaks-blue">
     	 </a>
@@ -25,9 +28,9 @@
   </p>
 </p>
 
-### Join our Discord! [![Discord](https://img.shields.io/discord/1102689410522284044.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/sydS6AHTUP)
-
-Gitleaks is a SAST tool for **detecting** and **preventing** hardcoded secrets like passwords, api keys, and tokens in git repos. Gitleaks is an **easy-to-use, all-in-one solution** for detecting secrets, past or present, in your code.
+Gitleaks is a SAST tool for **detecting** and **preventing** hardcoded secrets
+like passwords, api keys, and tokens in git repos. Gitleaks is an **easy-to-use,
+all-in-one solution** for detecting secrets, past or present, in your code.
 
 ```
 ➜  ~/code(master) gitleaks detect --source . -v
@@ -54,7 +57,12 @@ Fingerprint: cd5226711335c68be1e720b318b7bc3135a30eb2:cmd/generate/config/rules/
 
 ## Getting Started
 
-Gitleaks can be installed using Homebrew, Docker, or Go. Gitleaks is also available in binary form for many popular platforms and OS types on the [releases page](https://github.com/zricethezav/gitleaks/releases). In addition, Gitleaks can be implemented as a pre-commit hook directly in your repo or as a GitHub action using [Gitleaks-Action](https://github.com/gitleaks/gitleaks-action).
+Gitleaks can be installed using Homebrew, Docker, or Go. Gitleaks is also
+available in binary form for many popular platforms and OS types on the
+[releases page](https://github.com/zricethezav/gitleaks/releases). In addition,
+Gitleaks can be implemented as a pre-commit hook directly in your repo or as a
+GitHub action using
+[Gitleaks-Action](https://github.com/gitleaks/gitleaks-action).
 
 ### Installing
 
@@ -67,18 +75,19 @@ docker pull zricethezav/gitleaks:latest
 docker run -v ${path_to_host_folder_to_scan}:/path zricethezav/gitleaks:latest [COMMAND] --source="/path" [OPTIONS]
 
 # Docker (ghcr.io)
-docker pull ghcr.io/gitleaks/gitleaks:latest
-docker run -v ${path_to_host_folder_to_scan}:/path ghcr.io/gitleaks/gitleaks:latest [COMMAND] --source="/path" [OPTIONS]
+docker pull ghcr.io/zricethezav/gitleaks:latest
+docker run -v ${path_to_host_folder_to_scan}:/path zricethezav/gitleaks:latest [COMMAND] --source="/path" [OPTIONS]
 
 # From Source
-git clone https://github.com/gitleaks/gitleaks.git
+git clone https://github.com/zricethezav/gitleaks.git
 cd gitleaks
 make build
 ```
 
 ### GitHub Action
 
-Check out the official [Gitleaks GitHub Action](https://github.com/gitleaks/gitleaks-action)
+Check out the official
+[Gitleaks GitHub Action](https://github.com/gitleaks/gitleaks-action)
 
 ```
 name: gitleaks
@@ -100,19 +109,25 @@ jobs:
 ### Pre-Commit
 
 1. Install pre-commit from https://pre-commit.com/#install
-2. Create a `.pre-commit-config.yaml` file at the root of your repository with the following content:
+2. Create a `.pre-commit-config.yaml` file at the root of your repository with
+   the following content:
 
    ```
    repos:
-     - repo: https://github.com/gitleaks/gitleaks
-       rev: v8.16.1
+     - repo: https://github.com/zricethezav/gitleaks
+       rev: v8.16.0
        hooks:
          - id: gitleaks
    ```
 
-   for a [native execution of GitLeaks](https://github.com/zricethezav/gitleaks/releases) or use the [`gitleaks-docker` pre-commit ID](https://github.com/zricethezav/gitleaks/blob/master/.pre-commit-hooks.yaml) for executing GitLeaks using the [official Docker images](#docker)
+   for a
+   [native execution of GitLeaks](https://github.com/zricethezav/gitleaks/releases)
+   or use the
+   [`gitleaks-docker` pre-commit ID](https://github.com/zricethezav/gitleaks/blob/master/.pre-commit-hooks.yaml)
+   for executing GitLeaks using the [official Docker images](#docker)
 
-3. Auto-update the config to the latest repos' versions by executing `pre-commit autoupdate`
+3. Auto-update the config to the latest repos' versions by executing
+   `pre-commit autoupdate`
 4. Install with `pre-commit install`
 5. Now you're all set!
 
@@ -121,8 +136,8 @@ jobs:
 Detect hardcoded secrets.................................................Failed
 ```
 
-Note: to disable the gitleaks pre-commit hook you can prepend `SKIP=gitleaks` to the commit command
-and it will skip running gitleaks
+Note: to disable the gitleaks pre-commit hook you can prepend `SKIP=gitleaks` to
+the commit command and it will skip running gitleaks
 
 ```
 ➜ SKIP=gitleaks git commit -m "skip gitleaks check"
@@ -154,12 +169,11 @@ Flags:
   -h, --help                       help for gitleaks
   -l, --log-level string           log level (trace, debug, info, warn, error, fatal) (default "info")
       --max-target-megabytes int   files larger than this will be skipped
-      --no-color                   turn off color for verbose output
       --no-banner                  suppress banner
       --redact                     redact secrets from logs and stdout
-  -f, --report-format string       output format (json, csv, junit, sarif) (default "json")
+  -f, --report-format string       output format (json, csv, sarif) (default "json")
   -r, --report-path string         report file
-  -s, --source string              path to source (default ".")
+  -s, --source string              path to source (default: $PWD) (default ".")
   -v, --verbose                    show verbose output from scan
 
 Use "gitleaks [command] --help" for more information about a command.
@@ -171,49 +185,64 @@ There are two commands you will use to detect secrets; `detect` and `protect`.
 
 #### Detect
 
-The `detect` command is used to scan repos, directories, and files. This command can be used on developer machines and in CI environments.
+The `detect` command is used to scan repos, directories, and files. This command
+can be used on developer machines and in CI environments.
 
-When running `detect` on a git repository, gitleaks will parse the output of a `git log -p` command (you can see how this executed
+When running `detect` on a git repository, gitleaks will parse the output of a
+`git log -p` command (you can see how this executed
 [here](https://github.com/zricethezav/gitleaks/blob/7240e16769b92d2a1b137c17d6bf9d55a8562899/git/git.go#L17-L25)).
-[`git log -p` generates patches](https://git-scm.com/docs/git-log#_generating_patch_text_with_p) which gitleaks will use to detect secrets.
-You can configure what commits `git log` will range over by using the `--log-opts` flag. `--log-opts` accepts any option for `git log -p`.
-For example, if you wanted to run gitleaks on a range of commits you could use the following command: `gitleaks detect --source . --log-opts="--all commitA..commitB"`.
-See the `git log` [documentation](https://git-scm.com/docs/git-log) for more information.
+[`git log -p` generates patches](https://git-scm.com/docs/git-log#_generating_patch_text_with_p)
+which gitleaks will use to detect secrets. You can configure what commits
+`git log` will range over by using the `--log-opts` flag. `--log-opts` accepts
+any option for `git log -p`. For example, if you wanted to run gitleaks on a
+range of commits you could use the following command:
+`gitleaks detect --source . --log-opts="--all commitA..commitB"`. See the
+`git log` [documentation](https://git-scm.com/docs/git-log) for more
+information.
 
 You can scan files and directories by using the `--no-git` option.
 
 #### Protect
 
-The `protect` command is used to scan uncommitted changes in a git repo. This command should be used on developer machines in accordance with
+The `protect` command is used to uncommitted changes in a git repo. This command
+should be used on developer machines in accordance with
 [shifting left on security](https://cloud.google.com/architecture/devops/devops-tech-shifting-left-on-security).
-When running `protect` on a git repository, gitleaks will parse the output of a `git diff` command (you can see how this executed
-[here](https://github.com/zricethezav/gitleaks/blob/7240e16769b92d2a1b137c17d6bf9d55a8562899/git/git.go#L48-L49)). You can set the
-`--staged` flag to check for changes in commits that have been `git add`ed. The `--staged` flag should be used when running Gitleaks
-as a pre-commit.
+When running `protect` on a git repository, gitleaks will parse the output of a
+`git diff` command (you can see how this executed
+[here](https://github.com/zricethezav/gitleaks/blob/7240e16769b92d2a1b137c17d6bf9d55a8562899/git/git.go#L48-L49)).
+You can set the `--staged` flag to check for changes in commits that have been
+`git add`ed. The `--staged` flag should be used when running Gitleaks as a
+pre-commit.
 
-**NOTE**: the `protect` command can only be used on git repos, running `protect` on files or directories will result in an error message.
+**NOTE**: the `protect` command can only be used on git repos, running `protect`
+on files or directories will result in an error message.
 
 ### Creating a baseline
 
-When scanning large repositories or repositories with a long history, it can be convenient to use a baseline. When using a baseline,
-gitleaks will ignore any old findings that are present in the baseline. A baseline can be any gitleaks report. To create a gitleaks report, run gitleaks with the `--report-path` parameter.
+When scanning large repositories or repositories with a long history, it can be
+convenient to use a baseline. When using a baseline, gitleaks will ignore any
+old findings that are present in the baseline. A baseline can be any gitleaks
+report. To create a gitleaks report, run gitleaks with the `--report-path`
+parameter.
 
 ```
 gitleaks detect --report-path gitleaks-report.json # This will save the report in a file called gitleaks-report.json
 ```
 
-Once as baseline is created it can be applied when running the detect command again:
+Once as baseline is created it can be applied when running the detect command
+again:
 
 ```
 gitleaks detect --baseline-path gitleaks-report.json --report-path findings.json
 ```
 
-After running the detect command with the --baseline-path parameter, report output (findings.json) will only contain new issues.
+After running the detect command with the --baseline-path parameter, report
+output (findings.json) will only contain new issues.
 
 ### Verify Findings
 
-You can verify a finding found by gitleaks using a `git log` command.
-Example output:
+You can verify a finding found by gitleaks using a `git log` command. Example
+output:
 
 ```
 Finding:     aws_secret="AKIAIMNOJVGFDXXXE4OA"
@@ -260,19 +289,20 @@ diff --git a/checks_test.go b/checks_test.go
 
 ## Pre-Commit hook
 
-You can run Gitleaks as a pre-commit hook by copying the example `pre-commit.py` script into
-your `.git/hooks/` directory.
+You can run Gitleaks as a pre-commit hook by copying the example `pre-commit.py`
+script into your `.git/hooks/` directory.
 
 ## Configuration
 
-Gitleaks offers a configuration format you can follow to write your own secret detection rules:
+Gitleaks offers a configuration format you can follow to write your own secret
+detection rules:
 
 ```toml
 # Title for the gitleaks configuration file.
 title = "Gitleaks title"
 
 # Extend the base (this) configuration. When you extend a configuration
-# the base rules take precedence over the extended rules. I.e., if there are
+# the base rules take precendence over the extended rules. I.e, if there are
 # duplicate rules in both the base configuration and the extended configuration
 # the base rules will override the extended rules.
 # Another thing to know with extending configurations is you can chain together
@@ -380,14 +410,22 @@ stopwords = [
 ]
 ```
 
-Refer to the default [gitleaks config](https://github.com/zricethezav/gitleaks/blob/master/config/gitleaks.toml) for examples or follow the [contributing guidelines](https://github.com/zricethezav/gitleaks/blob/master/README.md) if you would like to contribute to the default configuration. Additionally, you can check out [this gitleaks blog post](https://blog.gitleaks.io/stop-leaking-secrets-configuration-2-3-aeed293b1fbf) which covers advanced configuration setups.
+Refer to the default
+[gitleaks config](https://github.com/zricethezav/gitleaks/blob/master/config/gitleaks.toml)
+for examples or follow the
+[contributing guidelines](https://github.com/zricethezav/gitleaks/blob/master/README.md)
+if you would like to contribute to the default configuration. Additionally, you
+can check out
+[this gitleaks blog post](https://blog.gitleaks.io/stop-leaking-secrets-configuration-2-3-aeed293b1fbf)
+which covers advanced configuration setups.
 
 ### Additional Configuration
 
 #### gitleaks:allow
 
-If you are knowingly committing a test secret that gitleaks will catch you can add a `gitleaks:allow` comment to that line which will instruct gitleaks
-to ignore that secret. Ex:
+If you are knowingly committing a test secret that gitleaks will catch you can
+add a `gitleaks:allow` comment to that line which will instruct gitleaks to
+ignore that secret. Ex:
 
 ```
 class CustomClass:
@@ -397,7 +435,21 @@ class CustomClass:
 
 #### .gitleaksignore
 
-You can ignore specific findings by creating a `.gitleaksignore` file at the root of your repo. In release v8.10.0 Gitleaks added a `Fingerprint` value to the Gitleaks report. Each leak, or finding, has a Fingerprint that uniquely identifies a secret. Add this fingerprint to the `.gitleaksignore` file to ignore that specific secret. See Gitleaks' [.gitleaksignore](https://github.com/zricethezav/gitleaks/blob/master/.gitleaksignore) for an example. Note: this feature is experimental and is subject to change in the future.
+You can ignore specific findings by creating a `.gitleaksignore` file at the
+root of your repo. In release v8.10.0 Gitleaks added a `Fingerprint` value to
+the Gitleaks report. Each leak, or finding, has a Fingerprint that uniquely
+identifies a secret. Add this fingerprint to the `.gitleaksignore` file to
+ignore that specific secret. See Gitleaks'
+[.gitleaksignore](https://github.com/zricethezav/gitleaks/blob/master/.gitleaksignore)
+for an example. Note: this feature is experimental and is subject to change in
+the future.
+
+## Secured by Jit
+
+We use
+[Jit](https://www.jit.io/jit-open-source-gitleaks?utm_source=github&utm_medium=readme&utm_campaign=GitleaksReadme&utm_id=oss&items=item-secret-detection)
+to secure our codebase, to achieve fully automated, full-stack continuous
+security using the world's best OSS security tools.
 
 ## Sponsorships
 
@@ -409,7 +461,8 @@ You can ignore specific findings by creating a `.gitleaksignore` file at the roo
 
 ## Exit Codes
 
-You can always set the exit code when leaks are encountered with the --exit-code flag. Default exit codes below:
+You can always set the exit code when leaks are encountered with the --exit-code
+flag. Default exit codes below:
 
 ```
 0 - no leaks present
