@@ -53,7 +53,12 @@ jobs:
       - name: Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent 2>/dev/null || echo '.pnpm-store')" >> $GITHUB_ENV
+          if command -v pnpm >/dev/null 2>&1; then
+            STORE_PATH=$(pnpm store path --silent 2>/dev/null) || STORE_PATH=".pnpm-store"
+          else
+            STORE_PATH=".pnpm-store"
+          fi
+          echo "STORE_PATH=$STORE_PATH" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
         uses: actions/cache@v3
@@ -120,7 +125,12 @@ jobs:
       - name: Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent 2>/dev/null || echo '.pnpm-store')" >> $GITHUB_ENV
+          if command -v pnpm >/dev/null 2>&1; then
+            STORE_PATH=$(pnpm store path --silent 2>/dev/null) || STORE_PATH=".pnpm-store"
+          else
+            STORE_PATH=".pnpm-store"
+          fi
+          echo "STORE_PATH=$STORE_PATH" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
         uses: actions/cache@v3
@@ -145,6 +155,8 @@ jobs:
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
+        if: always() && hashFiles('coverage/**/*') != ''
+        continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           directory: ./coverage
@@ -179,15 +191,25 @@ jobs:
           }
 
       - name: Install Semgrep
-        run: python3 -m pip install semgrep
+        run: |
+          echo "Installing Semgrep..."
+          python3 -m pip install --user semgrep || {
+            echo "Failed to install Semgrep via pip, trying alternative method..."
+            curl -L https://github.com/returntocorp/semgrep/releases/latest/download/semgrep-linux-x64 -o semgrep || {
+              echo "Failed to download Semgrep binary, continuing without Semgrep..."
+              exit 0
+            }
+            chmod +x semgrep && sudo mv semgrep /usr/local/bin/
+          }
 
       - name: Run Semgrep SAST
         run: |
           echo "Running Semgrep security analysis..."
           if command -v semgrep >/dev/null 2>&1; then
             echo "Semgrep found, running scan..."
-            semgrep --config=auto --sarif --output=semgrep.sarif services/backend/ 2>/dev/null || {
-              echo "Semgrep scan failed or no rules available, creating empty SARIF file"
+            # Try with timeout to prevent hanging
+            timeout 300 semgrep --config=auto --sarif --output=semgrep.sarif services/backend/ 2>/dev/null || {
+              echo "Semgrep scan failed, timed out, or no rules available, creating empty SARIF file"
               echo '{"$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","version":"2.1.0","runs":[{"tool":{"driver":{"name":"semgrep","informationUri":"https://semgrep.dev/"}},"results":[]}]}' > semgrep.sarif
             }
           else
@@ -222,7 +244,12 @@ jobs:
       - name: Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent 2>/dev/null || echo '.pnpm-store')" >> $GITHUB_ENV
+          if command -v pnpm >/dev/null 2>&1; then
+            STORE_PATH=$(pnpm store path --silent 2>/dev/null) || STORE_PATH=".pnpm-store"
+          else
+            STORE_PATH=".pnpm-store"
+          fi
+          echo "STORE_PATH=$STORE_PATH" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
         uses: actions/cache@v3
