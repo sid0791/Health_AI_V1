@@ -1,0 +1,270 @@
+{
+  "name": "AI Provider Failover Management",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "ai-provider-failover",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-provider-failover",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "critical-provider",
+              "leftValue": "={{$json.provider}}",
+              "rightValue": "anthropic",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "critical-provider-2",
+              "leftValue": "={{$json.provider}}",
+              "rightValue": "openai",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "check-provider-criticality",
+      "name": "Check Provider Criticality",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/ai-routing/route",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "requestType",
+              "value": "health_report_analysis"
+            },
+            {
+              "name": "content",
+              "value": "Test failover routing for critical provider"
+            },
+            {
+              "name": "emergencyRequest",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "test-failover-routing",
+      "name": "Test Failover Routing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 200],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": ":warning: Critical AI provider {{$('Webhook Trigger').first().json.provider}} has failed. Reason: {{$('Webhook Trigger').first().json.reason}}. Emergency routing activated.",
+        "channel": "#alerts",
+        "username": "HealthAI Alert Bot",
+        "options": {}
+      },
+      "id": "critical-alert",
+      "name": "Critical Provider Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [900, 120],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-notifications",
+          "name": "Slack Notifications"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": ":information_source: AI provider {{$('Webhook Trigger').first().json.provider}} has failed. Reason: {{$('Webhook Trigger').first().json.reason}}. Monitoring and routing to alternatives.",
+        "channel": "#monitoring",
+        "username": "HealthAI Monitor Bot",
+        "options": {}
+      },
+      "id": "standard-alert",
+      "name": "Standard Provider Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [900, 380],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-notifications",
+          "name": "Slack Notifications"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "update-provider-status",
+      "name": "Update Provider Status",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 200],
+      "code": "// Update provider status in the routing service\nconst failedProvider = $input.first().json.provider;\nconst reason = $input.first().json.reason;\nconst timestamp = new Date().toISOString();\n\n// Log the provider failure\nconst statusUpdate = {\n  provider: failedProvider,\n  status: 'failed',\n  reason: reason,\n  timestamp: timestamp,\n  failoverActivated: true\n};\n\n// In a real implementation, you would:\n// 1. Update provider availability in the routing service\n// 2. Adjust routing weights\n// 3. Set up monitoring for recovery\n// 4. Log the incident for analysis\n\n// Send status update to monitoring endpoint\ntry {\n  const response = await $http.request({\n    method: 'POST',\n    url: `${$env.API_BASE_URL}/ai-routing/provider-status`,\n    headers: {\n      'Content-Type': 'application/json',\n      'Authorization': `Bearer ${$env.AI_ROUTER_ADMIN_TOKEN}`\n    },\n    body: statusUpdate\n  });\n  \n  return { statusUpdate, updateResponse: response };\n} catch (error) {\n  return { statusUpdate, error: error.message };\n}"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "setup-health-checks",
+      "name": "Setup Recovery Monitoring",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "code": "// Set up health check monitoring for the failed provider\nconst failedProvider = $('Webhook Trigger').first().json.provider;\nconst checkInterval = 300; // 5 minutes\n\n// Create a monitoring workflow for provider recovery\nconst healthCheckConfig = {\n  provider: failedProvider,\n  checkInterval: checkInterval,\n  maxRetries: 20, // Check for up to 100 minutes\n  testEndpoint: getProviderTestEndpoint(failedProvider),\n  recoveryThreshold: 3 // 3 consecutive successful checks\n};\n\nfunction getProviderTestEndpoint(provider) {\n  const endpoints = {\n    'openai': 'https://api.openai.com/v1/models',\n    'anthropic': 'https://api.anthropic.com/v1/messages',\n    'openrouter': 'https://openrouter.ai/api/v1/models'\n  };\n  return endpoints[provider] || null;\n}\n\n// Schedule health check workflow\n// In a real implementation, this would trigger a separate n8n workflow\n// that periodically checks provider health and updates status\n\nreturn { healthCheckConfig, message: `Health monitoring activated for ${failedProvider}` };"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Provider Criticality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Provider Criticality": {
+      "main": [
+        [
+          {
+            "node": "Test Failover Routing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Standard Provider Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Failover Routing": {
+      "main": [
+        [
+          {
+            "node": "Critical Provider Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Critical Provider Alert": {
+      "main": [
+        [
+          {
+            "node": "Update Provider Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Standard Provider Alert": {
+      "main": [
+        [
+          {
+            "node": "Update Provider Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Provider Status": {
+      "main": [
+        [
+          {
+            "node": "Setup Recovery Monitoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Recovery Monitoring": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "ai-provider-failover-workflow",
+  "tags": ["ai-routing", "failover", "monitoring"]
+}

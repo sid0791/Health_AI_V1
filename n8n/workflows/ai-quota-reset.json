@@ -1,0 +1,209 @@
+{
+  "name": "AI Router Daily Quota Reset",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8b1b7b1e-1b1b-4b1b-8b1b-1b1b1b1b1b1b",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/ai-routing/quota/reset",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.AI_ROUTER_ADMIN_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {}
+      },
+      "id": "2b2b7b2e-2b2b-4b2b-8b2b-2b2b2b2b2b2b",
+      "name": "Reset AI Quotas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "admin-api-token",
+          "name": "Admin API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "success-condition",
+              "leftValue": "={{$json.success}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3c3c7c3e-3c3c-4c3c-8c3c-3c3c3c3c3c3c",
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "message": ":white_check_mark: Daily AI quotas reset successfully",
+        "options": {}
+      },
+      "id": "4d4d7d4e-4d4d-4d4d-8d4d-4d4d4d4d4d4d",
+      "name": "Success Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [900, 220],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-notifications",
+          "name": "Slack Notifications"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": ":warning: Failed to reset daily AI quotas: {{$json.error}}",
+        "options": {}
+      },
+      "id": "5e5e7e5e-5e5e-4e5e-8e5e-5e5e5e5e5e5e",
+      "name": "Error Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [900, 380],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-notifications",
+          "name": "Slack Notifications"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "6f6f7f6e-6f6f-4f6f-8f6f-6f6f6f6f6f6f",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "code": "// Log the quota reset operation for audit purposes\nconst timestamp = new Date().toISOString();\nconst logEntry = {\n  timestamp,\n  event: 'ai_quota_reset',\n  success: $input.first().json.success || false,\n  source: 'n8n_workflow',\n  details: {\n    workflow_id: $workflow.id,\n    execution_id: $execution.id,\n    triggered_by: 'schedule'\n  }\n};\n\n// Send to audit log endpoint\nconst response = await $http.request({\n  method: 'POST',\n  url: `${$env.API_BASE_URL}/audit-logs`,\n  headers: {\n    'Content-Type': 'application/json',\n    'Authorization': `Bearer ${$env.AI_ROUTER_ADMIN_TOKEN}`\n  },\n  body: logEntry\n});\n\nreturn { logEntry, auditResponse: response };"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Reset AI Quotas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset AI Quotas": {
+      "main": [
+        [
+          {
+            "node": "Check Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Success": {
+      "main": [
+        [
+          {
+            "node": "Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Notification": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Notification": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "ai-quota-reset-workflow",
+  "tags": ["ai-routing", "automation", "quotas"]
+}

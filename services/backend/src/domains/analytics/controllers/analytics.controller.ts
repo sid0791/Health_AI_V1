@@ -35,8 +35,8 @@ export class AnalyticsController {
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days to include (default: 30)' })
   @ApiResponse({ status: 200, description: 'Weight trend data retrieved successfully' })
   async getWeightTrend(
-    @Query('days') days?: number,
     @Req() req: Request,
+    @Query('days') days?: number,
   ): Promise<any> {
     const userId = req.user?.['sub'];
     if (!userId) {
@@ -51,9 +51,9 @@ export class AnalyticsController {
   @ApiQuery({ name: 'endDate', required: false, description: 'End date (YYYY-MM-DD)' })
   @ApiResponse({ status: 200, description: 'Macro breakdown retrieved successfully' })
   async getMacroBreakdown(
+    @Req() req: Request,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @Req() req: Request,
   ): Promise<any> {
     const userId = req.user?.['sub'];
     if (!userId) {
@@ -67,8 +67,8 @@ export class AnalyticsController {
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days to analyze (default: 7)' })
   @ApiResponse({ status: 200, description: 'Micronutrient analysis retrieved successfully' })
   async getMicronutrientAnalysis(
-    @Query('days') days?: number,
     @Req() req: Request,
+    @Query('days') days?: number,
   ): Promise<any> {
     const userId = req.user?.['sub'];
     if (!userId) {
@@ -93,8 +93,8 @@ export class AnalyticsController {
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days to include (default: 7)' })
   @ApiResponse({ status: 200, description: 'Activity summary retrieved successfully' })
   async getActivitySummary(
-    @Query('days') days?: number,
     @Req() req: Request,
+    @Query('days') days?: number,
   ): Promise<any> {
     const userId = req.user?.['sub'];
     if (!userId) {
@@ -108,8 +108,8 @@ export class AnalyticsController {
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days to analyze (default: 7)' })
   @ApiResponse({ status: 200, description: 'Adherence score retrieved successfully' })
   async getAdherenceScore(
-    @Query('days') days?: number,
     @Req() req: Request,
+    @Query('days') days?: number,
   ): Promise<any> {
     const userId = req.user?.['sub'];
     if (!userId) {
