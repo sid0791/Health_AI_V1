@@ -61,6 +61,15 @@ export class FitnessPlanWeek {
   @Column({ name: 'target_workouts', type: 'integer' })
   targetWorkouts: number;
 
+  // Alias for compatibility
+  get plannedWorkouts(): number {
+    return this.targetWorkouts;
+  }
+
+  set plannedWorkouts(value: number) {
+    this.targetWorkouts = value;
+  }
+
   @Column({ name: 'target_calories_burn', type: 'integer', nullable: true })
   targetCaloriesBurn?: number;
 

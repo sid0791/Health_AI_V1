@@ -139,6 +139,15 @@ export class FitnessPlanExercise {
   @Column({ name: 'actual_intensity_level', type: 'integer', nullable: true })
   actualIntensityLevel?: number;
 
+  // Alias for backward compatibility
+  get intensityLevel(): number {
+    return this.targetIntensityLevel;
+  }
+
+  set intensityLevel(value: number) {
+    this.targetIntensityLevel = value;
+  }
+
   @Column({ name: 'target_rpe', type: 'integer', nullable: true })
   targetRPE?: number; // Rate of Perceived Exertion (1-10)
 
@@ -213,6 +222,21 @@ export class FitnessPlanExercise {
 
   @Column({ name: 'user_notes', type: 'text', nullable: true })
   userNotes?: string;
+
+  // Alias for compatibility
+  get notes(): string {
+    return this.userNotes;
+  }
+
+  set notes(value: string) {
+    this.userNotes = value;
+  }
+
+  @Column({ name: 'rest_between_sets', type: 'integer', nullable: true })
+  restBetweenSets?: number;
+
+  @Column({ name: 'actual_rest_seconds', type: 'integer', nullable: true })
+  actualRestSeconds?: number;
 
   @Column({ name: 'form_check_passed', nullable: true })
   formCheckPassed?: boolean;
