@@ -35,25 +35,34 @@ export class FieldEncryptionService {
   private readonly keyLength = 32; // 256 bits
   private readonly ivLength = 16; // 128 bits
   private readonly tagLength = 16; // 128 bits
-  
+
   private readonly primaryKey: Buffer;
   private readonly keyId: string;
   private readonly isEnabled: boolean;
 
   constructor(private readonly configService: ConfigService) {
     this.isEnabled = this.configService.get('FIELD_ENCRYPTION_ENABLED', 'true') === 'true';
-    
+
     if (this.isEnabled) {
       const masterKey = this.configService.get('FIELD_ENCRYPTION_KEY');
       if (!masterKey) {
-        throw new Error('FIELD_ENCRYPTION_KEY environment variable is required when encryption is enabled');
+        throw new Error(
+          'FIELD_ENCRYPTION_KEY environment variable is required when encryption is enabled',
+        );
       }
 
       // Derive encryption key from master key using PBKDF2
-      const salt = this.configService.get('FIELD_ENCRYPTION_SALT', 'healthcoachai-field-encryption-salt');
+      const salt = this.configService.get(
+        'FIELD_ENCRYPTION_SALT',
+        'healthcoachai-field-encryption-salt',
+      );
       this.primaryKey = crypto.pbkdf2Sync(masterKey, salt, 100000, this.keyLength, 'sha256');
-      this.keyId = crypto.createHash('sha256').update(this.primaryKey).digest('hex').substring(0, 16);
-      
+      this.keyId = crypto
+        .createHash('sha256')
+        .update(this.primaryKey)
+        .digest('hex')
+        .substring(0, 16);
+
       this.logger.log(`Field encryption initialized with key ID: ${this.keyId}`);
     } else {
       this.logger.warn('Field encryption is disabled');
@@ -76,11 +85,11 @@ export class FieldEncryptionService {
 
     try {
       const iv = crypto.randomBytes(this.ivLength);
-      const cipher = crypto.createCipher('aes-256-gcm', this.primaryKey) as crypto.CipherGCM;
-      
+      const cipher = crypto.createCipheriv('aes-256-gcm', this.primaryKey, iv) as crypto.CipherGCM;
+
       let encrypted = cipher.update(plaintext, 'utf8', 'base64');
       encrypted += cipher.final('base64');
-      
+
       const authTag = cipher.getAuthTag();
 
       return {
@@ -117,13 +126,17 @@ export class FieldEncryptionService {
       const { value, metadata } = encryptedField;
       const iv = Buffer.from(metadata.iv, 'base64');
       const authTag = Buffer.from(metadata.authTag, 'base64');
-      
-      const decipher = crypto.createDecipher(metadata.algorithm, this.primaryKey) as crypto.DecipherGCM;
+
+      const decipher = crypto.createDecipheriv(
+        metadata.algorithm,
+        this.primaryKey,
+        iv,
+      ) as crypto.DecipherGCM;
       decipher.setAuthTag(authTag);
-      
+
       let decrypted = decipher.update(value, 'base64', 'utf8');
       decrypted += decipher.final('utf8');
-      
+
       return decrypted;
     } catch (error) {
       this.logger.error('Decryption failed', error);
@@ -136,11 +149,11 @@ export class FieldEncryptionService {
    */
   encryptFields(fields: Record<string, string>): Record<string, EncryptedField> {
     const encryptedFields: Record<string, EncryptedField> = {};
-    
+
     for (const [key, value] of Object.entries(fields)) {
       encryptedFields[key] = this.encrypt(value);
     }
-    
+
     return encryptedFields;
   }
 
@@ -149,11 +162,11 @@ export class FieldEncryptionService {
    */
   decryptFields(encryptedFields: Record<string, EncryptedField>): Record<string, string> {
     const decryptedFields: Record<string, string> = {};
-    
+
     for (const [key, encryptedField] of Object.entries(encryptedFields)) {
       decryptedFields[key] = this.decrypt(encryptedField);
     }
-    
+
     return decryptedFields;
   }
 
@@ -180,7 +193,10 @@ export class FieldEncryptionService {
    * Encrypt personally identifiable information (PII)
    * Uses additional safeguards for PII data
    */
-  encryptPII(piiData: string, category: 'email' | 'phone' | 'id' | 'health' | 'biometric' | 'other'): EncryptedField {
+  encryptPII(
+    piiData: string,
+    category: 'email' | 'phone' | 'id' | 'health' | 'biometric' | 'other',
+  ): EncryptedField {
     if (!piiData || piiData.length === 0) {
       return this.createUnencryptedField(piiData);
     }
@@ -201,7 +217,16 @@ export class FieldEncryptionService {
    * Encrypt protected health information (PHI)
    * Uses highest security standards for health data
    */
-  encryptPHI(healthData: string, category: 'medical_record' | 'diagnosis' | 'medication' | 'vital_signs' | 'lab_result' | 'other'): EncryptedField {
+  encryptPHI(
+    healthData: string,
+    category:
+      | 'medical_record'
+      | 'diagnosis'
+      | 'medication'
+      | 'vital_signs'
+      | 'lab_result'
+      | 'other',
+  ): EncryptedField {
     if (!healthData || healthData.length === 0) {
       return this.createUnencryptedField(healthData);
     }
@@ -322,7 +347,11 @@ export class FieldEncryptionService {
   /**
    * Create audit log entry for encryption operations
    */
-  createAuditEntry(operation: 'encrypt' | 'decrypt' | 'access', classification: 'PII' | 'PHI' | 'other', userId?: string): any {
+  createAuditEntry(
+    operation: 'encrypt' | 'decrypt' | 'access',
+    classification: 'PII' | 'PHI' | 'other',
+    userId?: string,
+  ): any {
     return {
       operation,
       classification,
