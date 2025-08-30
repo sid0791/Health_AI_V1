@@ -15,6 +15,7 @@ import { UsersModule } from './domains/users/users.module';
 import { AuthModule } from './domains/auth/auth.module';
 import { HealthReportsModule } from './domains/health-reports/health-reports.module';
 import { RecipeModule } from './domains/recipes/recipe.module';
+import { FitnessPlanningModule } from './domains/fitness-planning/fitness-planning.module';
 import { ExternalApiModule } from './external-apis/external-api.module';
 
 // Entity imports for TypeORM
@@ -37,6 +38,7 @@ import { MealPlan } from './domains/meal-planning/entities/meal-plan.entity';
 import { MealPlanEntry } from './domains/meal-planning/entities/meal-plan-entry.entity';
 
 // Fitness planning entities
+import { Exercise } from './domains/fitness-planning/entities/exercise.entity';
 import { FitnessPlan } from './domains/fitness-planning/entities/fitness-plan.entity';
 import { FitnessPlanWeek } from './domains/fitness-planning/entities/fitness-plan-week.entity';
 import { FitnessPlanWorkout } from './domains/fitness-planning/entities/fitness-plan-workout.entity';
@@ -93,6 +95,7 @@ import { AuditLog } from './domains/auth/entities/audit-log.entity';
           MealPlanEntry,
 
           // Fitness planning entities
+          Exercise,
           FitnessPlan,
           FitnessPlanWeek,
           FitnessPlanWorkout,
@@ -185,6 +188,7 @@ import { AuditLog } from './domains/auth/entities/audit-log.entity';
     AuthModule,
     HealthReportsModule,
     RecipeModule,
+    FitnessPlanningModule,
     ExternalApiModule,
 
     // Health Check Module

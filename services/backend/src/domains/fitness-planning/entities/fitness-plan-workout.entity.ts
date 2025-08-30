@@ -124,6 +124,13 @@ export class FitnessPlanWorkout {
   @Column({ name: 'exercise_count', type: 'integer', default: 0 })
   exerciseCount: number;
 
+  // Rest periods
+  @Column({ name: 'rest_between_sets', type: 'integer', default: 60 })
+  restBetweenSets: number;
+
+  @Column({ name: 'rest_between_exercises', type: 'integer', default: 90 })
+  restBetweenExercises: number;
+
   // Progress and completion
   @Column({ name: 'completion_percentage', type: 'decimal', precision: 5, scale: 2, default: 0 })
   completionPercentage: number;
