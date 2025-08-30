@@ -39,7 +39,7 @@ export class OAuthCallbackDto {
 
   @ApiProperty({
     description: 'Device name for display',
-    example: 'John\'s iPhone',
+    example: "John's iPhone",
     required: false,
   })
   @IsOptional()

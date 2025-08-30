@@ -1,4 +1,11 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -50,7 +57,7 @@ export class AuthRateLimitInterceptor implements NestInterceptor {
 
     // Get or create rate limit data for this key
     let rateLimitData = this.requestMap.get(key);
-    
+
     if (!rateLimitData || now > rateLimitData.resetTime) {
       // Create new window
       rateLimitData = {
@@ -89,7 +96,8 @@ export class AuthRateLimitInterceptor implements NestInterceptor {
     }
 
     // Clean up expired entries periodically
-    if (Math.random() < 0.01) { // 1% chance
+    if (Math.random() < 0.01) {
+      // 1% chance
       this.cleanupExpiredEntries();
     }
 

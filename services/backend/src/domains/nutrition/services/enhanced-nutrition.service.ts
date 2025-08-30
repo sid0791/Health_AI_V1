@@ -1,7 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NutritionCalculationService, NutritionCalculationInput } from './nutrition-calculation.service';
-import { CookingTransformationService, NutrientContent, CookingParameters } from './cooking-transformation.service';
-import { GlycemicIndexService, GlycemicLoadResult, FoodComposition } from './glycemic-index.service';
+import {
+  NutritionCalculationService,
+  NutritionCalculationInput,
+} from './nutrition-calculation.service';
+import {
+  CookingTransformationService,
+  NutrientContent,
+  CookingParameters,
+} from './cooking-transformation.service';
+import {
+  GlycemicIndexService,
+  GlycemicLoadResult,
+  FoodComposition,
+} from './glycemic-index.service';
 import { CookingMethod } from '../enums/cooking-method.enum';
 
 /**
@@ -36,10 +47,10 @@ export interface EnhancedRecipe {
 export interface RecipeNutritionAnalysis {
   // Basic nutrition per serving
   nutritionPerServing: NutrientContent;
-  
+
   // Glycemic data per serving
   glycemicLoad: GlycemicLoadResult;
-  
+
   // Raw vs cooked comparison
   rawTotalNutrients: NutrientContent;
   cookedTotalNutrients: NutrientContent;
@@ -50,12 +61,12 @@ export interface RecipeNutritionAnalysis {
       retentionPercentage: number;
     };
   };
-  
+
   // Weight changes
   totalRawWeight: number;
   totalCookedWeight: number;
   yieldFactor: number;
-  
+
   // Ingredient breakdown
   ingredientAnalysis: Array<{
     ingredient: EnhancedIngredient;
@@ -64,7 +75,7 @@ export interface RecipeNutritionAnalysis {
     cookedWeight: number;
     nutritionContribution: number; // percentage of total
   }>;
-  
+
   // Cooking method effects
   cookingMethodImpacts: {
     [method: string]: {
@@ -116,11 +127,13 @@ export class EnhancedNutritionService {
    * Analyze complete recipe with cooking transformations and GI/GL
    */
   async analyzeRecipe(recipe: EnhancedRecipe): Promise<RecipeNutritionAnalysis> {
-    this.logger.debug(`Analyzing recipe: ${recipe.name} with ${recipe.ingredients.length} ingredients`);
+    this.logger.debug(
+      `Analyzing recipe: ${recipe.name} with ${recipe.ingredients.length} ingredients`,
+    );
 
     const ingredientAnalysis: RecipeNutritionAnalysis['ingredientAnalysis'] = [];
-    let totalRawNutrients = this.createEmptyNutrientContent();
-    let totalCookedNutrients = this.createEmptyNutrientContent();
+    const totalRawNutrients = this.createEmptyNutrientContent();
+    const totalCookedNutrients = this.createEmptyNutrientContent();
     let totalRawWeight = 0;
     let totalCookedWeight = 0;
     const cookingMethodImpacts: { [method: string]: any } = {};
@@ -145,8 +158,7 @@ export class EnhancedNutritionService {
             weightChange: 0,
           };
         }
-        cookingMethodImpacts[method].weightChange += 
-          (analysis.cookedWeight - ingredient.rawWeight);
+        cookingMethodImpacts[method].weightChange += analysis.cookedWeight - ingredient.rawWeight;
       }
     }
 
@@ -197,8 +209,12 @@ export class EnhancedNutritionService {
     }
 
     // Calculate nutrition contribution percentage
-    const totalCalories = Object.values(ingredient.rawNutrients).reduce((sum, val) => sum + (val || 0), 0);
-    const nutritionContribution = totalCalories > 0 ? (cookedNutrients.energy / totalCalories) * 100 : 0;
+    const totalCalories = Object.values(ingredient.rawNutrients).reduce(
+      (sum, val) => sum + (val || 0),
+      0,
+    );
+    const nutritionContribution =
+      totalCalories > 0 ? (cookedNutrients.energy / totalCalories) * 100 : 0;
 
     return {
       ingredient,
@@ -222,7 +238,9 @@ export class EnhancedNutritionService {
         return {
           foodId: ingredient.foodId,
           weight: analysis.cookedWeight,
-          composition: ingredient.foodComposition || this.createDefaultFoodComposition(analysis.cookedNutrients),
+          composition:
+            ingredient.foodComposition ||
+            this.createDefaultFoodComposition(analysis.cookedNutrients),
           gi: ingredient.knownGI,
         };
       }),
@@ -249,7 +267,7 @@ export class EnhancedNutritionService {
   async analyzeMealPlan(mealPlan: EnhancedMealPlanInput): Promise<EnhancedMealPlan> {
     this.logger.debug(`Analyzing meal plan with ${mealPlan.recipes.length} recipes`);
 
-    let totalNutrition = this.createEmptyNutrientContent();
+    const totalNutrition = this.createEmptyNutrientContent();
     let totalAvailableCarbs = 0;
     let totalWeight = 0;
     let weightedGI = 0;
@@ -257,7 +275,7 @@ export class EnhancedNutritionService {
     // Analyze each recipe
     for (const recipe of mealPlan.recipes) {
       const recipeAnalysis = await this.analyzeRecipe(recipe);
-      
+
       // Add to meal totals
       this.addNutrients(totalNutrition, recipeAnalysis.nutritionPerServing);
       totalAvailableCarbs += recipeAnalysis.glycemicLoad.availableCarbs;
@@ -342,11 +360,11 @@ export class EnhancedNutritionService {
   } {
     const improvements: string[] = [];
     const optimizedRecipe = { ...recipe };
-    
+
     // Optimize cooking methods for each ingredient
-    optimizedRecipe.ingredients = recipe.ingredients.map(ingredient => {
+    optimizedRecipe.ingredients = recipe.ingredients.map((ingredient) => {
       const optimized = { ...ingredient };
-      
+
       if (goals.preserveVitamins && ingredient.cookingParams) {
         // Switch to gentler cooking methods
         if (ingredient.cookingParams.method === CookingMethod.BOILED) {
@@ -354,7 +372,9 @@ export class EnhancedNutritionService {
             ...ingredient.cookingParams,
             method: CookingMethod.STEAMED,
           };
-          improvements.push(`Changed ${ingredient.name} from boiling to steaming to preserve vitamins`);
+          improvements.push(
+            `Changed ${ingredient.name} from boiling to steaming to preserve vitamins`,
+          );
         }
       }
 
@@ -407,7 +427,7 @@ export class EnhancedNutritionService {
   }
 
   private addNutrients(target: NutrientContent, source: NutrientContent): void {
-    Object.keys(source).forEach(key => {
+    Object.keys(source).forEach((key) => {
       if (typeof source[key] === 'number') {
         target[key] = (target[key] || 0) + (source[key] || 0);
       }
@@ -416,7 +436,7 @@ export class EnhancedNutritionService {
 
   private divideNutrients(nutrients: NutrientContent, divisor: number): NutrientContent {
     const result = { ...nutrients };
-    Object.keys(result).forEach(key => {
+    Object.keys(result).forEach((key) => {
       if (typeof result[key] === 'number') {
         result[key] = (result[key] || 0) / divisor;
       }
@@ -426,13 +446,13 @@ export class EnhancedNutritionService {
 
   private calculateNutritionChanges(raw: NutrientContent, cooked: NutrientContent) {
     const changes: { [nutrient: string]: any } = {};
-    
-    Object.keys(raw).forEach(nutrient => {
+
+    Object.keys(raw).forEach((nutrient) => {
       if (typeof raw[nutrient] === 'number') {
         const rawValue = raw[nutrient] || 0;
         const cookedValue = cooked[nutrient] || 0;
         const retention = rawValue > 0 ? (cookedValue / rawValue) * 100 : 100;
-        
+
         changes[nutrient] = {
           raw: rawValue,
           cooked: cookedValue,
@@ -440,7 +460,7 @@ export class EnhancedNutritionService {
         };
       }
     });
-    
+
     return changes;
   }
 
@@ -449,7 +469,10 @@ export class EnhancedNutritionService {
       totalCarbohydrates: nutrients.carbohydrates || 0,
       fiber: nutrients.fiber || 0,
       sugar: nutrients.sugar || 0,
-      starch: Math.max(0, (nutrients.carbohydrates || 0) - (nutrients.fiber || 0) - (nutrients.sugar || 0)),
+      starch: Math.max(
+        0,
+        (nutrients.carbohydrates || 0) - (nutrients.fiber || 0) - (nutrients.sugar || 0),
+      ),
       protein: nutrients.protein || 0,
       fat: nutrients.fat || 0,
       processingLevel: 'minimal',
@@ -461,9 +484,18 @@ export class EnhancedNutritionService {
     actual: NutrientContent,
     targets: { calories: number; protein: number; carbohydrates: number; fat: number },
   ): number {
-    const calorieScore = Math.max(0, 100 - Math.abs((actual.energy - targets.calories) / targets.calories) * 100);
-    const proteinScore = Math.max(0, 100 - Math.abs((actual.protein - targets.protein) / targets.protein) * 100);
-    const carbScore = Math.max(0, 100 - Math.abs((actual.carbohydrates - targets.carbohydrates) / targets.carbohydrates) * 100);
+    const calorieScore = Math.max(
+      0,
+      100 - Math.abs((actual.energy - targets.calories) / targets.calories) * 100,
+    );
+    const proteinScore = Math.max(
+      0,
+      100 - Math.abs((actual.protein - targets.protein) / targets.protein) * 100,
+    );
+    const carbScore = Math.max(
+      0,
+      100 - Math.abs((actual.carbohydrates - targets.carbohydrates) / targets.carbohydrates) * 100,
+    );
     const fatScore = Math.max(0, 100 - Math.abs((actual.fat - targets.fat) / targets.fat) * 100);
 
     return Math.round((calorieScore + proteinScore + carbScore + fatScore) / 4);

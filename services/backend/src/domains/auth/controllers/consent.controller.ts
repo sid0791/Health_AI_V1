@@ -143,9 +143,9 @@ export class ConsentController {
   })
   async getUserConsents(@Req() req: AuthenticatedRequest) {
     const consents = await this.consentService.findByUserId(req.user.userId);
-    
+
     return {
-      consents: consents.map(consent => ({
+      consents: consents.map((consent) => ({
         id: consent.id,
         consentType: consent.consentType,
         status: consent.status,
@@ -173,9 +173,9 @@ export class ConsentController {
   })
   async getActiveConsents(@Req() req: AuthenticatedRequest) {
     const consents = await this.consentService.getActiveConsents(req.user.userId);
-    
+
     return {
-      consents: consents.map(consent => ({
+      consents: consents.map((consent) => ({
         consentType: consent.consentType,
         consentVersion: consent.consentVersion,
         grantedAt: consent.grantedAt,
@@ -203,7 +203,7 @@ export class ConsentController {
     @Req() req: AuthenticatedRequest,
   ) {
     const consent = await this.consentService.getConsentByType(req.user.userId, consentType);
-    
+
     if (!consent) {
       return {
         consentType,
@@ -280,7 +280,7 @@ export class ConsentController {
       userAgent: req.headers['user-agent'],
     };
 
-    const requests = dto.consents.map(consent => ({
+    const requests = dto.consents.map((consent) => ({
       ...consent,
       expiresAt: consent.expiresAt ? new Date(consent.expiresAt) : undefined,
       ipAddress: context.ipAddress,
@@ -291,7 +291,7 @@ export class ConsentController {
 
     return {
       message: `${consents.length} consents processed successfully`,
-      consents: consents.map(consent => ({
+      consents: consents.map((consent) => ({
         id: consent.id,
         consentType: consent.consentType,
         status: consent.status,
@@ -400,7 +400,7 @@ export class ConsentController {
 
     return {
       message: `${consents.length} consents withdrawn successfully`,
-      withdrawnConsents: consents.map(consent => consent.consentType),
+      withdrawnConsents: consents.map((consent) => consent.consentType),
     };
   }
 
@@ -430,7 +430,7 @@ export class ConsentController {
     );
 
     return {
-      consents: consents.map(consent => ({
+      consents: consents.map((consent) => ({
         id: consent.id,
         consentType: consent.consentType,
         status: consent.status,
@@ -469,7 +469,7 @@ export class ConsentController {
   })
   async deleteAllConsentData(@Req() req: AuthenticatedRequest) {
     const result = await this.consentService.deleteUserConsentData(req.user.userId);
-    
+
     return {
       message: 'All consent data deleted successfully',
       ...result,

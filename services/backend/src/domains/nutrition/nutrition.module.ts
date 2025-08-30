@@ -16,24 +16,19 @@ import { UsdaFoodDataService } from '../../external-apis/usda/usda-food-data.ser
 import { IFCTDataService } from '../../external-apis/ifct/ifct-data.service';
 
 @Module({
-  imports: [
-    HttpModule,
-    ConfigModule,
-  ],
+  imports: [HttpModule, ConfigModule],
   providers: [
     // Core nutrition services
     NutritionCalculationService,
     CookingTransformationService,
     GlycemicIndexService,
     EnhancedNutritionService,
-    
+
     // External data services
     UsdaFoodDataService,
     IFCTDataService,
   ],
-  controllers: [
-    NutritionController,
-  ],
+  controllers: [NutritionController],
   exports: [
     NutritionCalculationService,
     CookingTransformationService,

@@ -224,6 +224,10 @@ export class UserPreferences {
   @Column({ name: 'behavioral_classification', default: 'BEHAVIORAL' })
   behavioralClassification: string;
 
+  // Additional onboarding data
+  @Column({ type: 'text', array: true, default: [], nullable: true })
+  cravings?: string[]; // For snacks like chai, ice cream, cold drinks
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

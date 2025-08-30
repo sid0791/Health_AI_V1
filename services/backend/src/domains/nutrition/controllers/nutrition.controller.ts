@@ -1,21 +1,15 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  Get, 
-  Param, 
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
   Query,
   HttpStatus,
   HttpException,
-  Logger
+  Logger,
 } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiParam,
-  ApiQuery
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { EnhancedNutritionService } from '../services/enhanced-nutrition.service';
 import { CookingTransformationService } from '../services/cooking-transformation.service';
 import { GlycemicIndexService } from '../services/glycemic-index.service';
@@ -40,12 +34,12 @@ export class NutritionController {
   ) {}
 
   @Post('cooking-transformation')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Apply cooking transformation to food',
-    description: 'Calculate how cooking affects nutrient content and weight of food ingredients'
+    description: 'Calculate how cooking affects nutrient content and weight of food ingredients',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Cooking transformation result with yield factors and transformed nutrients',
     schema: {
       type: 'object',
@@ -54,18 +48,18 @@ export class NutritionController {
         cookedWeight: { type: 'number', description: 'Final weight after cooking (g)' },
         transformedNutrients: { type: 'object', description: 'Nutrients per 100g cooked product' },
         cookingMethod: { type: 'string', description: 'Applied cooking method' },
-        retentionFactorsApplied: { type: 'object', description: 'Nutrient retention factors used' }
-      }
-    }
+        retentionFactorsApplied: { type: 'object', description: 'Nutrient retention factors used' },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Invalid input parameters' 
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input parameters',
   })
   async applyCookingTransformation(@Body() dto: CookingTransformationDto) {
     try {
       this.logger.debug(`Applying cooking transformation: ${dto.cookingParams.method}`);
-      
+
       const result = this.cookingTransformationService.applyCookingTransformation(
         dto.rawNutrients,
         dto.rawWeight,
@@ -87,12 +81,12 @@ export class NutritionController {
   }
 
   @Post('glycemic-index/estimate')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Estimate glycemic index for food',
-    description: 'Estimate GI based on food composition when GI value is not known'
+    description: 'Estimate GI based on food composition when GI value is not known',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Estimated glycemic index with confidence and source information',
     schema: {
       type: 'object',
@@ -100,14 +94,14 @@ export class NutritionController {
         gi: { type: 'number', description: 'Estimated glycemic index (0-150)' },
         source: { type: 'string', description: 'Source of estimation' },
         testMethod: { type: 'string', description: 'Reference method used' },
-        foodDescription: { type: 'string', description: 'Description of estimation basis' }
-      }
-    }
+        foodDescription: { type: 'string', description: 'Description of estimation basis' },
+      },
+    },
   })
   async estimateGlycemicIndex(@Body() dto: GlycemicIndexEstimationDto) {
     try {
       this.logger.debug('Estimating glycemic index for food composition');
-      
+
       const result = this.glycemicIndexService.estimateGlycemicIndex(
         dto.composition,
         dto.foodCategory,
@@ -128,12 +122,12 @@ export class NutritionController {
   }
 
   @Post('glycemic-load/calculate')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Calculate glycemic load',
-    description: 'Calculate glycemic load for a specific portion size and carbohydrate content'
+    description: 'Calculate glycemic load for a specific portion size and carbohydrate content',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Glycemic load calculation with category classification',
     schema: {
       type: 'object',
@@ -141,14 +135,14 @@ export class NutritionController {
         gl: { type: 'number', description: 'Glycemic load value' },
         gi: { type: 'number', description: 'Glycemic index used' },
         availableCarbs: { type: 'number', description: 'Available carbohydrates (g)' },
-        category: { type: 'string', enum: ['low', 'medium', 'high'] }
-      }
-    }
+        category: { type: 'string', enum: ['low', 'medium', 'high'] },
+      },
+    },
   })
   async calculateGlycemicLoad(@Body() dto: GlycemicLoadCalculationDto) {
     try {
       this.logger.debug('Calculating glycemic load');
-      
+
       const result = this.glycemicIndexService.calculateGlycemicLoad(
         dto.gi,
         dto.availableCarbohydrates,
@@ -170,12 +164,12 @@ export class NutritionController {
   }
 
   @Post('recipe/analyze')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Analyze complete recipe nutrition',
-    description: 'Comprehensive nutrition analysis including cooking effects and glycemic impact'
+    description: 'Comprehensive nutrition analysis including cooking effects and glycemic impact',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Complete recipe nutrition analysis',
     schema: {
       type: 'object',
@@ -185,14 +179,14 @@ export class NutritionController {
         rawTotalNutrients: { type: 'object', description: 'Total raw nutrients' },
         cookedTotalNutrients: { type: 'object', description: 'Total nutrients after cooking' },
         nutritionChangeFromCooking: { type: 'object', description: 'Nutrient retention analysis' },
-        ingredientAnalysis: { type: 'array', description: 'Per-ingredient analysis' }
-      }
-    }
+        ingredientAnalysis: { type: 'array', description: 'Per-ingredient analysis' },
+      },
+    },
   })
   async analyzeRecipe(@Body() dto: EnhancedRecipeDto) {
     try {
       this.logger.debug(`Analyzing recipe: ${dto.name} with ${dto.ingredients.length} ingredients`);
-      
+
       const result = await this.enhancedNutritionService.analyzeRecipe(dto);
 
       return {
@@ -210,26 +204,26 @@ export class NutritionController {
   }
 
   @Post('meal-plan/analyze')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Analyze complete meal plan',
-    description: 'Analyze nutrition across multiple recipes in a meal plan'
+    description: 'Analyze nutrition across multiple recipes in a meal plan',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Complete meal plan nutrition analysis',
     schema: {
       type: 'object',
       properties: {
         totalNutrition: { type: 'object', description: 'Total nutrition across all recipes' },
         totalGlycemicLoad: { type: 'object', description: 'Combined glycemic load' },
-        adherenceScore: { type: 'number', description: 'Adherence to nutrition targets (0-100)' }
-      }
-    }
+        adherenceScore: { type: 'number', description: 'Adherence to nutrition targets (0-100)' },
+      },
+    },
   })
   async analyzeMealPlan(@Body() dto: EnhancedMealPlanDto) {
     try {
       this.logger.debug(`Analyzing meal plan: ${dto.mealType} with ${dto.recipes.length} recipes`);
-      
+
       const result = await this.enhancedNutritionService.analyzeMealPlan(dto);
 
       return {
@@ -247,32 +241,36 @@ export class NutritionController {
   }
 
   @Post('recipe/optimize')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Optimize recipe for nutritional goals',
-    description: 'Suggest cooking method changes to improve nutritional profile'
+    description: 'Suggest cooking method changes to improve nutritional profile',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Optimized recipe with improvement suggestions',
     schema: {
       type: 'object',
       properties: {
         optimizedRecipe: { type: 'object', description: 'Recipe with optimized cooking methods' },
-        improvements: { type: 'array', items: { type: 'string' }, description: 'List of improvements made' },
-        nutritionImprovement: { type: 'number', description: 'Percentage improvement in nutrition' }
-      }
-    }
+        improvements: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'List of improvements made',
+        },
+        nutritionImprovement: {
+          type: 'number',
+          description: 'Percentage improvement in nutrition',
+        },
+      },
+    },
   })
   async optimizeRecipe(
-    @Body() body: { recipe: EnhancedRecipeDto; goals: RecipeOptimizationGoalsDto }
+    @Body() body: { recipe: EnhancedRecipeDto; goals: RecipeOptimizationGoalsDto },
   ) {
     try {
       this.logger.debug(`Optimizing recipe: ${body.recipe.name}`);
-      
-      const result = this.enhancedNutritionService.optimizeRecipeForGoals(
-        body.recipe,
-        body.goals,
-      );
+
+      const result = this.enhancedNutritionService.optimizeRecipeForGoals(body.recipe, body.goals);
 
       return {
         success: true,
@@ -281,28 +279,22 @@ export class NutritionController {
       };
     } catch (error) {
       this.logger.error('Failed to optimize recipe', error);
-      throw new HttpException(
-        'Failed to optimize recipe',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new HttpException('Failed to optimize recipe', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   @Get('cooking-methods/:method/gi-factor')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get GI modification factor for cooking method',
-    description: 'Get how much a cooking method affects glycemic index'
+    description: 'Get how much a cooking method affects glycemic index',
   })
   @ApiParam({ name: 'method', description: 'Cooking method name' })
   @ApiQuery({ name: 'foodType', description: 'Type of food being cooked', required: false })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'GI modification factor for the cooking method' 
+  @ApiResponse({
+    status: 200,
+    description: 'GI modification factor for the cooking method',
   })
-  getGICookingFactor(
-    @Param('method') method: string,
-    @Query('foodType') foodType?: string,
-  ) {
+  getGICookingFactor(@Param('method') method: string, @Query('foodType') foodType?: string) {
     try {
       const factor = this.glycemicIndexService.getGICookingModificationFactor(
         method,
@@ -315,7 +307,8 @@ export class NutritionController {
           method,
           foodType: foodType || 'general',
           giFactor: factor,
-          interpretation: factor > 1 ? 'increases GI' : factor < 1 ? 'decreases GI' : 'no effect on GI',
+          interpretation:
+            factor > 1 ? 'increases GI' : factor < 1 ? 'decreases GI' : 'no effect on GI',
         },
         message: 'GI modification factor retrieved successfully',
       };
@@ -329,13 +322,13 @@ export class NutritionController {
   }
 
   @Get('indian-foods/gi-database')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get common Indian foods GI database',
-    description: 'Retrieve glycemic index values for common Indian foods'
+    description: 'Retrieve glycemic index values for common Indian foods',
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Database of Indian food GI values' 
+  @ApiResponse({
+    status: 200,
+    description: 'Database of Indian food GI values',
   })
   getIndianFoodGIDatabase() {
     try {
@@ -360,13 +353,13 @@ export class NutritionController {
   }
 
   @Get('health-check')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Health check for nutrition services',
-    description: 'Check if all nutrition calculation services are working properly'
+    description: 'Check if all nutrition calculation services are working properly',
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Service health status' 
+  @ApiResponse({
+    status: 200,
+    description: 'Service health status',
   })
   async healthCheck() {
     try {
@@ -393,15 +386,15 @@ export class NutritionController {
 
       // Test GI estimation
       const giTest = this.glycemicIndexService.estimateGlycemicIndex(testComposition);
-      
+
       // Test GL calculation
       const glTest = this.glycemicIndexService.calculateGlycemicLoad(50, 15, 100);
-      
+
       // Test cooking transformation
       const cookingTest = this.cookingTransformationService.applyCookingTransformation(
         testNutrients,
         100,
-        { method: 'boiled' as any }
+        { method: 'boiled' as any },
       );
 
       return {

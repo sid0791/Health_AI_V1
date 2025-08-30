@@ -1,4 +1,14 @@
-import { IsEnum, IsNumber, IsOptional, IsString, IsObject, ValidateNested, IsArray, Min, Max } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsObject,
+  ValidateNested,
+  IsArray,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CookingMethod } from '../enums/cooking-method.enum';
@@ -66,10 +76,10 @@ export class NutrientContentDto {
 }
 
 export class CookingParametersDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Cooking method to apply',
     enum: CookingMethod,
-    example: CookingMethod.BOILED
+    example: CookingMethod.BOILED,
   })
   @IsEnum(CookingMethod)
   method: CookingMethod;
@@ -140,16 +150,16 @@ export class FoodCompositionDto {
   @Min(0)
   fat: number;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Processing level of the food',
-    enum: ['minimal', 'processed', 'highly_processed']
+    enum: ['minimal', 'processed', 'highly_processed'],
   })
   @IsEnum(['minimal', 'processed', 'highly_processed'])
   processingLevel: 'minimal' | 'processed' | 'highly_processed';
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Physical form of the food',
-    enum: ['liquid', 'solid', 'gel']
+    enum: ['liquid', 'solid', 'gel'],
   })
   @IsEnum(['liquid', 'solid', 'gel'])
   foodForm: 'liquid' | 'solid' | 'gel';
@@ -233,9 +243,9 @@ export class EnhancedRecipeDto {
   @Max(480)
   totalCookingTime?: number;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Recipe difficulty level',
-    enum: ['easy', 'medium', 'hard']
+    enum: ['easy', 'medium', 'hard'],
   })
   @IsOptional()
   @IsEnum(['easy', 'medium', 'hard'])
@@ -321,9 +331,9 @@ export class EnhancedMealPlanDto {
   @IsString()
   mealId: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Type of meal',
-    enum: ['breakfast', 'lunch', 'dinner', 'snack']
+    enum: ['breakfast', 'lunch', 'dinner', 'snack'],
   })
   @IsEnum(['breakfast', 'lunch', 'dinner', 'snack'])
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';

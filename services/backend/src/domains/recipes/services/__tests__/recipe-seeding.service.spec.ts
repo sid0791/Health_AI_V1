@@ -44,7 +44,7 @@ describe('RecipeSeedingService', () => {
 
     it('should count cuisines correctly', async () => {
       const stats = await service.getSeedingStats();
-      
+
       expect(stats.cuisineCounts).toHaveProperty('Indian');
       expect(stats.cuisineCounts).toHaveProperty('Mediterranean');
       expect(stats.cuisineCounts.Indian).toBeGreaterThan(0);
@@ -52,7 +52,7 @@ describe('RecipeSeedingService', () => {
 
     it('should count health-friendly recipes correctly', async () => {
       const stats = await service.getSeedingStats();
-      
+
       expect(stats.healthFriendlyCounts).toHaveProperty('diabeticFriendly');
       expect(stats.healthFriendlyCounts).toHaveProperty('pcosFriendly');
       expect(stats.healthFriendlyCounts).toHaveProperty('highProtein');

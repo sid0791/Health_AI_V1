@@ -15,22 +15,14 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from '../services/auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { 
-  SendOTPDto, 
-  VerifyOTPDto,
-} from '../dto/otp.dto';
+import { SendOTPDto, VerifyOTPDto } from '../dto/otp.dto';
 import {
   RefreshTokenDto,
   AuthTokensResponseDto,
   LoginResponseDto,
   LogoutDto,
 } from '../dto/auth.dto';
-import {
-  OAuthCallbackDto,
-  OAuthUrlResponseDto,
-  ConnectOAuthDto,
-  DisconnectOAuthDto,
-} from '../dto/oauth.dto';
+import { OAuthCallbackDto, OAuthUrlResponseDto, ConnectOAuthDto } from '../dto/oauth.dto';
 import { OAuthProvider } from '../entities/user-oauth-account.entity';
 import { AuthenticatedRequest } from '../guards/optional-auth.guard';
 
@@ -138,18 +130,17 @@ export class AuthController {
     type: AuthTokensResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
-  async refreshTokens(@Body() dto: RefreshTokenDto, @Req() req: any): Promise<AuthTokensResponseDto> {
+  async refreshTokens(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: any,
+  ): Promise<AuthTokensResponseDto> {
     const context = {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
       requestId: req.id,
     };
 
-    const tokens = await this.authService.refreshTokens(
-      dto.refreshToken,
-      dto.deviceId,
-      context,
-    );
+    const tokens = await this.authService.refreshTokens(dto.refreshToken, dto.deviceId, context);
 
     return {
       ...tokens,
@@ -226,9 +217,9 @@ export class AuthController {
   })
   async getUserSessions(@Req() req: AuthenticatedRequest) {
     const sessions = await this.authService.getUserSessions(req.user.userId);
-    
+
     return {
-      sessions: sessions.map(session => ({
+      sessions: sessions.map((session) => ({
         id: session.id,
         deviceName: session.deviceName,
         devicePlatform: session.devicePlatform,
@@ -257,7 +248,7 @@ export class AuthController {
     };
 
     await this.authService.logout(req.user.userId, sessionId, 'current', context);
-    
+
     return { message: 'Session revoked successfully' };
   }
 
@@ -364,7 +355,10 @@ export class AuthController {
     description: 'OAuth account disconnected successfully',
   })
   @ApiResponse({ status: 404, description: 'OAuth account not found' })
-  async disconnectOAuth(@Param('provider') provider: OAuthProvider, @Req() req: AuthenticatedRequest) {
+  async disconnectOAuth(
+    @Param('provider') provider: OAuthProvider,
+    @Req() req: AuthenticatedRequest,
+  ) {
     const context = {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
@@ -391,9 +385,9 @@ export class AuthController {
   })
   async getOAuthAccounts(@Req() req: AuthenticatedRequest) {
     const accounts = await this.authService.getUserOAuthAccounts(req.user.userId);
-    
+
     return {
-      accounts: accounts.map(account => ({
+      accounts: accounts.map((account) => ({
         provider: account.provider,
         providerEmail: account.providerEmail,
         providerName: account.providerName,

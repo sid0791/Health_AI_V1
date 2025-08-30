@@ -37,24 +37,27 @@ export class DLPService {
     ['ssn', /\b\d{3}-\d{2}-\d{4}\b/g],
     ['aadhar', /\b\d{4}\s?\d{4}\s?\d{4}\b/g],
     ['pan', /\b[A-Z]{5}\d{4}[A-Z]\b/g],
-    
+
     // Medical Information
     ['medical_record', /\b(MR|MRN|Medical Record)\s*:?\s*\d+/gi],
     ['prescription', /\b(Rx|prescription)\s*:?\s*[\w\s]+/gi],
     ['dosage', /\b\d+\s*(mg|ml|mcg|g|kg|units?)\b/gi],
-    
+
     // Biometric Data
     ['height', /\b\d+\s*(cm|ft|inches?|'|")\b/gi],
     ['weight', /\b\d+\s*(kg|lbs?|pounds?)\b/gi],
     ['bp', /\b\d{2,3}\/\d{2,3}\s*(mmhg)?\b/gi],
     ['heart_rate', /\b\d{2,3}\s*(bpm|beats?\s*per\s*minute)\b/gi],
-    
+
     // Financial Information
     ['credit_card', /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g],
     ['bank_account', /\b\d{9,18}\b/g],
-    
+
     // Geographic Data
-    ['address', /\b\d+\s+[A-Za-z\s,]+(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd)/gi],
+    [
+      'address',
+      /\b\d+\s+[A-Za-z\s,]+(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd)/gi,
+    ],
     ['pincode', /\b\d{6}\b/g],
     ['zipcode', /\b\d{5}(-\d{4})?\b/g],
   ]);
@@ -81,7 +84,7 @@ export class DLPService {
     try {
       // Detection phase
       const detectedPatterns = this.detectSensitiveData(text);
-      
+
       // Calculate risk score
       const riskScore = this.calculateRiskScore(detectedPatterns);
 
@@ -93,7 +96,7 @@ export class DLPService {
           const result = this.redactMatches(processedText, matches, patternName);
           processedText = result.text;
           redactedFields.push(patternName);
-          
+
           if (config.retainOriginalHashes) {
             result.hashes.forEach((hash, original) => {
               originalHashes.set(original, hash);
@@ -103,7 +106,7 @@ export class DLPService {
           const result = this.pseudonymizeMatches(processedText, matches, patternName);
           processedText = result.text;
           pseudonymizedFields.push(patternName);
-          
+
           if (config.retainOriginalHashes) {
             result.hashes.forEach((hash, original) => {
               originalHashes.set(original, hash);
@@ -114,7 +117,9 @@ export class DLPService {
 
       // Audit logging
       if (redactedFields.length > 0 || pseudonymizedFields.length > 0) {
-        this.logger.log(`DLP processed text: redacted=${redactedFields.join(',')}, pseudonymized=${pseudonymizedFields.join(',')}, riskScore=${riskScore}`);
+        this.logger.log(
+          `DLP processed text: redacted=${redactedFields.join(',')}, pseudonymized=${pseudonymizedFields.join(',')}, riskScore=${riskScore}`,
+        );
       }
 
       return {
@@ -143,7 +148,7 @@ export class DLPService {
     const detected = new Map<string, string[]>();
 
     for (const [patternName, pattern] of this.patterns) {
-      const matches = Array.from(text.matchAll(pattern)).map(match => match[0]);
+      const matches = Array.from(text.matchAll(pattern)).map((match) => match[0]);
       detected.set(patternName, matches);
     }
 
@@ -156,9 +161,18 @@ export class DLPService {
   private calculateRiskScore(detectedPatterns: Map<string, string[]>): number {
     let score = 0;
     const weights = new Map([
-      ['email', 10], ['phone_in', 15], ['ssn', 50], ['aadhar', 40], ['pan', 30],
-      ['medical_record', 40], ['prescription', 30], ['credit_card', 50],
-      ['height', 5], ['weight', 5], ['bp', 20], ['heart_rate', 15],
+      ['email', 10],
+      ['phone_in', 15],
+      ['ssn', 50],
+      ['aadhar', 40],
+      ['pan', 30],
+      ['medical_record', 40],
+      ['prescription', 30],
+      ['credit_card', 50],
+      ['height', 5],
+      ['weight', 5],
+      ['bp', 20],
+      ['heart_rate', 15],
     ]);
 
     for (const [patternName, matches] of detectedPatterns) {
@@ -172,14 +186,21 @@ export class DLPService {
   /**
    * Redact sensitive matches
    */
-  private redactMatches(text: string, matches: string[], patternName: string): { text: string; hashes: Map<string, string> } {
+  private redactMatches(
+    text: string,
+    matches: string[],
+    patternName: string,
+  ): { text: string; hashes: Map<string, string> } {
     let processedText = text;
     const hashes = new Map<string, string>();
 
     for (const match of matches) {
       const hash = this.generateHash(match);
       const redactedValue = this.generateRedactedValue(match, patternName);
-      processedText = processedText.replace(new RegExp(this.escapeRegex(match), 'g'), redactedValue);
+      processedText = processedText.replace(
+        new RegExp(this.escapeRegex(match), 'g'),
+        redactedValue,
+      );
       hashes.set(match, hash);
     }
 
@@ -189,7 +210,11 @@ export class DLPService {
   /**
    * Pseudonymize sensitive matches
    */
-  private pseudonymizeMatches(text: string, matches: string[], patternName: string): { text: string; hashes: Map<string, string> } {
+  private pseudonymizeMatches(
+    text: string,
+    matches: string[],
+    patternName: string,
+  ): { text: string; hashes: Map<string, string> } {
     let processedText = text;
     const hashes = new Map<string, string>();
 
@@ -238,7 +263,7 @@ export class DLPService {
   private generatePseudonym(value: string, patternName: string): string {
     const hash = this.generateHash(value);
     const shortHash = hash.substring(0, 8);
-    
+
     switch (patternName) {
       case 'email':
         return `user_${shortHash}@example.com`;

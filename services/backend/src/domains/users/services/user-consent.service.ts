@@ -36,7 +36,7 @@ export class UserConsentService {
    * Get all consents for a user
    */
   async findByUserId(userId: string): Promise<UserConsent[]> {
-    return this.userConsentRepository.find({ 
+    return this.userConsentRepository.find({
       where: { userId },
       order: { createdAt: 'DESC' },
     });
@@ -47,7 +47,7 @@ export class UserConsentService {
    */
   async getActiveConsents(userId: string): Promise<UserConsent[]> {
     return this.userConsentRepository.find({
-      where: { 
+      where: {
         userId,
         status: ConsentStatus.GRANTED,
       },
@@ -80,7 +80,7 @@ export class UserConsentService {
     try {
       // Check if consent already exists
       const existingConsent = await this.getConsentByType(userId, request.consentType);
-      
+
       if (existingConsent && existingConsent.isActive()) {
         throw new BadRequestException(`Consent ${request.consentType} is already granted`);
       }
@@ -105,7 +105,9 @@ export class UserConsentService {
 
       const savedConsent = await this.userConsentRepository.save(consent);
 
-      this.logger.log(`Consent ${request.consentType} ${request.granted ? 'granted' : 'denied'} for user ${userId}`);
+      this.logger.log(
+        `Consent ${request.consentType} ${request.granted ? 'granted' : 'denied'} for user ${userId}`,
+      );
 
       return savedConsent;
     } catch (error) {
@@ -124,7 +126,7 @@ export class UserConsentService {
   ): Promise<UserConsent> {
     try {
       const consent = await this.getConsentByType(userId, consentType);
-      
+
       if (!consent) {
         throw new NotFoundException(`Consent ${consentType} not found for user`);
       }
@@ -141,7 +143,9 @@ export class UserConsentService {
 
       const updatedConsent = await this.userConsentRepository.save(consent);
 
-      this.logger.log(`Consent ${consentType} ${update.granted ? 'granted' : 'withdrawn'} for user ${userId}`);
+      this.logger.log(
+        `Consent ${consentType} ${update.granted ? 'granted' : 'withdrawn'} for user ${userId}`,
+      );
 
       return updatedConsent;
     } catch (error) {
@@ -182,12 +186,14 @@ export class UserConsentService {
         consent.withdraw();
         if (ipAddress) consent.ipAddress = ipAddress;
         if (userAgent) consent.userAgent = userAgent;
-        
+
         const updated = await this.userConsentRepository.save(consent);
         updatedConsents.push(updated);
       }
 
-      this.logger.log(`All consents withdrawn for user ${userId} (${updatedConsents.length} consents)`);
+      this.logger.log(
+        `All consents withdrawn for user ${userId} (${updatedConsents.length} consents)`,
+      );
 
       return updatedConsents;
     } catch (error) {
@@ -209,7 +215,7 @@ export class UserConsentService {
   ): Promise<UserConsent> {
     try {
       const consent = await this.getConsentByType(userId, consentType);
-      
+
       if (!consent) {
         throw new NotFoundException(`Consent ${consentType} not found for user`);
       }
@@ -220,7 +226,9 @@ export class UserConsentService {
 
       const renewedConsent = await this.userConsentRepository.save(consent);
 
-      this.logger.log(`Consent ${consentType} renewed for user ${userId} with version ${newVersion}`);
+      this.logger.log(
+        `Consent ${consentType} renewed for user ${userId} with version ${newVersion}`,
+      );
 
       return renewedConsent;
     } catch (error) {
@@ -232,10 +240,7 @@ export class UserConsentService {
   /**
    * Batch grant multiple consents
    */
-  async batchGrantConsents(
-    userId: string,
-    requests: ConsentRequest[],
-  ): Promise<UserConsent[]> {
+  async batchGrantConsents(userId: string, requests: ConsentRequest[]): Promise<UserConsent[]> {
     try {
       const consents: UserConsent[] = [];
 
@@ -309,7 +314,7 @@ export class UserConsentService {
         userId,
         exportedAt: new Date().toISOString(),
         totalConsents: consents.length,
-        consents: consents.map(consent => ({
+        consents: consents.map((consent) => ({
           id: consent.id,
           consentType: consent.consentType,
           status: consent.status,

@@ -3,9 +3,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FitnessPlan, FitnessPlanType, ExperienceLevel } from '../entities/fitness-plan.entity';
 import { FitnessPlanWeek } from '../entities/fitness-plan-week.entity';
-import { FitnessPlanWorkout, WorkoutType, WorkoutStatus } from '../entities/fitness-plan-workout.entity';
-import { FitnessPlanExercise, ExerciseType, ExerciseStatus } from '../entities/fitness-plan-exercise.entity';
-import { Exercise, DifficultyLevel, MuscleGroup, EquipmentType, ExerciseCategory } from '../entities/exercise.entity';
+import {
+  FitnessPlanWorkout,
+  WorkoutType,
+  WorkoutStatus,
+} from '../entities/fitness-plan-workout.entity';
+import {
+  FitnessPlanExercise,
+  ExerciseType,
+  ExerciseStatus,
+} from '../entities/fitness-plan-exercise.entity';
+import {
+  Exercise,
+  DifficultyLevel,
+  MuscleGroup,
+  EquipmentType,
+  ExerciseCategory,
+} from '../entities/exercise.entity';
 import { ExerciseLibraryService } from './exercise-library.service';
 import { GenerateFitnessPlanDto } from '../dto/fitness-plan.dto';
 
@@ -67,10 +81,7 @@ export class FitnessPlanGeneratorService {
   /**
    * Generate a complete fitness plan based on user requirements
    */
-  async generateFitnessPlan(
-    userId: string,
-    params: PlanGenerationParams
-  ): Promise<FitnessPlan> {
+  async generateFitnessPlan(userId: string, params: PlanGenerationParams): Promise<FitnessPlan> {
     try {
       // Validate input parameters
       this.validatePlanParameters(params);
@@ -86,7 +97,9 @@ export class FitnessPlanGeneratorService {
       });
 
       if (availableExercises.length < 10) {
-        throw new BadRequestException('Not enough suitable exercises found for the given constraints');
+        throw new BadRequestException(
+          'Not enough suitable exercises found for the given constraints',
+        );
       }
 
       // Create the main fitness plan
@@ -95,13 +108,13 @@ export class FitnessPlanGeneratorService {
       // Generate weekly schedule
       const muscleGroupSchedule = this.generateMuscleGroupSchedule(
         params.planType,
-        params.workoutsPerWeek
+        params.workoutsPerWeek,
       );
 
       // Generate all weeks
       for (let weekNumber = 1; weekNumber <= params.durationWeeks; weekNumber++) {
-        const isDeloadWeek = params.deloadWeekFrequency && 
-          weekNumber % params.deloadWeekFrequency === 0;
+        const isDeloadWeek =
+          params.deloadWeekFrequency && weekNumber % params.deloadWeekFrequency === 0;
 
         const week = await this.generateWeek(
           fitnessPlan,
@@ -109,7 +122,7 @@ export class FitnessPlanGeneratorService {
           params,
           availableExercises,
           muscleGroupSchedule,
-          isDeloadWeek
+          isDeloadWeek,
         );
 
         // Apply progressive overload (except for deload weeks)
@@ -120,9 +133,8 @@ export class FitnessPlanGeneratorService {
 
       return await this.fitnessPlanRepository.findOne({
         where: { id: fitnessPlan.id },
-        relations: ['weeks', 'weeks.workouts', 'weeks.workouts.exercises']
+        relations: ['weeks', 'weeks.workouts', 'weeks.workouts.exercises'],
       });
-
     } catch (error) {
       throw new BadRequestException(`Failed to generate fitness plan: ${error.message}`);
     }
@@ -139,18 +151,18 @@ export class FitnessPlanGeneratorService {
       decreaseDifficulty?: boolean;
       changeExercises?: string[];
       adjustVolume?: number; // percentage adjustment
-    }
+    },
   ): Promise<FitnessPlanWeek> {
     const plan = await this.fitnessPlanRepository.findOne({
       where: { id: planId },
-      relations: ['weeks', 'weeks.workouts', 'weeks.workouts.exercises']
+      relations: ['weeks', 'weeks.workouts', 'weeks.workouts.exercises'],
     });
 
     if (!plan) {
       throw new NotFoundException(`Fitness plan with ID '${planId}' not found`);
     }
 
-    const existingWeek = plan.weeks.find(w => w.weekNumber === weekNumber);
+    const existingWeek = plan.weeks.find((w) => w.weekNumber === weekNumber);
     if (!existingWeek) {
       throw new NotFoundException(`Week ${weekNumber} not found in plan`);
     }
@@ -189,11 +201,10 @@ export class FitnessPlanGeneratorService {
 
     const muscleGroupSchedule = this.generateMuscleGroupSchedule(
       plan.planType,
-      plan.workoutsPerWeek
+      plan.workoutsPerWeek,
     );
 
-    const isDeloadWeek = plan.deloadWeekFrequency && 
-      weekNumber % plan.deloadWeekFrequency === 0;
+    const isDeloadWeek = plan.deloadWeekFrequency && weekNumber % plan.deloadWeekFrequency === 0;
 
     return await this.generateWeek(
       plan,
@@ -202,7 +213,7 @@ export class FitnessPlanGeneratorService {
       availableExercises,
       muscleGroupSchedule,
       isDeloadWeek,
-      adaptations
+      adaptations,
     );
   }
 
@@ -212,7 +223,7 @@ export class FitnessPlanGeneratorService {
   calculateWorkoutConstraints(
     experienceLevel: ExperienceLevel,
     planType: FitnessPlanType,
-    workoutDuration: number
+    workoutDuration: number,
   ): {
     maxSetsPerWorkout: number;
     maxSetsPerMuscleGroup: number;
@@ -299,11 +310,11 @@ export class FitnessPlanGeneratorService {
 
   private async createFitnessPlan(
     userId: string,
-    params: PlanGenerationParams
+    params: PlanGenerationParams,
   ): Promise<FitnessPlan> {
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(startDate.getDate() + (params.durationWeeks * 7));
+    endDate.setDate(startDate.getDate() + params.durationWeeks * 7);
 
     const plan = this.fitnessPlanRepository.create({
       userId,
@@ -340,7 +351,7 @@ export class FitnessPlanGeneratorService {
     availableExercises: Exercise[],
     muscleGroupSchedule: MuscleGroupSchedule,
     isDeloadWeek: boolean,
-    adaptations?: any
+    adaptations?: any,
   ): Promise<FitnessPlanWeek> {
     const week = this.weekRepository.create({
       fitnessPlanId: plan.id,
@@ -356,7 +367,7 @@ export class FitnessPlanGeneratorService {
       const targetMuscleGroups = this.getWorkoutMuscleGroups(
         muscleGroupSchedule,
         workoutNumber,
-        params.workoutsPerWeek
+        params.workoutsPerWeek,
       );
 
       await this.generateWorkout(
@@ -366,7 +377,7 @@ export class FitnessPlanGeneratorService {
         availableExercises,
         params,
         isDeloadWeek,
-        adaptations
+        adaptations,
       );
     }
 
@@ -380,12 +391,12 @@ export class FitnessPlanGeneratorService {
     availableExercises: Exercise[],
     params: PlanGenerationParams,
     isDeloadWeek: boolean,
-    adaptations?: any
+    adaptations?: any,
   ): Promise<FitnessPlanWorkout> {
     const constraints = this.calculateWorkoutConstraints(
       params.experienceLevel,
       params.planType,
-      params.maxWorkoutDurationMinutes
+      params.maxWorkoutDurationMinutes,
     );
 
     const workout = this.workoutRepository.create({
@@ -394,7 +405,7 @@ export class FitnessPlanGeneratorService {
       workoutType: WorkoutType.STRENGTH, // Default to strength
       dayOfWeek: workoutNumber,
       estimatedDurationMinutes: params.maxWorkoutDurationMinutes,
-      primaryMuscleGroups: targetMuscleGroups.map(mg => mg.toString()),
+      primaryMuscleGroups: targetMuscleGroups.map((mg) => mg.toString()),
       restBetweenSets: constraints.restBetweenSets,
       restBetweenExercises: constraints.restBetweenExercises,
       status: WorkoutStatus.PLANNED,
@@ -407,18 +418,13 @@ export class FitnessPlanGeneratorService {
       availableExercises,
       targetMuscleGroups,
       constraints,
-      params
+      params,
     );
 
     // Create exercise entries
     let sortOrder = 1;
     for (const exerciseTemplate of selectedExercises) {
-      await this.createWorkoutExercise(
-        savedWorkout,
-        exerciseTemplate,
-        sortOrder++,
-        isDeloadWeek
-      );
+      await this.createWorkoutExercise(savedWorkout, exerciseTemplate, sortOrder++, isDeloadWeek);
     }
 
     return savedWorkout;
@@ -428,7 +434,7 @@ export class FitnessPlanGeneratorService {
     workout: FitnessPlanWorkout,
     template: ExerciseTemplate,
     sortOrder: number,
-    isDeloadWeek: boolean
+    isDeloadWeek: boolean,
   ): Promise<FitnessPlanExercise> {
     const exerciseData = {
       workoutId: workout.id,
@@ -437,9 +443,10 @@ export class FitnessPlanGeneratorService {
       exerciseType: this.mapCategoryToType(template.exercise.category),
       sortOrder,
       targetSets: isDeloadWeek ? Math.max(1, template.sets - 1) : template.sets,
-      targetRepsPerSet: template.repsMin && template.repsMax 
-        ? Math.round((template.repsMin + template.repsMax) / 2)
-        : undefined,
+      targetRepsPerSet:
+        template.repsMin && template.repsMax
+          ? Math.round((template.repsMin + template.repsMax) / 2)
+          : undefined,
       targetRepsRangeMin: template.repsMin,
       targetRepsRangeMax: template.repsMax,
       targetDurationSeconds: template.durationSeconds,
@@ -463,7 +470,7 @@ export class FitnessPlanGeneratorService {
     availableExercises: Exercise[],
     targetMuscleGroups: MuscleGroup[],
     constraints: any,
-    params: PlanGenerationParams
+    params: PlanGenerationParams,
   ): ExerciseTemplate[] {
     const selected: ExerciseTemplate[] = [];
     const usedExercises = new Set<string>();
@@ -472,21 +479,22 @@ export class FitnessPlanGeneratorService {
     // Prioritize compound movements for strength and muscle building
     const shouldPrioritizeCompound = [
       FitnessPlanType.STRENGTH_BUILDING,
-      FitnessPlanType.MUSCLE_GAIN
+      FitnessPlanType.MUSCLE_GAIN,
     ].includes(params.planType);
 
     for (const muscleGroup of targetMuscleGroups) {
       const setsForMuscleGroup = Math.min(
         constraints.maxSetsPerMuscleGroup,
-        constraints.maxSetsPerWorkout - totalSets
+        constraints.maxSetsPerWorkout - totalSets,
       );
 
       if (setsForMuscleGroup <= 0) break;
 
-      const muscleGroupExercises = availableExercises.filter(ex => 
-        (ex.primaryMuscleGroup === muscleGroup || 
-         ex.secondaryMuscleGroups?.includes(muscleGroup)) &&
-        !usedExercises.has(ex.id)
+      const muscleGroupExercises = availableExercises.filter(
+        (ex) =>
+          (ex.primaryMuscleGroup === muscleGroup ||
+            ex.secondaryMuscleGroups?.includes(muscleGroup)) &&
+          !usedExercises.has(ex.id),
       );
 
       if (shouldPrioritizeCompound) {
@@ -503,7 +511,11 @@ export class FitnessPlanGeneratorService {
       const exercisesPerMuscleGroup = Math.min(2, muscleGroupExercises.length);
       const setsPerExercise = Math.floor(setsForMuscleGroup / exercisesPerMuscleGroup);
 
-      for (let i = 0; i < exercisesPerMuscleGroup && totalSets < constraints.maxSetsPerWorkout; i++) {
+      for (
+        let i = 0;
+        i < exercisesPerMuscleGroup && totalSets < constraints.maxSetsPerWorkout;
+        i++
+      ) {
         const exercise = muscleGroupExercises[i];
         if (!exercise) continue;
 
@@ -520,10 +532,10 @@ export class FitnessPlanGeneratorService {
   private createExerciseTemplate(
     exercise: Exercise,
     sets: number,
-    params: PlanGenerationParams
+    params: PlanGenerationParams,
   ): ExerciseTemplate {
     const reps = exercise.getRecommendedReps(
-      this.mapExperienceToDifficulty(params.experienceLevel)
+      this.mapExperienceToDifficulty(params.experienceLevel),
     );
 
     return {
@@ -538,10 +550,7 @@ export class FitnessPlanGeneratorService {
     };
   }
 
-  private calculateExerciseIntensity(
-    exercise: Exercise,
-    params: PlanGenerationParams
-  ): number {
+  private calculateExerciseIntensity(exercise: Exercise, params: PlanGenerationParams): number {
     let baseIntensity = 6; // Default moderate intensity
 
     // Adjust based on plan type
@@ -558,10 +567,10 @@ export class FitnessPlanGeneratorService {
 
     // Adjust based on user preference
     const preferenceAdjustments = {
-      'low': -2,
-      'moderate': 0,
-      'high': +2,
-      'varied': 0,
+      low: -2,
+      moderate: 0,
+      high: +2,
+      varied: 0,
     };
 
     baseIntensity += preferenceAdjustments[params.workoutIntensityPreference] || 0;
@@ -583,7 +592,7 @@ export class FitnessPlanGeneratorService {
   private async applyProgressiveOverload(
     week: FitnessPlanWeek,
     weekNumber: number,
-    params: PlanGenerationParams
+    params: PlanGenerationParams,
   ): Promise<void> {
     const progressionRate = 1.05; // 5% increase per week
     const progressionFactor = Math.pow(progressionRate, weekNumber - 1);
@@ -592,7 +601,7 @@ export class FitnessPlanGeneratorService {
     // For now, we'll implement a basic progression by increasing target reps
     const workouts = await this.workoutRepository.find({
       where: { weekId: week.id },
-      relations: ['exercises']
+      relations: ['exercises'],
     });
 
     for (const workout of workouts) {
@@ -600,13 +609,13 @@ export class FitnessPlanGeneratorService {
         if (exercise.targetRepsRangeMax) {
           exercise.targetRepsRangeMax = Math.min(
             exercise.targetRepsRangeMax + 1,
-            exercise.targetRepsRangeMax * 1.2
+            exercise.targetRepsRangeMax * 1.2,
           );
         }
         if (exercise.targetRepsPerSet) {
           exercise.targetRepsPerSet = Math.min(
             exercise.targetRepsPerSet + 1,
-            exercise.targetRepsPerSet * 1.2
+            exercise.targetRepsPerSet * 1.2,
           );
         }
         await this.exerciseRepository.save(exercise);
@@ -616,13 +625,18 @@ export class FitnessPlanGeneratorService {
 
   private generateMuscleGroupSchedule(
     planType: FitnessPlanType,
-    workoutsPerWeek: number
+    workoutsPerWeek: number,
   ): MuscleGroupSchedule {
     const schedules: Record<number, MuscleGroupSchedule> = {
       3: {
         '1': [MuscleGroup.CHEST, MuscleGroup.SHOULDERS, MuscleGroup.TRICEPS],
         '2': [MuscleGroup.BACK, MuscleGroup.BICEPS],
-        '3': [MuscleGroup.QUADRICEPS, MuscleGroup.HAMSTRINGS, MuscleGroup.GLUTES, MuscleGroup.CALVES],
+        '3': [
+          MuscleGroup.QUADRICEPS,
+          MuscleGroup.HAMSTRINGS,
+          MuscleGroup.GLUTES,
+          MuscleGroup.CALVES,
+        ],
       },
       4: {
         '1': [MuscleGroup.CHEST, MuscleGroup.TRICEPS],
@@ -645,7 +659,7 @@ export class FitnessPlanGeneratorService {
   private getWorkoutMuscleGroups(
     schedule: MuscleGroupSchedule,
     workoutNumber: number,
-    workoutsPerWeek: number
+    workoutsPerWeek: number,
   ): MuscleGroup[] {
     return schedule[workoutNumber.toString()] || [MuscleGroup.FULL_BODY];
   }
@@ -683,7 +697,7 @@ export class FitnessPlanGeneratorService {
     if (muscleGroups.length === 1) {
       return `${this.capitalizeFirst(muscleGroups[0])} Workout`;
     } else if (muscleGroups.length <= 3) {
-      return muscleGroups.map(mg => this.capitalizeFirst(mg)).join(' & ') + ' Workout';
+      return muscleGroups.map((mg) => this.capitalizeFirst(mg)).join(' & ') + ' Workout';
     } else {
       return `Full Body Workout ${workoutNumber}`;
     }
@@ -718,27 +732,25 @@ export class FitnessPlanGeneratorService {
 
   private getFocusAreaMuscleGroups(focusAreas?: string[]): MuscleGroup[] {
     if (!focusAreas) return [];
-    
+
     const mapping: Record<string, MuscleGroup> = {
-      'chest': MuscleGroup.CHEST,
-      'back': MuscleGroup.BACK,
-      'shoulders': MuscleGroup.SHOULDERS,
-      'arms': MuscleGroup.BICEPS,
-      'biceps': MuscleGroup.BICEPS,
-      'triceps': MuscleGroup.TRICEPS,
-      'core': MuscleGroup.CORE,
-      'abs': MuscleGroup.CORE,
-      'legs': MuscleGroup.QUADRICEPS,
-      'quadriceps': MuscleGroup.QUADRICEPS,
-      'quads': MuscleGroup.QUADRICEPS,
-      'hamstrings': MuscleGroup.HAMSTRINGS,
-      'glutes': MuscleGroup.GLUTES,
-      'calves': MuscleGroup.CALVES,
+      chest: MuscleGroup.CHEST,
+      back: MuscleGroup.BACK,
+      shoulders: MuscleGroup.SHOULDERS,
+      arms: MuscleGroup.BICEPS,
+      biceps: MuscleGroup.BICEPS,
+      triceps: MuscleGroup.TRICEPS,
+      core: MuscleGroup.CORE,
+      abs: MuscleGroup.CORE,
+      legs: MuscleGroup.QUADRICEPS,
+      quadriceps: MuscleGroup.QUADRICEPS,
+      quads: MuscleGroup.QUADRICEPS,
+      hamstrings: MuscleGroup.HAMSTRINGS,
+      glutes: MuscleGroup.GLUTES,
+      calves: MuscleGroup.CALVES,
     };
 
-    return focusAreas
-      .map(area => mapping[area.toLowerCase()])
-      .filter(Boolean);
+    return focusAreas.map((area) => mapping[area.toLowerCase()]).filter(Boolean);
   }
 
   private capitalizeFirst(str: string): string {

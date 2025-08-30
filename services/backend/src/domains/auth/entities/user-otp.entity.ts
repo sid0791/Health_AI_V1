@@ -93,7 +93,9 @@ export class UserOTP {
   }
 
   isValid(): boolean {
-    return this.status === OTPStatus.PENDING && !this.isExpired() && this.attempts < this.maxAttempts;
+    return (
+      this.status === OTPStatus.PENDING && !this.isExpired() && this.attempts < this.maxAttempts
+    );
   }
 
   canAttempt(): boolean {
@@ -104,7 +106,7 @@ export class UserOTP {
     if (!this.isValid()) {
       return false;
     }
-    
+
     this.status = OTPStatus.VERIFIED;
     this.verifiedAt = new Date();
     return true;

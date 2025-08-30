@@ -1,13 +1,24 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, Like, ILike, In } from 'typeorm';
-import { Exercise, ExerciseCategory, DifficultyLevel, MuscleGroup, EquipmentType } from '../entities/exercise.entity';
-import { 
-  CreateExerciseDto, 
-  UpdateExerciseDto, 
+import {
+  Exercise,
+  ExerciseCategory,
+  DifficultyLevel,
+  MuscleGroup,
+  EquipmentType,
+} from '../entities/exercise.entity';
+import {
+  CreateExerciseDto,
+  UpdateExerciseDto,
   ExerciseFilterDto,
   ExerciseResponseDto,
-  ExerciseStatsDto 
+  ExerciseStatsDto,
 } from '../dto/exercise.dto';
 
 @Injectable()
@@ -20,10 +31,13 @@ export class ExerciseLibraryService {
   /**
    * Create a new exercise in the library
    */
-  async createExercise(createExerciseDto: CreateExerciseDto, createdBy?: string): Promise<Exercise> {
+  async createExercise(
+    createExerciseDto: CreateExerciseDto,
+    createdBy?: string,
+  ): Promise<Exercise> {
     // Check if exercise with same name already exists
     const existingExercise = await this.exerciseRepository.findOne({
-      where: { name: createExerciseDto.name }
+      where: { name: createExerciseDto.name },
     });
 
     if (existingExercise) {
@@ -33,10 +47,12 @@ export class ExerciseLibraryService {
     // Validate equipment consistency
     if (createExerciseDto.isBodyweight && createExerciseDto.equipment?.length) {
       const hasNonBodyweightEquipment = createExerciseDto.equipment.some(
-        eq => eq !== EquipmentType.NONE && eq !== EquipmentType.BODYWEIGHT
+        (eq) => eq !== EquipmentType.NONE && eq !== EquipmentType.BODYWEIGHT,
       );
       if (hasNonBodyweightEquipment) {
-        throw new BadRequestException('Bodyweight exercises should not require additional equipment');
+        throw new BadRequestException(
+          'Bodyweight exercises should not require additional equipment',
+        );
       }
     }
 
@@ -58,7 +74,7 @@ export class ExerciseLibraryService {
    */
   async getExerciseById(id: string): Promise<Exercise> {
     const exercise = await this.exerciseRepository.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!exercise) {
@@ -77,10 +93,12 @@ export class ExerciseLibraryService {
     // Check for name conflicts if name is being updated
     if (updateExerciseDto.name && updateExerciseDto.name !== exercise.name) {
       const existingExercise = await this.exerciseRepository.findOne({
-        where: { name: updateExerciseDto.name }
+        where: { name: updateExerciseDto.name },
       });
       if (existingExercise) {
-        throw new ConflictException(`Exercise with name '${updateExerciseDto.name}' already exists`);
+        throw new ConflictException(
+          `Exercise with name '${updateExerciseDto.name}' already exists`,
+        );
       }
     }
 
@@ -88,13 +106,15 @@ export class ExerciseLibraryService {
     if (updateExerciseDto.isBodyweight !== undefined || updateExerciseDto.equipment !== undefined) {
       const isBodyweight = updateExerciseDto.isBodyweight ?? exercise.isBodyweight;
       const equipment = updateExerciseDto.equipment ?? exercise.equipment;
-      
+
       if (isBodyweight && equipment?.length) {
         const hasNonBodyweightEquipment = equipment.some(
-          eq => eq !== EquipmentType.NONE && eq !== EquipmentType.BODYWEIGHT
+          (eq) => eq !== EquipmentType.NONE && eq !== EquipmentType.BODYWEIGHT,
         );
         if (hasNonBodyweightEquipment) {
-          throw new BadRequestException('Bodyweight exercises should not require additional equipment');
+          throw new BadRequestException(
+            'Bodyweight exercises should not require additional equipment',
+          );
         }
       }
     }
@@ -138,7 +158,7 @@ export class ExerciseLibraryService {
       limit = 20,
       offset = 0,
       sortBy = 'name',
-      sortOrder = 'asc'
+      sortOrder = 'asc',
     } = filterDto;
 
     const queryBuilder = this.exerciseRepository.createQueryBuilder('exercise');
@@ -153,7 +173,7 @@ export class ExerciseLibraryService {
     if (search) {
       queryBuilder.andWhere(
         '(exercise.name ILIKE :search OR exercise.description ILIKE :search OR exercise.tags @> ARRAY[:search])',
-        { search: `%${search}%` }
+        { search: `%${search}%` },
       );
     }
 
@@ -166,7 +186,9 @@ export class ExerciseLibraryService {
     }
 
     if (primaryMuscleGroup) {
-      queryBuilder.andWhere('exercise.primaryMuscleGroup = :primaryMuscleGroup', { primaryMuscleGroup });
+      queryBuilder.andWhere('exercise.primaryMuscleGroup = :primaryMuscleGroup', {
+        primaryMuscleGroup,
+      });
     }
 
     if (isCompound !== undefined) {
@@ -192,8 +214,8 @@ export class ExerciseLibraryService {
     // Filter by available equipment (exercises that can be done with user's equipment)
     if (availableEquipment && availableEquipment.length > 0) {
       queryBuilder.andWhere(
-        '(exercise.equipment IS NULL OR exercise.equipment = \'{}\' OR exercise.equipment <@ :availableEquipment)',
-        { availableEquipment }
+        "(exercise.equipment IS NULL OR exercise.equipment = '{}' OR exercise.equipment <@ :availableEquipment)",
+        { availableEquipment },
       );
     }
 
@@ -201,16 +223,22 @@ export class ExerciseLibraryService {
     if (healthConditions && healthConditions.length > 0) {
       queryBuilder.andWhere(
         '(exercise.healthConditionsToAvoid IS NULL OR NOT (exercise.healthConditionsToAvoid && :healthConditions))',
-        { healthConditions }
+        { healthConditions },
       );
     }
 
     // Apply sorting
     const allowedSortFields = [
-      'name', 'category', 'difficultyLevel', 'primaryMuscleGroup', 
-      'usageCount', 'averageRating', 'createdAt', 'updatedAt'
+      'name',
+      'category',
+      'difficultyLevel',
+      'primaryMuscleGroup',
+      'usageCount',
+      'averageRating',
+      'createdAt',
+      'updatedAt',
     ];
-    
+
     if (allowedSortFields.includes(sortBy)) {
       queryBuilder.orderBy(`exercise.${sortBy}`, sortOrder.toUpperCase() as 'ASC' | 'DESC');
     } else {
@@ -226,7 +254,7 @@ export class ExerciseLibraryService {
       exercises,
       total,
       page: Math.floor(offset / limit) + 1,
-      limit
+      limit,
     };
   }
 
@@ -240,7 +268,7 @@ export class ExerciseLibraryService {
         { description: ILike(`%${query}%`), isActive: true },
       ],
       take: limit,
-      order: { usageCount: 'DESC' }
+      order: { usageCount: 'DESC' },
     });
   }
 
@@ -248,24 +276,24 @@ export class ExerciseLibraryService {
    * Get exercises by muscle group
    */
   async getExercisesByMuscleGroup(
-    muscleGroup: MuscleGroup, 
+    muscleGroup: MuscleGroup,
     availableEquipment?: EquipmentType[],
-    difficultyLevel?: DifficultyLevel
+    difficultyLevel?: DifficultyLevel,
   ): Promise<Exercise[]> {
     const queryBuilder = this.exerciseRepository.createQueryBuilder('exercise');
-    
+
     queryBuilder.where(
       '(exercise.primaryMuscleGroup = :muscleGroup OR :muscleGroup = ANY(exercise.secondaryMuscleGroups))',
-      { muscleGroup }
+      { muscleGroup },
     );
-    
+
     queryBuilder.andWhere('exercise.isActive = true');
     queryBuilder.andWhere('exercise.isApproved = true');
 
     if (availableEquipment && availableEquipment.length > 0) {
       queryBuilder.andWhere(
-        '(exercise.equipment IS NULL OR exercise.equipment = \'{}\' OR exercise.equipment <@ :availableEquipment)',
-        { availableEquipment }
+        "(exercise.equipment IS NULL OR exercise.equipment = '{}' OR exercise.equipment <@ :availableEquipment)",
+        { availableEquipment },
       );
     }
 
@@ -274,7 +302,7 @@ export class ExerciseLibraryService {
     }
 
     queryBuilder.orderBy('exercise.usageCount', 'DESC');
-    
+
     return await queryBuilder.getMany();
   }
 
@@ -284,25 +312,25 @@ export class ExerciseLibraryService {
   async getExercisesByCategory(
     category: ExerciseCategory,
     availableEquipment?: EquipmentType[],
-    limit = 20
+    limit = 20,
   ): Promise<Exercise[]> {
     const queryBuilder = this.exerciseRepository.createQueryBuilder('exercise');
-    
+
     queryBuilder.where('exercise.category = :category', { category });
     queryBuilder.andWhere('exercise.isActive = true');
     queryBuilder.andWhere('exercise.isApproved = true');
 
     if (availableEquipment && availableEquipment.length > 0) {
       queryBuilder.andWhere(
-        '(exercise.equipment IS NULL OR exercise.equipment = \'{}\' OR exercise.equipment <@ :availableEquipment)',
-        { availableEquipment }
+        "(exercise.equipment IS NULL OR exercise.equipment = '{}' OR exercise.equipment <@ :availableEquipment)",
+        { availableEquipment },
       );
     }
 
     queryBuilder.orderBy('exercise.averageRating', 'DESC');
     queryBuilder.addOrderBy('exercise.usageCount', 'DESC');
     queryBuilder.take(limit);
-    
+
     return await queryBuilder.getMany();
   }
 
@@ -318,10 +346,10 @@ export class ExerciseLibraryService {
       preferredMuscleGroups?: MuscleGroup[];
       dislikedExercises?: string[];
     },
-    limit = 50
+    limit = 50,
   ): Promise<Exercise[]> {
     const queryBuilder = this.exerciseRepository.createQueryBuilder('exercise');
-    
+
     queryBuilder.where('exercise.isActive = true');
     queryBuilder.andWhere('exercise.isApproved = true');
 
@@ -332,19 +360,19 @@ export class ExerciseLibraryService {
       [DifficultyLevel.ADVANCED]: 3,
       [DifficultyLevel.EXPERT]: 4,
     };
-    
+
     const maxLevel = levelOrder[userProfile.experienceLevel];
     const allowedLevels = Object.entries(levelOrder)
       .filter(([_, value]) => value <= maxLevel)
       .map(([key, _]) => key);
-    
+
     queryBuilder.andWhere('exercise.difficultyLevel IN (:...allowedLevels)', { allowedLevels });
 
     // Filter by available equipment
     if (userProfile.availableEquipment.length > 0) {
       queryBuilder.andWhere(
-        '(exercise.equipment IS NULL OR exercise.equipment = \'{}\' OR exercise.equipment <@ :availableEquipment)',
-        { availableEquipment: userProfile.availableEquipment }
+        "(exercise.equipment IS NULL OR exercise.equipment = '{}' OR exercise.equipment <@ :availableEquipment)",
+        { availableEquipment: userProfile.availableEquipment },
       );
     }
 
@@ -352,14 +380,14 @@ export class ExerciseLibraryService {
     if (userProfile.healthConditions && userProfile.healthConditions.length > 0) {
       queryBuilder.andWhere(
         '(exercise.healthConditionsToAvoid IS NULL OR NOT (exercise.healthConditionsToAvoid && :healthConditions))',
-        { healthConditions: userProfile.healthConditions }
+        { healthConditions: userProfile.healthConditions },
       );
     }
 
     // Filter out disliked exercises
     if (userProfile.dislikedExercises && userProfile.dislikedExercises.length > 0) {
-      queryBuilder.andWhere('exercise.name NOT IN (:...dislikedExercises)', { 
-        dislikedExercises: userProfile.dislikedExercises 
+      queryBuilder.andWhere('exercise.name NOT IN (:...dislikedExercises)', {
+        dislikedExercises: userProfile.dislikedExercises,
       });
     }
 
@@ -367,7 +395,7 @@ export class ExerciseLibraryService {
     if (userProfile.preferredMuscleGroups && userProfile.preferredMuscleGroups.length > 0) {
       queryBuilder.addSelect(
         `CASE WHEN exercise.primaryMuscleGroup IN (:...preferredMuscleGroups) THEN 1 ELSE 0 END`,
-        'preference_score'
+        'preference_score',
       );
       queryBuilder.setParameter('preferredMuscleGroups', userProfile.preferredMuscleGroups);
       queryBuilder.orderBy('preference_score', 'DESC');
@@ -376,7 +404,7 @@ export class ExerciseLibraryService {
     queryBuilder.addOrderBy('exercise.averageRating', 'DESC');
     queryBuilder.addOrderBy('exercise.usageCount', 'DESC');
     queryBuilder.take(limit);
-    
+
     return await queryBuilder.getMany();
   }
 
@@ -423,7 +451,7 @@ export class ExerciseLibraryService {
 
     const exercise = await this.getExerciseById(exerciseId);
     exercise.updateRating(rating);
-    
+
     return await this.exerciseRepository.save(exercise);
   }
 
@@ -433,7 +461,7 @@ export class ExerciseLibraryService {
   async approveExercise(exerciseId: string, approvedBy: string): Promise<Exercise> {
     const exercise = await this.getExerciseById(exerciseId);
     exercise.approve(approvedBy);
-    
+
     return await this.exerciseRepository.save(exercise);
   }
 
@@ -449,7 +477,7 @@ export class ExerciseLibraryService {
       approved,
       active,
       mostUsed,
-      highestRated
+      highestRated,
     ] = await Promise.all([
       this.exerciseRepository.count({ where: { isActive: true } }),
       this.getCountByCategory(),
@@ -488,9 +516,9 @@ export class ExerciseLibraryService {
 
   private async getExercisesByIds(ids: string[]): Promise<Exercise[]> {
     if (ids.length === 0) return [];
-    
+
     return await this.exerciseRepository.find({
-      where: { id: In(ids), isActive: true }
+      where: { id: In(ids), isActive: true },
     });
   }
 
@@ -504,10 +532,10 @@ export class ExerciseLibraryService {
 
   private async getHighestRatedExercises(limit: number): Promise<Exercise[]> {
     return await this.exerciseRepository.find({
-      where: { 
-        isActive: true, 
+      where: {
+        isActive: true,
         isApproved: true,
-        totalRatings: { $gte: 5 } as any // Minimum ratings for credibility
+        totalRatings: { $gte: 5 } as any, // Minimum ratings for credibility
       },
       order: { averageRating: 'DESC', totalRatings: 'DESC' },
       take: limit,
@@ -524,11 +552,11 @@ export class ExerciseLibraryService {
       .getRawMany();
 
     const counts = {} as Record<ExerciseCategory, number>;
-    Object.values(ExerciseCategory).forEach(category => {
+    Object.values(ExerciseCategory).forEach((category) => {
       counts[category] = 0;
     });
 
-    results.forEach(result => {
+    results.forEach((result) => {
       counts[result.category as ExerciseCategory] = parseInt(result.count);
     });
 
@@ -545,11 +573,11 @@ export class ExerciseLibraryService {
       .getRawMany();
 
     const counts = {} as Record<DifficultyLevel, number>;
-    Object.values(DifficultyLevel).forEach(level => {
+    Object.values(DifficultyLevel).forEach((level) => {
       counts[level] = 0;
     });
 
-    results.forEach(result => {
+    results.forEach((result) => {
       counts[result.difficultyLevel as DifficultyLevel] = parseInt(result.count);
     });
 
@@ -566,11 +594,11 @@ export class ExerciseLibraryService {
       .getRawMany();
 
     const counts = {} as Record<MuscleGroup, number>;
-    Object.values(MuscleGroup).forEach(group => {
+    Object.values(MuscleGroup).forEach((group) => {
       counts[group] = 0;
     });
 
-    results.forEach(result => {
+    results.forEach((result) => {
       counts[result.primaryMuscleGroup as MuscleGroup] = parseInt(result.count);
     });
 

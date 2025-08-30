@@ -1,6 +1,21 @@
-import { IsString, IsEnum, IsOptional, IsArray, IsNumber, IsBoolean, IsDate, Min, Max, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsArray,
+  IsNumber,
+  IsBoolean,
+  IsDate,
+  Min,
+  Max,
+  IsUUID,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { FitnessPlanType, FitnessPlanStatus, ExperienceLevel } from '../entities/fitness-plan.entity';
+import {
+  FitnessPlanType,
+  FitnessPlanStatus,
+  ExperienceLevel,
+} from '../entities/fitness-plan.entity';
 import { EquipmentType } from '../entities/exercise.entity';
 
 export class CreateFitnessPlanDto {

@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RecipeService } from './recipe.service';
-import { RECIPE_SEED_DATA, RECIPE_CATEGORIES, getRecipesByCategory } from '../data/recipe-seed-data';
+import {
+  RECIPE_SEED_DATA,
+  RECIPE_CATEGORIES,
+  getRecipesByCategory,
+} from '../data/recipe-seed-data';
 
 @Injectable()
 export class RecipeSeedingService {
@@ -16,9 +20,9 @@ export class RecipeSeedingService {
 
     try {
       const result = await this.recipeService.bulkCreateRecipes(RECIPE_SEED_DATA);
-      
+
       this.logger.log(`Successfully seeded ${result.length} recipes`);
-      
+
       // Log seeding summary
       this.logSeedingSummary(result);
 
@@ -27,7 +31,6 @@ export class RecipeSeedingService {
         failed: RECIPE_SEED_DATA.length - result.length,
         warnings: [],
       };
-
     } catch (error) {
       this.logger.error(`Recipe seeding failed: ${error.message}`);
       throw error;
@@ -39,9 +42,9 @@ export class RecipeSeedingService {
    */
   async seedRecipesByCategory(category: string): Promise<any[]> {
     this.logger.log(`Seeding recipes for category: ${category}`);
-    
+
     const categoryRecipes = getRecipesByCategory(category);
-    
+
     if (categoryRecipes.length === 0) {
       this.logger.warn(`No recipes found for category: ${category}`);
       return [];
@@ -49,7 +52,7 @@ export class RecipeSeedingService {
 
     const result = await this.recipeService.bulkCreateRecipes(categoryRecipes);
     this.logger.log(`Seeded ${result.length} recipes for category: ${category}`);
-    
+
     return result;
   }
 
@@ -78,24 +81,24 @@ export class RecipeSeedingService {
     };
 
     // Count by categories
-    Object.values(RECIPE_CATEGORIES).forEach(category => {
+    Object.values(RECIPE_CATEGORIES).forEach((category) => {
       stats.categoryCounts[category] = getRecipesByCategory(category).length;
     });
 
     // Count by cuisine
-    RECIPE_SEED_DATA.forEach(recipe => {
+    RECIPE_SEED_DATA.forEach((recipe) => {
       stats.cuisineCounts[recipe.cuisine] = (stats.cuisineCounts[recipe.cuisine] || 0) + 1;
     });
 
     // Count by diet types
-    RECIPE_SEED_DATA.forEach(recipe => {
-      recipe.dietType.forEach(dietType => {
+    RECIPE_SEED_DATA.forEach((recipe) => {
+      recipe.dietType.forEach((dietType) => {
         stats.dietTypeCounts[dietType] = (stats.dietTypeCounts[dietType] || 0) + 1;
       });
     });
 
     // Count health-friendly recipes
-    RECIPE_SEED_DATA.forEach(recipe => {
+    RECIPE_SEED_DATA.forEach((recipe) => {
       if (recipe.isDiabeticFriendly) stats.healthFriendlyCounts.diabeticFriendly++;
       if (recipe.isPcosFriendly) stats.healthFriendlyCounts.pcosFriendly++;
       if (recipe.isHighProtein) stats.healthFriendlyCounts.highProtein++;
@@ -177,7 +180,7 @@ export class RecipeSeedingService {
       },
     };
 
-    recipes.forEach(recipe => {
+    recipes.forEach((recipe) => {
       // Count by cuisine
       summary.byCuisine[recipe.cuisine] = (summary.byCuisine[recipe.cuisine] || 0) + 1;
 
@@ -202,10 +205,10 @@ export class RecipeSeedingService {
   }> {
     // This would typically query the database, but for demo we'll use the seed data
     return {
-      diabeticFriendly: RECIPE_SEED_DATA.filter(r => r.isDiabeticFriendly).slice(0, 3),
-      pcosFriendly: RECIPE_SEED_DATA.filter(r => r.isPcosFriendly).slice(0, 3),
-      weightLoss: RECIPE_SEED_DATA.filter(r => r.isLowCalorie).slice(0, 3),
-      highProtein: RECIPE_SEED_DATA.filter(r => r.isHighProtein).slice(0, 3),
+      diabeticFriendly: RECIPE_SEED_DATA.filter((r) => r.isDiabeticFriendly).slice(0, 3),
+      pcosFriendly: RECIPE_SEED_DATA.filter((r) => r.isPcosFriendly).slice(0, 3),
+      weightLoss: RECIPE_SEED_DATA.filter((r) => r.isLowCalorie).slice(0, 3),
+      highProtein: RECIPE_SEED_DATA.filter((r) => r.isHighProtein).slice(0, 3),
     };
   }
 }

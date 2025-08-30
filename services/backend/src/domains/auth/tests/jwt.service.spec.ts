@@ -157,9 +157,9 @@ describe('JWTService', () => {
 
       mockSessionRepository.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.refreshTokens(refreshToken)
-      ).rejects.toThrow('Invalid or expired refresh token');
+      await expect(service.refreshTokens(refreshToken)).rejects.toThrow(
+        'Invalid or expired refresh token',
+      );
     });
   });
 

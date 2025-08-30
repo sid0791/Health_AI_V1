@@ -43,7 +43,7 @@ export class AuditService {
       });
 
       await this.auditLogRepository.save(auditLog);
-      
+
       this.logger.log(`Auth event logged: ${eventType} - ${description}`, {
         userId: context.userId,
         success,
@@ -78,7 +78,7 @@ export class AuditService {
       });
 
       await this.auditLogRepository.save(auditLog);
-      
+
       this.logger.warn(`Security event logged: ${eventType} - ${description}`, {
         severity,
         context,
@@ -178,12 +178,9 @@ export class AuditService {
   /**
    * Get security alerts
    */
-  async getSecurityAlerts(
-    hours: number = 24,
-    severity?: AuditSeverity,
-  ): Promise<AuditLog[]> {
+  async getSecurityAlerts(hours: number = 24, severity?: AuditSeverity): Promise<AuditLog[]> {
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-    
+
     const queryBuilder = this.auditLogRepository
       .createQueryBuilder('audit')
       .where('audit.createdAt >= :since', { since })
@@ -200,10 +197,7 @@ export class AuditService {
   /**
    * Get audit statistics
    */
-  async getAuditStatistics(
-    startDate: Date,
-    endDate: Date,
-  ): Promise<Record<string, any>> {
+  async getAuditStatistics(startDate: Date, endDate: Date): Promise<Record<string, any>> {
     const totalEvents = await this.auditLogRepository.count({
       where: {
         createdAt: {
@@ -259,7 +253,7 @@ export class AuditService {
    */
   async cleanupOldLogs(daysToKeep: number = 90): Promise<number> {
     const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
-    
+
     const result = await this.auditLogRepository
       .createQueryBuilder()
       .delete()
@@ -267,7 +261,7 @@ export class AuditService {
       .execute();
 
     this.logger.log(`Cleaned up ${result.affected} old audit logs older than ${daysToKeep} days`);
-    
+
     return result.affected || 0;
   }
 }

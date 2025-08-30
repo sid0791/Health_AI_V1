@@ -1,4 +1,13 @@
-import { IsOptional, IsArray, IsString, IsNumber, IsEnum, IsBoolean, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsArray,
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsBoolean,
+  Min,
+  Max,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { DietType, MealType, DifficultyLevel } from '../entities/recipe.entity';
 
@@ -144,7 +153,7 @@ export class RecipeFilterDto {
   // Helper method to convert to repository filter options
   toRepositoryFilter() {
     const healthConditions: any = {};
-    
+
     if (this.isDiabeticFriendly !== undefined) {
       healthConditions.diabetes = this.isDiabeticFriendly;
     }
@@ -166,7 +175,8 @@ export class RecipeFilterDto {
       maxPrepTime: this.maxPrepTime,
       maxCookTime: this.maxCookTime,
       maxCalories: this.maxCalories,
-      isHealthConditionFriendly: Object.keys(healthConditions).length > 0 ? healthConditions : undefined,
+      isHealthConditionFriendly:
+        Object.keys(healthConditions).length > 0 ? healthConditions : undefined,
       allergens: this.allergens,
       excludeIngredients: this.excludeIngredients,
       tags: this.tags,

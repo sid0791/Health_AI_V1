@@ -2,7 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ExerciseLibraryService } from '../exercise-library.service';
-import { Exercise, ExerciseCategory, DifficultyLevel, MuscleGroup, EquipmentType } from '../../entities/exercise.entity';
+import {
+  Exercise,
+  ExerciseCategory,
+  DifficultyLevel,
+  MuscleGroup,
+  EquipmentType,
+} from '../../entities/exercise.entity';
 import { CreateExerciseDto, ExerciseFilterDto } from '../../dto/exercise.dto';
 import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 
@@ -90,7 +96,7 @@ describe('ExerciseLibraryService', () => {
       const result = await service.createExercise(createExerciseDto, 'test-user');
 
       expect(repository.findOne).toHaveBeenCalledWith({
-        where: { name: createExerciseDto.name }
+        where: { name: createExerciseDto.name },
       });
       expect(repository.create).toHaveBeenCalled();
       expect(repository.save).toHaveBeenCalled();
@@ -100,8 +106,9 @@ describe('ExerciseLibraryService', () => {
     it('should throw ConflictException if exercise name already exists', async () => {
       repository.findOne.mockResolvedValue(mockExercise);
 
-      await expect(service.createExercise(createExerciseDto, 'test-user'))
-        .rejects.toThrow(ConflictException);
+      await expect(service.createExercise(createExerciseDto, 'test-user')).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should throw BadRequestException for invalid bodyweight equipment combination', async () => {
@@ -113,8 +120,9 @@ describe('ExerciseLibraryService', () => {
 
       repository.findOne.mockResolvedValue(null);
 
-      await expect(service.createExercise(invalidDto, 'test-user'))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.createExercise(invalidDto, 'test-user')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -125,7 +133,7 @@ describe('ExerciseLibraryService', () => {
       const result = await service.getExerciseById('test-id');
 
       expect(repository.findOne).toHaveBeenCalledWith({
-        where: { id: 'test-id' }
+        where: { id: 'test-id' },
       });
       expect(result).toEqual(mockExercise);
     });
@@ -133,8 +141,7 @@ describe('ExerciseLibraryService', () => {
     it('should throw NotFoundException when exercise not found', async () => {
       repository.findOne.mockResolvedValue(null);
 
-      await expect(service.getExerciseById('non-existent-id'))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.getExerciseById('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -194,7 +201,7 @@ describe('ExerciseLibraryService', () => {
       expect(result).toEqual([mockExercise]);
       expect(queryBuilder.andWhere).toHaveBeenCalledWith(
         expect.stringContaining('difficultyLevel IN'),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -205,11 +212,7 @@ describe('ExerciseLibraryService', () => {
 
       await service.recordExerciseUsage('test-id');
 
-      expect(repository.increment).toHaveBeenCalledWith(
-        { id: 'test-id' },
-        'usageCount',
-        1
-      );
+      expect(repository.increment).toHaveBeenCalledWith({ id: 'test-id' }, 'usageCount', 1);
     });
   });
 
@@ -219,7 +222,7 @@ describe('ExerciseLibraryService', () => {
         ...mockExercise,
         updateRating: jest.fn(),
       };
-      
+
       repository.findOne.mockResolvedValue(exerciseWithRating);
       repository.save.mockResolvedValue(exerciseWithRating);
 
@@ -231,11 +234,9 @@ describe('ExerciseLibraryService', () => {
     });
 
     it('should throw BadRequestException for invalid rating', async () => {
-      await expect(service.rateExercise('test-id', 0))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.rateExercise('test-id', 0)).rejects.toThrow(BadRequestException);
 
-      await expect(service.rateExercise('test-id', 6))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.rateExercise('test-id', 6)).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -245,7 +246,7 @@ describe('ExerciseLibraryService', () => {
         ...mockExercise,
         approve: jest.fn(),
       };
-      
+
       repository.findOne.mockResolvedValue(exerciseToApprove);
       repository.save.mockResolvedValue(exerciseToApprove);
 
@@ -269,7 +270,7 @@ describe('ExerciseLibraryService', () => {
           { description: expect.any(Object), isActive: true },
         ],
         take: 5,
-        order: { usageCount: 'DESC' }
+        order: { usageCount: 'DESC' },
       });
       expect(result).toEqual([mockExercise]);
     });

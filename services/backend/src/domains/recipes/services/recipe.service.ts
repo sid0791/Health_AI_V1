@@ -37,13 +37,15 @@ export class RecipeService {
 
   async createRecipe(createRecipeDto: CreateRecipeDto): Promise<RecipeCreationResult> {
     this.logger.debug(`Creating recipe: ${createRecipeDto.name}`);
-    
+
     const warnings: string[] = [];
 
     // Validate and moderate content
     const moderationResult = await this.contentModerationService.validateRecipe(createRecipeDto);
     if (!moderationResult.isValid) {
-      throw new BadRequestException(`Recipe validation failed: ${moderationResult.violations.join(', ')}`);
+      throw new BadRequestException(
+        `Recipe validation failed: ${moderationResult.violations.join(', ')}`,
+      );
     }
     warnings.push(...moderationResult.warnings);
 
@@ -149,7 +151,7 @@ export class RecipeService {
 
     // Build filter options based on personalization
     const filters = await this.personalizationService.buildPersonalizedFilter(options);
-    
+
     return this.findWithFilters(filters, limit, offset);
   }
 
@@ -169,7 +171,7 @@ export class RecipeService {
     this.logger.debug(`Updating recipe: ${id}`);
 
     const existingRecipe = await this.findById(id);
-    
+
     // Validate updates if content is changing
     if (this.hasContentChanges(updateRecipeDto)) {
       const moderationResult = await this.contentModerationService.validateRecipeUpdate(
@@ -177,12 +179,17 @@ export class RecipeService {
         updateRecipeDto,
       );
       if (!moderationResult.isValid) {
-        throw new BadRequestException(`Recipe update validation failed: ${moderationResult.violations.join(', ')}`);
+        throw new BadRequestException(
+          `Recipe update validation failed: ${moderationResult.violations.join(', ')}`,
+        );
       }
     }
 
     // Update total time if time components change
-    if (updateRecipeDto.prepTimeMinutes !== undefined || updateRecipeDto.cookTimeMinutes !== undefined) {
+    if (
+      updateRecipeDto.prepTimeMinutes !== undefined ||
+      updateRecipeDto.cookTimeMinutes !== undefined
+    ) {
       const prepTime = updateRecipeDto.prepTimeMinutes ?? existingRecipe.prepTimeMinutes;
       const cookTime = updateRecipeDto.cookTimeMinutes ?? existingRecipe.cookTimeMinutes;
       updateRecipeDto.totalTimeMinutes = prepTime + cookTime;
@@ -208,10 +215,10 @@ export class RecipeService {
 
   async deleteRecipe(id: string): Promise<void> {
     this.logger.debug(`Deleting recipe: ${id}`);
-    
+
     const recipe = await this.findById(id);
     const deleted = await this.recipeRepository.delete(id);
-    
+
     if (!deleted) {
       throw new NotFoundException(`Recipe with ID ${id} not found`);
     }
@@ -270,7 +277,9 @@ export class RecipeService {
           };
           validatedRecipes.push(recipeData);
         } else {
-          warnings.push(`Recipe "${recipeDto.name}" failed validation: ${moderationResult.violations.join(', ')}`);
+          warnings.push(
+            `Recipe "${recipeDto.name}" failed validation: ${moderationResult.violations.join(', ')}`,
+          );
         }
       } catch (error) {
         warnings.push(`Recipe "${recipeDto.name}" validation error: ${error.message}`);
@@ -282,7 +291,7 @@ export class RecipeService {
     }
 
     const createdRecipes = await this.recipeRepository.bulkCreate(validatedRecipes);
-    
+
     // Schedule nutrition calculation for bulk recipes
     this.scheduleNutritionCalculation(createdRecipes);
 
@@ -296,12 +305,13 @@ export class RecipeService {
     };
 
     const { recipes } = await this.recipeRepository.findWithFilters(filters, limit, 0);
-    
+
     // Filter by name or description containing query
-    return recipes.filter(recipe => 
-      recipe.name.toLowerCase().includes(query.toLowerCase()) ||
-      recipe.description?.toLowerCase().includes(query.toLowerCase()) ||
-      recipe.tags?.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
+    return recipes.filter(
+      (recipe) =>
+        recipe.name.toLowerCase().includes(query.toLowerCase()) ||
+        recipe.description?.toLowerCase().includes(query.toLowerCase()) ||
+        recipe.tags?.some((tag) => tag.toLowerCase().includes(query.toLowerCase())),
     );
   }
 
@@ -320,7 +330,7 @@ export class RecipeService {
     return !!(
       updateDto.ingredients ||
       updateDto.servingsCount ||
-      updateDto.steps?.some(step => step.cookingMethod)
+      updateDto.steps?.some((step) => step.cookingMethod)
     );
   }
 

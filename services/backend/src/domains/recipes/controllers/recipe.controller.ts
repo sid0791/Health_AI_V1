@@ -42,9 +42,9 @@ export class RecipeController {
   @ApiResponse({ status: 400, description: 'Invalid recipe data' })
   async createRecipe(@Body(ValidationPipe) createRecipeDto: CreateRecipeDto) {
     this.logger.debug(`Creating recipe: ${createRecipeDto.name}`);
-    
+
     const result = await this.recipeService.createRecipe(createRecipeDto);
-    
+
     return {
       message: 'Recipe created successfully',
       recipe: result.recipe,
@@ -56,11 +56,19 @@ export class RecipeController {
   @Get()
   @ApiOperation({ summary: 'Get recipes with filters' })
   @ApiResponse({ status: 200, description: 'Recipes retrieved successfully' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Number of recipes to return (default: 20)' })
-  @ApiQuery({ name: 'offset', required: false, description: 'Number of recipes to skip (default: 0)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of recipes to return (default: 20)',
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    description: 'Number of recipes to skip (default: 0)',
+  })
   async getRecipes(@Query(ValidationPipe) filterDto: RecipeFilterDto) {
     this.logger.debug(`Getting recipes with filters:`, filterDto);
-    
+
     const filters = filterDto.toRepositoryFilter();
     const { recipes, total } = await this.recipeService.findWithFilters(
       filters,
@@ -102,18 +110,38 @@ export class RecipeController {
   ) {
     const options: PersonalizedRecipeOptions = {
       userId,
-      dietaryRestrictions: Array.isArray(dietaryRestrictions) ? dietaryRestrictions : dietaryRestrictions ? [dietaryRestrictions] : undefined,
+      dietaryRestrictions: Array.isArray(dietaryRestrictions)
+        ? dietaryRestrictions
+        : dietaryRestrictions
+          ? [dietaryRestrictions]
+          : undefined,
       allergies: Array.isArray(allergies) ? allergies : allergies ? [allergies] : undefined,
-      healthConditions: Array.isArray(healthConditions) ? healthConditions : healthConditions ? [healthConditions] : undefined,
-      preferredCuisines: Array.isArray(preferredCuisines) ? preferredCuisines : preferredCuisines ? [preferredCuisines] : undefined,
-      excludedIngredients: Array.isArray(excludedIngredients) ? excludedIngredients : excludedIngredients ? [excludedIngredients] : undefined,
+      healthConditions: Array.isArray(healthConditions)
+        ? healthConditions
+        : healthConditions
+          ? [healthConditions]
+          : undefined,
+      preferredCuisines: Array.isArray(preferredCuisines)
+        ? preferredCuisines
+        : preferredCuisines
+          ? [preferredCuisines]
+          : undefined,
+      excludedIngredients: Array.isArray(excludedIngredients)
+        ? excludedIngredients
+        : excludedIngredients
+          ? [excludedIngredients]
+          : undefined,
       maxCalories: maxCalories ? Number(maxCalories) : undefined,
       maxPrepTime: maxPrepTime ? Number(maxPrepTime) : undefined,
     };
 
     this.logger.debug(`Getting personalized recipes for user: ${userId || 'anonymous'}`);
-    
-    const { recipes, total } = await this.recipeService.findPersonalizedRecipes(options, limit, offset);
+
+    const { recipes, total } = await this.recipeService.findPersonalizedRecipes(
+      options,
+      limit,
+      offset,
+    );
 
     return {
       recipes,
@@ -128,7 +156,11 @@ export class RecipeController {
   @Get('popular')
   @ApiOperation({ summary: 'Get popular recipes' })
   @ApiResponse({ status: 200, description: 'Popular recipes retrieved successfully' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Number of recipes to return (default: 10)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of recipes to return (default: 10)',
+  })
   async getPopularRecipes(@Query('limit') limit: number = 10) {
     const recipes = await this.recipeService.findPopular(Number(limit));
     return { recipes };
@@ -137,7 +169,11 @@ export class RecipeController {
   @Get('recent')
   @ApiOperation({ summary: 'Get recently added recipes' })
   @ApiResponse({ status: 200, description: 'Recent recipes retrieved successfully' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Number of recipes to return (default: 10)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of recipes to return (default: 10)',
+  })
   async getRecentRecipes(@Query('limit') limit: number = 10) {
     const recipes = await this.recipeService.findRecentlyAdded(Number(limit));
     return { recipes };
@@ -147,11 +183,12 @@ export class RecipeController {
   @ApiOperation({ summary: 'Get recipes by cuisine' })
   @ApiResponse({ status: 200, description: 'Cuisine recipes retrieved successfully' })
   @ApiParam({ name: 'cuisine', description: 'Cuisine name' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Number of recipes to return (default: 10)' })
-  async getRecipesByCuisine(
-    @Param('cuisine') cuisine: string,
-    @Query('limit') limit: number = 10,
-  ) {
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of recipes to return (default: 10)',
+  })
+  async getRecipesByCuisine(@Param('cuisine') cuisine: string, @Query('limit') limit: number = 10) {
     const recipes = await this.recipeService.findByCuisine(cuisine, Number(limit));
     return { recipes, cuisine };
   }
@@ -160,11 +197,12 @@ export class RecipeController {
   @ApiOperation({ summary: 'Search recipes by query' })
   @ApiResponse({ status: 200, description: 'Search results retrieved successfully' })
   @ApiQuery({ name: 'q', description: 'Search query' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Number of recipes to return (default: 20)' })
-  async searchRecipes(
-    @Query('q') query: string,
-    @Query('limit') limit: number = 20,
-  ) {
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of recipes to return (default: 20)',
+  })
+  async searchRecipes(@Query('q') query: string, @Query('limit') limit: number = 20) {
     if (!query || query.trim().length < 2) {
       throw new BadRequestException('Search query must be at least 2 characters long');
     }
@@ -180,7 +218,7 @@ export class RecipeController {
   async getCravingKillerRecipes(@Param('craving') craving: string) {
     const filters = await this.personalizationService.getCravingKillerRecommendations(craving);
     const { recipes } = await this.recipeService.findWithFilters(filters, 15, 0);
-    
+
     return {
       recipes,
       craving,
@@ -191,11 +229,14 @@ export class RecipeController {
   @Get('guilty-pleasures/:pleasure')
   @ApiOperation({ summary: 'Get healthy alternatives to guilty pleasures' })
   @ApiResponse({ status: 200, description: 'Healthy alternatives retrieved successfully' })
-  @ApiParam({ name: 'pleasure', description: 'Type of guilty pleasure (pizza, burger, pasta, etc.)' })
+  @ApiParam({
+    name: 'pleasure',
+    description: 'Type of guilty pleasure (pizza, burger, pasta, etc.)',
+  })
   async getGuiltyPleasureAlternatives(@Param('pleasure') pleasure: string) {
     const filters = await this.personalizationService.getGuiltyPleasureAlternatives(pleasure);
     const { recipes } = await this.recipeService.findWithFilters(filters, 15, 0);
-    
+
     return {
       recipes,
       originalPleasure: pleasure,
@@ -210,10 +251,10 @@ export class RecipeController {
   @ApiParam({ name: 'id', description: 'Recipe ID' })
   async getRecipeById(@Param('id', ParseUUIDPipe) id: string) {
     const recipe = await this.recipeService.findById(id);
-    
+
     // Increment popularity when recipe is viewed
     await this.recipeService.incrementPopularity(id);
-    
+
     return { recipe };
   }
 
@@ -224,11 +265,11 @@ export class RecipeController {
   @ApiParam({ name: 'id', description: 'Recipe ID' })
   async getRecipeNutrition(@Param('id', ParseUUIDPipe) id: string) {
     const nutrition = await this.nutritionService.getNutritionSummary(id);
-    
+
     if (!nutrition) {
       throw new BadRequestException('Nutrition data not available for this recipe');
     }
-    
+
     return { nutrition };
   }
 
@@ -242,9 +283,9 @@ export class RecipeController {
     @Body(ValidationPipe) updateRecipeDto: UpdateRecipeDto,
   ) {
     this.logger.debug(`Updating recipe: ${id}`);
-    
+
     const recipe = await this.recipeService.updateRecipe(id, updateRecipeDto);
-    
+
     return {
       message: 'Recipe updated successfully',
       recipe,
@@ -259,9 +300,9 @@ export class RecipeController {
   @HttpCode(HttpStatus.OK)
   async recalculateNutrition(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.debug(`Recalculating nutrition for recipe: ${id}`);
-    
+
     const nutrition = await this.nutritionService.recalculateNutrition(id);
-    
+
     return {
       message: 'Nutrition recalculated successfully',
       nutrition,
@@ -276,7 +317,7 @@ export class RecipeController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteRecipe(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.debug(`Deleting recipe: ${id}`);
-    
+
     await this.recipeService.deleteRecipe(id);
   }
 
@@ -286,7 +327,7 @@ export class RecipeController {
   @ApiResponse({ status: 400, description: 'Invalid recipe data' })
   async bulkCreateRecipes(@Body(ValidationPipe) recipes: CreateRecipeDto[]) {
     this.logger.debug(`Bulk creating ${recipes.length} recipes`);
-    
+
     if (!Array.isArray(recipes) || recipes.length === 0) {
       throw new BadRequestException('Must provide an array of recipes');
     }
@@ -296,7 +337,7 @@ export class RecipeController {
     }
 
     const createdRecipes = await this.recipeService.bulkCreateRecipes(recipes);
-    
+
     return {
       message: `Successfully created ${createdRecipes.length} recipes`,
       recipes: createdRecipes,
@@ -310,7 +351,7 @@ export class RecipeController {
   @HttpCode(HttpStatus.OK)
   async batchCalculateNutrition(@Body() body: { recipeIds: string[] }) {
     const { recipeIds } = body;
-    
+
     if (!Array.isArray(recipeIds) || recipeIds.length === 0) {
       throw new BadRequestException('Must provide an array of recipe IDs');
     }
@@ -320,9 +361,9 @@ export class RecipeController {
     }
 
     this.logger.debug(`Batch calculating nutrition for ${recipeIds.length} recipes`);
-    
+
     const result = await this.nutritionService.batchCalculateNutrition(recipeIds);
-    
+
     return {
       message: 'Batch nutrition calculation completed',
       successful: result.successful,
@@ -341,9 +382,9 @@ export class RecipeController {
   @HttpCode(HttpStatus.CREATED)
   async seedRecipes() {
     this.logger.debug('Seeding curated recipe database');
-    
+
     const result = await this.seedingService.seedRecipes();
-    
+
     return {
       message: 'Recipe seeding completed',
       ...result,
@@ -357,7 +398,7 @@ export class RecipeController {
   @HttpCode(HttpStatus.CREATED)
   async seedRecipesByCategory(@Param('category') category: string) {
     const recipes = await this.seedingService.seedRecipesByCategory(category);
-    
+
     return {
       message: `Successfully seeded ${recipes.length} recipes for category: ${category}`,
       recipes,
@@ -370,7 +411,7 @@ export class RecipeController {
   @ApiResponse({ status: 200, description: 'Seeding statistics retrieved successfully' })
   async getSeedingStats() {
     const stats = await this.seedingService.getSeedingStats();
-    
+
     return {
       message: 'Recipe seeding statistics',
       ...stats,
@@ -382,7 +423,7 @@ export class RecipeController {
   @ApiResponse({ status: 200, description: 'Seed data validation completed' })
   async validateSeedData() {
     const validation = await this.seedingService.validateSeedData();
-    
+
     return {
       message: 'Seed data validation completed',
       ...validation,
@@ -394,7 +435,7 @@ export class RecipeController {
   @ApiResponse({ status: 200, description: 'Sample recommendations retrieved successfully' })
   async getSampleRecommendations() {
     const recommendations = await this.seedingService.generateSampleRecommendations();
-    
+
     return {
       message: 'Sample personalized recommendations',
       recommendations,

@@ -15,12 +15,7 @@ import { NutritionModule } from '../nutrition/nutrition.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Recipe,
-      RecipeIngredient,
-      RecipeStep,
-      RecipeNutrition,
-    ]),
+    TypeOrmModule.forFeature([Recipe, RecipeIngredient, RecipeStep, RecipeNutrition]),
     NutritionModule,
   ],
   providers: [

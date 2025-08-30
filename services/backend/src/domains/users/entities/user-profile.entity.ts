@@ -133,6 +133,30 @@ export class UserProfile {
   @Column({ name: 'phi_classification', default: 'HEALTH' })
   phiClassification: string;
 
+  // Additional onboarding data stored as JSON
+  @Column({ type: 'jsonb', nullable: true, name: 'lifestyle_data' })
+  lifestyleData?: {
+    smokingFrequency?: number;
+    alcoholFrequency?: number;
+    sleepHours?: number;
+    jobActivityLevel?: number;
+    eatingOutFrequency?: number;
+    stressLevel?: number;
+    waterIntake?: number;
+  };
+
+  @Column({ type: 'jsonb', nullable: true, name: 'health_data' })
+  healthData?: {
+    bloodPressureSystolic?: number;
+    bloodPressureDiastolic?: number;
+    fastingBloodSugar?: number;
+    hba1c?: number;
+    fattyLiver?: boolean;
+    vitaminDeficiencies?: string[];
+    currentMedications?: string[];
+    familyHistory?: string[];
+  };
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
