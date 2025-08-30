@@ -11,6 +11,7 @@ paths = [
   '''docs/''',
   '''README\.md$''',
   '''CONTRIBUTING\.md$''',
+  '''gitleaks-report\.json$''',  # Exclude gitleaks reports from scanning
 ]
 
 # Allow demo keys only in specific local development files

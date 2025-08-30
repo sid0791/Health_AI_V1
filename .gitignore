@@ -326,6 +326,13 @@ secrets/
 google-services.json
 GoogleService-Info.plist
 
+# Security Scan Reports
+gitleaks-report.json
+snyk-report.json
+trivy-report.json
+tfsec-report.json
+pnpm-audit.json
+
 # Certificates
 *.crt
 *.cer
