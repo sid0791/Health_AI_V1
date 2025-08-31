@@ -6,7 +6,6 @@ import { HealthReport } from '../entities/health-report.entity';
 import { StructuredEntity, CriticalityLevel } from '../entities/structured-entity.entity';
 import { AIRoutingService } from '../../ai-routing/services/ai-routing.service';
 import { RequestType } from '../../ai-routing/entities/ai-routing-decision.entity';
-import { ExtractedEntity } from './entity-extraction.service';
 
 export interface HealthInterpretation {
   overallAssessment: OverallAssessment;
@@ -146,7 +145,10 @@ export class HealthInterpretationService {
       );
 
       // Enhance with rule-based analysis
-      const ruleBasedAnalysis = this.performRuleBasedAnalysis(healthReport.structuredEntities, options);
+      const ruleBasedAnalysis = this.performRuleBasedAnalysis(
+        healthReport.structuredEntities,
+        options,
+      );
 
       // Merge interpretations
       const interpretation = this.mergeInterpretations(aiInterpretation, ruleBasedAnalysis);
@@ -158,9 +160,10 @@ export class HealthInterpretationService {
       validatedInterpretation.interpretationDate = new Date();
       validatedInterpretation.aiProvider = routingResult.provider;
 
-      this.logger.log(`Health interpretation completed in ${validatedInterpretation.processingTimeMs}ms`);
+      this.logger.log(
+        `Health interpretation completed in ${validatedInterpretation.processingTimeMs}ms`,
+      );
       return validatedInterpretation;
-
     } catch (error) {
       this.logger.error(`Health interpretation failed: ${error.message}`);
       throw error;
@@ -176,10 +179,10 @@ export class HealthInterpretationService {
     options: any,
   ): Promise<HealthInterpretation> {
     const prompt = this.buildInterpretationPrompt(entities, options);
-    
+
     // Mock AI response - in production, this would call the actual AI provider
     // The response would be parsed from structured JSON returned by the AI
-    
+
     const mockInterpretation: HealthInterpretation = {
       overallAssessment: {
         status: 'fair',
@@ -286,7 +289,8 @@ export class HealthInterpretationService {
         {
           category: 'lifestyle',
           priority: 'high',
-          recommendation: 'Adopt heart-healthy diet low in saturated fats and refined carbohydrates',
+          recommendation:
+            'Adopt heart-healthy diet low in saturated fats and refined carbohydrates',
           rationale: 'To reduce LDL cholesterol and improve glucose control',
           timeframe: 'Start immediately, reassess in 3 months',
           followUpRequired: true,
@@ -345,16 +349,20 @@ Laboratory analysis reveals multiple cardiovascular and metabolic risk factors. 
   /**
    * Perform rule-based analysis for validation
    */
-  private performRuleBasedAnalysis(entities: StructuredEntity[], options: any): Partial<HealthInterpretation> {
+  private performRuleBasedAnalysis(
+    entities: StructuredEntity[],
+    options: any,
+  ): Partial<HealthInterpretation> {
     const anomalies: HealthAnomaly[] = [];
     const redFlags: RedFlag[] = [];
     let riskScore = 100; // Start with perfect score
 
     for (const entity of entities) {
       // Check for critical values that require immediate attention
-      if (entity.criticalityLevel === CriticalityLevel.CRITICAL_HIGH || 
-          entity.criticalityLevel === CriticalityLevel.CRITICAL_LOW) {
-        
+      if (
+        entity.criticalityLevel === CriticalityLevel.CRITICAL_HIGH ||
+        entity.criticalityLevel === CriticalityLevel.CRITICAL_LOW
+      ) {
         redFlags.push({
           severity: 'urgent',
           finding: `Critical ${entity.entityName}: ${entity.getValue()} ${entity.unit}`,
@@ -363,7 +371,7 @@ Laboratory analysis reveals multiple cardiovascular and metabolic risk factors. 
           timeframe: 'immediate',
           specialistConsultation: this.getSpecialistForEntity(entity.entityName),
         });
-        
+
         riskScore -= 30;
       }
 
@@ -382,7 +390,7 @@ Laboratory analysis reveals multiple cardiovascular and metabolic risk factors. 
             possibleCauses: this.getPossibleCauses(entity),
             immediateAction: Math.abs(deviation) > 50,
           });
-          
+
           riskScore -= Math.min(20, Math.abs(deviation) / 2);
         }
       }
@@ -413,17 +421,18 @@ Laboratory analysis reveals multiple cardiovascular and metabolic risk factors. 
       // Merge anomalies, prioritizing rule-based critical findings
       anomalies: [
         ...aiInterpretation.anomalies,
-        ...(ruleBasedAnalysis.anomalies || []).filter(ruleAnomaly =>
-          !aiInterpretation.anomalies.some(aiAnomaly => 
-            aiAnomaly.entityName === ruleAnomaly.entityName
-          )
+        ...(ruleBasedAnalysis.anomalies || []).filter(
+          (ruleAnomaly) =>
+            !aiInterpretation.anomalies.some(
+              (aiAnomaly) => aiAnomaly.entityName === ruleAnomaly.entityName,
+            ),
         ),
       ],
       // Merge red flags, prioritizing urgent ones
       redFlags: [
-        ...(ruleBasedAnalysis.redFlags || []).filter(flag => flag.severity === 'urgent'),
+        ...(ruleBasedAnalysis.redFlags || []).filter((flag) => flag.severity === 'urgent'),
         ...aiInterpretation.redFlags,
-        ...(ruleBasedAnalysis.redFlags || []).filter(flag => flag.severity !== 'urgent'),
+        ...(ruleBasedAnalysis.redFlags || []).filter((flag) => flag.severity !== 'urgent'),
       ],
       // Use more conservative overall assessment
       overallAssessment: {
@@ -457,8 +466,8 @@ Laboratory analysis reveals multiple cardiovascular and metabolic risk factors. 
     });
 
     // Add safety disclaimers
-    if (interpretation.redFlags.some(flag => flag.severity === 'urgent')) {
-      interpretation.plainLanguageSummary = 
+    if (interpretation.redFlags.some((flag) => flag.severity === 'urgent')) {
+      interpretation.plainLanguageSummary =
         'IMPORTANT: This report contains urgent findings that require immediate medical attention. ' +
         interpretation.plainLanguageSummary;
     }
@@ -470,7 +479,7 @@ Laboratory analysis reveals multiple cardiovascular and metabolic risk factors. 
    * Build interpretation prompt for AI
    */
   private buildInterpretationPrompt(entities: StructuredEntity[], options: any): string {
-    const entitiesData = entities.map(entity => ({
+    const entitiesData = entities.map((entity) => ({
       name: entity.entityName,
       value: entity.getValue(),
       unit: entity.unit,
@@ -525,16 +534,16 @@ Return structured analysis in JSON format.
       'Total Cholesterol': 'Cardiologist',
       'LDL Cholesterol': 'Cardiologist',
       'HDL Cholesterol': 'Cardiologist',
-      'Triglycerides': 'Cardiologist',
+      Triglycerides: 'Cardiologist',
       'Fasting Glucose': 'Endocrinologist',
-      'HbA1c': 'Endocrinologist',
-      'TSH': 'Endocrinologist',
+      HbA1c: 'Endocrinologist',
+      TSH: 'Endocrinologist',
       'Free T4': 'Endocrinologist',
-      'Creatinine': 'Nephrologist',
-      'BUN': 'Nephrologist',
-      'ALT': 'Hepatologist',
-      'AST': 'Hepatologist',
-      'Hemoglobin': 'Hematologist',
+      Creatinine: 'Nephrologist',
+      BUN: 'Nephrologist',
+      ALT: 'Hepatologist',
+      AST: 'Hepatologist',
+      Hemoglobin: 'Hematologist',
     };
 
     return specialistMap[entityName] || null;
@@ -558,9 +567,9 @@ Return structured analysis in JSON format.
       'LDL Cholesterol': 'Increased cardiovascular disease risk',
       'HDL Cholesterol': 'Reduced cardiovascular protection',
       'Fasting Glucose': 'Impaired glucose metabolism',
-      'HbA1c': 'Poor long-term glucose control',
+      HbA1c: 'Poor long-term glucose control',
       'Vitamin D': 'Compromised bone health and immune function',
-      'Hemoglobin': 'Potential anemia or blood disorder',
+      Hemoglobin: 'Potential anemia or blood disorder',
     };
 
     return significanceMap[entity.entityName] || 'May indicate underlying health condition';
@@ -571,10 +580,15 @@ Return structured analysis in JSON format.
    */
   private getPossibleCauses(entity: StructuredEntity): string[] {
     const causesMap: Record<string, string[]> = {
-      'LDL Cholesterol': ['High saturated fat diet', 'Lack of exercise', 'Genetic factors', 'Hypothyroidism'],
+      'LDL Cholesterol': [
+        'High saturated fat diet',
+        'Lack of exercise',
+        'Genetic factors',
+        'Hypothyroidism',
+      ],
       'Fasting Glucose': ['Pre-diabetes', 'Insulin resistance', 'Stress', 'Medications'],
       'Vitamin D': ['Limited sun exposure', 'Poor dietary intake', 'Malabsorption'],
-      'Hemoglobin': ['Iron deficiency', 'Chronic disease', 'Blood loss', 'Kidney disease'],
+      Hemoglobin: ['Iron deficiency', 'Chronic disease', 'Blood loss', 'Kidney disease'],
     };
 
     return causesMap[entity.entityName] || ['Various medical conditions', 'Lifestyle factors'];
@@ -593,7 +607,9 @@ Return structured analysis in JSON format.
   /**
    * Categorize overall status
    */
-  private categorizeOverallStatus(score: number): 'excellent' | 'good' | 'fair' | 'poor' | 'critical' {
+  private categorizeOverallStatus(
+    score: number,
+  ): 'excellent' | 'good' | 'fair' | 'poor' | 'critical' {
     if (score >= 90) return 'excellent';
     if (score >= 80) return 'good';
     if (score >= 65) return 'fair';
@@ -604,10 +620,13 @@ Return structured analysis in JSON format.
   /**
    * Get higher risk level between two assessments
    */
-  private getHigherRiskLevel(risk1: string, risk2: string): 'low' | 'moderate' | 'high' | 'critical' {
+  private getHigherRiskLevel(
+    risk1: string,
+    risk2: string,
+  ): 'low' | 'moderate' | 'high' | 'critical' {
     const riskOrder = { low: 1, moderate: 2, high: 3, critical: 4 };
     const maxRisk = Math.max(riskOrder[risk1] || 1, riskOrder[risk2] || 1);
-    
+
     const reverseOrder = { 1: 'low', 2: 'moderate', 3: 'high', 4: 'critical' };
     return reverseOrder[maxRisk] as 'low' | 'moderate' | 'high' | 'critical';
   }

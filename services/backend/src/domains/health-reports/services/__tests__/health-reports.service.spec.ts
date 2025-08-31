@@ -6,16 +6,18 @@ import { HealthReportsService, ProcessHealthReportOptions } from '../health-repo
 import { OCRService } from '../ocr.service';
 import { EntityExtractionService } from '../entity-extraction.service';
 import { HealthInterpretationService } from '../health-interpretation.service';
-import { HealthReport, HealthReportType, ProcessingStatus } from '../../entities/health-report.entity';
+import {
+  HealthReport,
+  HealthReportType,
+  ProcessingStatus,
+} from '../../entities/health-report.entity';
 import { StructuredEntity } from '../../entities/structured-entity.entity';
 import { ObjectStorageService } from '../../../../common/storage/object-storage.service';
 import { FieldEncryptionService } from '../../../../common/encryption/field-encryption.service';
-import { AIRoutingService } from '../../../ai-routing/services/ai-routing.service';
 
 describe('HealthReportsService - Phase 11 Integration', () => {
   let service: HealthReportsService;
   let healthReportRepository: Repository<HealthReport>;
-  let structuredEntityRepository: Repository<StructuredEntity>;
   let ocrService: OCRService;
   let entityExtractionService: EntityExtractionService;
   let healthInterpretationService: HealthInterpretationService;
@@ -186,10 +188,11 @@ describe('HealthReportsService - Phase 11 Integration', () => {
 
     service = module.get<HealthReportsService>(HealthReportsService);
     healthReportRepository = module.get<Repository<HealthReport>>(getRepositoryToken(HealthReport));
-    structuredEntityRepository = module.get<Repository<StructuredEntity>>(getRepositoryToken(StructuredEntity));
     ocrService = module.get<OCRService>(OCRService);
     entityExtractionService = module.get<EntityExtractionService>(EntityExtractionService);
-    healthInterpretationService = module.get<HealthInterpretationService>(HealthInterpretationService);
+    healthInterpretationService = module.get<HealthInterpretationService>(
+      HealthInterpretationService,
+    );
     objectStorageService = module.get<ObjectStorageService>(ObjectStorageService);
     fieldEncryptionService = module.get<FieldEncryptionService>(FieldEncryptionService);
   });
@@ -234,7 +237,7 @@ describe('HealthReportsService - Phase 11 Integration', () => {
     it('should handle OCR processing failures gracefully', async () => {
       // Arrange
       (ocrService.processDocument as jest.Mock).mockRejectedValue(new Error('OCR failed'));
-      
+
       const options: ProcessHealthReportOptions = {
         userId: 'test-user-id',
         file: {

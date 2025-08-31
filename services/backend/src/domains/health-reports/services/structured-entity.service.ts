@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { StructuredEntity, EntityType, CriticalityLevel } from '../entities/structured-entity.entity';
+import {
+  StructuredEntity,
+  EntityType,
+  CriticalityLevel,
+} from '../entities/structured-entity.entity';
 
 @Injectable()
 export class StructuredEntityService {
@@ -14,7 +18,7 @@ export class StructuredEntityService {
    * Find entities by health report ID
    */
   async findByHealthReportId(healthReportId: string): Promise<StructuredEntity[]> {
-    return this.structuredEntityRepository.find({ 
+    return this.structuredEntityRepository.find({
       where: { healthReportId },
       order: { category: 'ASC', entityName: 'ASC' },
     });
@@ -24,10 +28,10 @@ export class StructuredEntityService {
    * Find entities by health report ID and category
    */
   async findByHealthReportIdAndCategory(
-    healthReportId: string, 
+    healthReportId: string,
     category: string,
   ): Promise<StructuredEntity[]> {
-    return this.structuredEntityRepository.find({ 
+    return this.structuredEntityRepository.find({
       where: { healthReportId, category },
       order: { entityName: 'ASC' },
     });
@@ -37,7 +41,7 @@ export class StructuredEntityService {
    * Find abnormal entities by health report ID
    */
   async findAbnormalByHealthReportId(healthReportId: string): Promise<StructuredEntity[]> {
-    return this.structuredEntityRepository.find({ 
+    return this.structuredEntityRepository.find({
       where: { healthReportId, isAbnormal: true },
       order: { criticalityLevel: 'DESC', entityName: 'ASC' },
     });
@@ -50,8 +54,8 @@ export class StructuredEntityService {
     return this.structuredEntityRepository
       .createQueryBuilder('entity')
       .where('entity.healthReportId = :healthReportId', { healthReportId })
-      .andWhere('entity.criticalityLevel IN (:...levels)', { 
-        levels: [CriticalityLevel.CRITICAL_HIGH, CriticalityLevel.CRITICAL_LOW] 
+      .andWhere('entity.criticalityLevel IN (:...levels)', {
+        levels: [CriticalityLevel.CRITICAL_HIGH, CriticalityLevel.CRITICAL_LOW],
       })
       .orderBy('entity.criticalityLevel', 'DESC')
       .addOrderBy('entity.entityName', 'ASC')
@@ -61,26 +65,31 @@ export class StructuredEntityService {
   /**
    * Get entity summary by category
    */
-  async getEntitySummaryByCategory(healthReportId: string): Promise<{
-    category: string;
-    totalEntities: number;
-    normalEntities: number;
-    abnormalEntities: number;
-    criticalEntities: number;
-  }[]> {
+  async getEntitySummaryByCategory(healthReportId: string): Promise<
+    {
+      category: string;
+      totalEntities: number;
+      normalEntities: number;
+      abnormalEntities: number;
+      criticalEntities: number;
+    }[]
+  > {
     const result = await this.structuredEntityRepository
       .createQueryBuilder('entity')
       .select('entity.category', 'category')
       .addSelect('COUNT(*)', 'totalEntities')
       .addSelect('SUM(CASE WHEN entity.isAbnormal = false THEN 1 ELSE 0 END)', 'normalEntities')
       .addSelect('SUM(CASE WHEN entity.isAbnormal = true THEN 1 ELSE 0 END)', 'abnormalEntities')
-      .addSelect(`SUM(CASE WHEN entity.criticalityLevel IN ('${CriticalityLevel.CRITICAL_HIGH}', '${CriticalityLevel.CRITICAL_LOW}') THEN 1 ELSE 0 END)`, 'criticalEntities')
+      .addSelect(
+        `SUM(CASE WHEN entity.criticalityLevel IN ('${CriticalityLevel.CRITICAL_HIGH}', '${CriticalityLevel.CRITICAL_LOW}') THEN 1 ELSE 0 END)`,
+        'criticalEntities',
+      )
       .where('entity.healthReportId = :healthReportId', { healthReportId })
       .groupBy('entity.category')
       .orderBy('entity.category', 'ASC')
       .getRawMany();
 
-    return result.map(row => ({
+    return result.map((row) => ({
       category: row.category || 'Uncategorized',
       totalEntities: parseInt(row.totalEntities),
       normalEntities: parseInt(row.normalEntities),
@@ -93,17 +102,19 @@ export class StructuredEntityService {
    * Get biomarker trends across multiple reports
    */
   async getBiomarkerTrends(
-    userId: string, 
-    entityName: string, 
+    userId: string,
+    entityName: string,
     limitReports: number = 10,
-  ): Promise<{
-    reportId: string;
-    testDate: Date;
-    value: any;
-    unit: string;
-    isAbnormal: boolean;
-    criticalityLevel: CriticalityLevel;
-  }[]> {
+  ): Promise<
+    {
+      reportId: string;
+      testDate: Date;
+      value: any;
+      unit: string;
+      isAbnormal: boolean;
+      criticalityLevel: CriticalityLevel;
+    }[]
+  > {
     const result = await this.structuredEntityRepository
       .createQueryBuilder('entity')
       .innerJoin('entity.healthReport', 'report')
@@ -123,7 +134,7 @@ export class StructuredEntityService {
       .limit(limitReports)
       .getRawMany();
 
-    return result.map(row => ({
+    return result.map((row) => ({
       reportId: row.reportId,
       testDate: new Date(row.testDate),
       value: row.value || row.textValue,
@@ -151,8 +162,8 @@ export class StructuredEntityService {
    */
   async bulkVerifyEntities(entityIds: string[], notes?: string): Promise<StructuredEntity[]> {
     const entities = await this.structuredEntityRepository.findByIds(entityIds);
-    
-    entities.forEach(entity => entity.verify(notes));
+
+    entities.forEach((entity) => entity.verify(notes));
     return this.structuredEntityRepository.save(entities);
   }
 
@@ -191,7 +202,7 @@ export class StructuredEntityService {
       .orderBy('entity.entityName', 'ASC')
       .getRawMany();
 
-    return result.map(row => row.entityName);
+    return result.map((row) => row.entityName);
   }
 
   /**
@@ -199,12 +210,15 @@ export class StructuredEntityService {
    */
   async create(data: Partial<StructuredEntity>): Promise<StructuredEntity> {
     const entity = this.structuredEntityRepository.create(data);
-    
+
     // Update criticality if value and reference range are provided
-    if (entity.dataType && entity.getValue() && entity.referenceRangeMin !== undefined || entity.referenceRangeMax !== undefined) {
+    if (
+      (entity.dataType && entity.getValue() && entity.referenceRangeMin !== undefined) ||
+      entity.referenceRangeMax !== undefined
+    ) {
       entity.updateCriticality();
     }
-    
+
     return this.structuredEntityRepository.save(entity);
   }
 
@@ -218,12 +232,16 @@ export class StructuredEntityService {
     }
 
     Object.assign(entity, data);
-    
+
     // Update criticality after changes
-    if (entity.dataType && entity.getValue() && (entity.referenceRangeMin !== undefined || entity.referenceRangeMax !== undefined)) {
+    if (
+      entity.dataType &&
+      entity.getValue() &&
+      (entity.referenceRangeMin !== undefined || entity.referenceRangeMax !== undefined)
+    ) {
       entity.updateCriticality();
     }
-    
+
     return this.structuredEntityRepository.save(entity);
   }
 

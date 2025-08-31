@@ -75,11 +75,13 @@ export class HealthReportsService {
   /**
    * Process health report through complete OCR → NER → Interpretation pipeline
    */
-  async processHealthReport(options: ProcessHealthReportOptions): Promise<HealthReportProcessingResult> {
+  async processHealthReport(
+    options: ProcessHealthReportOptions,
+  ): Promise<HealthReportProcessingResult> {
     const startTime = Date.now();
     const warnings: string[] = [];
     const errors: string[] = [];
-    
+
     this.logger.log(`Starting health report processing for user: ${options.userId}`);
 
     try {
@@ -113,7 +115,9 @@ export class HealthReportsService {
           );
 
           // Store extracted text (encrypted)
-          healthReport.extractedText = this.fieldEncryptionService.encrypt(ocrResult.extractedText).value;
+          healthReport.extractedText = this.fieldEncryptionService.encrypt(
+            ocrResult.extractedText,
+          ).value;
           healthReport.ocrConfidence = ocrResult.confidence;
           healthReport.aiProcessingVersion = `ocr-${ocrResult.provider}-v1.0`;
 
@@ -137,11 +141,17 @@ export class HealthReportsService {
           // Store structured entities
           await this.storeStructuredEntities(healthReport.id, extractionResult.entities);
 
-          this.logger.debug(`Entity extraction completed: ${extractionResult.entities.length} entities found`);
+          this.logger.debug(
+            `Entity extraction completed: ${extractionResult.entities.length} entities found`,
+          );
         }
 
         // Step 5: Health Interpretation
-        if (!options.processingOptions?.skipInterpretation && extractionResult && extractionResult.entities.length > 0) {
+        if (
+          !options.processingOptions?.skipInterpretation &&
+          extractionResult &&
+          extractionResult.entities.length > 0
+        ) {
           interpretation = await this.healthInterpretationService.interpretHealthReport(
             healthReport.id,
             {
@@ -157,7 +167,9 @@ export class HealthReportsService {
             interpretation: interpretation,
           };
 
-          this.logger.debug(`Health interpretation completed with confidence: ${interpretation.confidence}`);
+          this.logger.debug(
+            `Health interpretation completed with confidence: ${interpretation.confidence}`,
+          );
         }
 
         // Step 6: Determine if manual review is needed
@@ -181,17 +193,18 @@ export class HealthReportsService {
           errors,
         };
 
-        this.logger.log(`Health report processing completed successfully in ${result.processingTimeMs}ms`);
+        this.logger.log(
+          `Health report processing completed successfully in ${result.processingTimeMs}ms`,
+        );
         return result;
-
       } catch (processingError) {
         this.logger.error(`Processing failed: ${processingError.message}`);
-        
+
         healthReport.markAsFailed(processingError.message);
         await this.healthReportsRepository.save(healthReport);
-        
+
         errors.push(processingError.message);
-        
+
         return {
           healthReport,
           ocrResult,
@@ -203,7 +216,6 @@ export class HealthReportsService {
           errors,
         };
       }
-
     } catch (error) {
       this.logger.error(`Health report processing failed: ${error.message}`);
       throw error;
@@ -214,7 +226,7 @@ export class HealthReportsService {
    * Get health reports for a user with processing status
    */
   async findByUserId(userId: string): Promise<HealthReport[]> {
-    return this.healthReportsRepository.find({ 
+    return this.healthReportsRepository.find({
       where: { userId },
       relations: ['structuredEntities'],
       order: { createdAt: 'DESC' },
@@ -340,7 +352,8 @@ export class HealthReportsService {
     storagePath: string,
     fileHash: string,
   ): Promise<HealthReport> {
-    const region = options.userProfile?.region || this.configService.get('DEFAULT_REGION', 'us-east-1');
+    const region =
+      options.userProfile?.region || this.configService.get('DEFAULT_REGION', 'us-east-1');
 
     const healthReport = this.healthReportsRepository.create({
       userId: options.userId,
@@ -376,7 +389,7 @@ export class HealthReportsService {
     healthReportId: string,
     entities: any[],
   ): Promise<StructuredEntity[]> {
-    const structuredEntities = entities.map(entity => {
+    const structuredEntities = entities.map((entity) => {
       const structuredEntity = this.structuredEntityRepository.create({
         healthReportId,
         entityType: entity.entityType,
@@ -446,7 +459,7 @@ export class HealthReportsService {
     }
 
     // Critical red flags in interpretation
-    if (interpretation && interpretation.redFlags.some(flag => flag.severity === 'urgent')) {
+    if (interpretation && interpretation.redFlags.some((flag) => flag.severity === 'urgent')) {
       return true;
     }
 

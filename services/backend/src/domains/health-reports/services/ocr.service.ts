@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AIRoutingService } from '../../ai-routing/services/ai-routing.service';
-import { RequestType } from '../../ai-routing/entities/ai-routing-decision.entity';
 
 export interface OCRResult {
   extractedText: string;
@@ -47,7 +46,7 @@ export interface OCRMetadata {
 
 export enum OCRProvider {
   GOOGLE_DOCUMENT_AI = 'google_document_ai',
-  AZURE_DOCUMENT_INTELLIGENCE = 'azure_document_intelligence', 
+  AZURE_DOCUMENT_INTELLIGENCE = 'azure_document_intelligence',
   AWS_TEXTRACT = 'aws_textract',
   TESSERACT = 'tesseract',
 }
@@ -55,7 +54,7 @@ export enum OCRProvider {
 @Injectable()
 export class OCRService {
   private readonly logger = new Logger(OCRService.name);
-  
+
   constructor(
     private readonly configService: ConfigService,
     private readonly aiRoutingService: AIRoutingService,
@@ -89,14 +88,16 @@ export class OCRService {
     for (const provider of providerChain) {
       try {
         this.logger.debug(`Attempting OCR with provider: ${provider}`);
-        
+
         const result = await this.processWithProvider(provider, fileBuffer, mimeType, options);
-        
+
         // Validate result quality
         if (this.isResultAcceptable(result, options.qualityThreshold || 0.7)) {
           result.processingTimeMs = Date.now() - startTime;
-          
-          this.logger.log(`OCR completed successfully with ${provider} in ${result.processingTimeMs}ms`);
+
+          this.logger.log(
+            `OCR completed successfully with ${provider} in ${result.processingTimeMs}ms`,
+          );
           return result;
         } else {
           this.logger.warn(`OCR result from ${provider} below quality threshold`);
@@ -105,7 +106,7 @@ export class OCRService {
       } catch (error) {
         lastError = error;
         this.logger.warn(`OCR failed with ${provider}: ${error.message}`);
-        
+
         // Continue to next provider in fallback chain
         continue;
       }
@@ -126,16 +127,16 @@ export class OCRService {
     switch (provider) {
       case OCRProvider.GOOGLE_DOCUMENT_AI:
         return this.processWithGoogleDocumentAI(fileBuffer, mimeType, options);
-      
+
       case OCRProvider.AZURE_DOCUMENT_INTELLIGENCE:
         return this.processWithAzureDocumentIntelligence(fileBuffer, mimeType, options);
-      
+
       case OCRProvider.AWS_TEXTRACT:
         return this.processWithAWSTextract(fileBuffer, mimeType, options);
-      
+
       case OCRProvider.TESSERACT:
         return this.processWithTesseract(fileBuffer, mimeType, options);
-      
+
       default:
         throw new Error(`Unsupported OCR provider: ${provider}`);
     }
@@ -152,7 +153,7 @@ export class OCRService {
     const apiKey = this.configService.get('GOOGLE_DOCUMENT_AI_KEY');
     const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT_ID');
     const processorId = this.configService.get('GOOGLE_DOCUMENT_AI_PROCESSOR_ID');
-    
+
     if (!apiKey || apiKey === 'DEMO_KEY') {
       throw new Error('Google Document AI not configured');
     }
@@ -188,7 +189,7 @@ export class OCRService {
   ): Promise<OCRResult> {
     const apiKey = this.configService.get('AZURE_DOCUMENT_INTELLIGENCE_KEY');
     const endpoint = this.configService.get('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT');
-    
+
     if (!apiKey || apiKey === 'DEMO_KEY') {
       throw new Error('Azure Document Intelligence not configured');
     }
@@ -223,7 +224,7 @@ export class OCRService {
   ): Promise<OCRResult> {
     const accessKey = this.configService.get('AWS_ACCESS_KEY_ID');
     const secretKey = this.configService.get('AWS_SECRET_ACCESS_KEY');
-    
+
     if (!accessKey || accessKey === 'DEMO_KEY') {
       throw new Error('AWS Textract not configured');
     }
@@ -306,7 +307,7 @@ export class OCRService {
     const supportedTypes = [
       'application/pdf',
       'image/jpeg',
-      'image/jpg', 
+      'image/jpg',
       'image/png',
       'image/tiff',
       'image/bmp',
@@ -421,7 +422,8 @@ Folate: 12 ng/mL (Normal: 3-20 ng/mL)
       },
       {
         title: 'Lipid Profile',
-        content: 'Total Cholesterol: 195 mg/dL\nLDL: 115 mg/dL\nHDL: 45 mg/dL\nTriglycerides: 150 mg/dL',
+        content:
+          'Total Cholesterol: 195 mg/dL\nLDL: 115 mg/dL\nHDL: 45 mg/dL\nTriglycerides: 150 mg/dL',
         confidence: 0.95,
         location: { x: 50, y: 200, width: 400, height: 120, page: 1 },
         sectionType: 'body',

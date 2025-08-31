@@ -1,9 +1,9 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
+import {
+  Controller,
+  Get,
+  Post,
   Put,
-  Param, 
+  Param,
   Body,
   UseInterceptors,
   UploadedFile,
@@ -12,7 +12,10 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { HealthReportsService, ProcessHealthReportOptions } from '../services/health-reports.service';
+import {
+  HealthReportsService,
+  ProcessHealthReportOptions,
+} from '../services/health-reports.service';
 import { HealthInterpretationService } from '../services/health-interpretation.service';
 import { HealthReportType } from '../entities/health-report.entity';
 
@@ -123,10 +126,7 @@ export class HealthReportsController {
   })
   @ApiResponse({ status: 201, description: 'Health report processed successfully' })
   @ApiResponse({ status: 400, description: 'Invalid file or parameters' })
-  async uploadHealthReport(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() body: any,
-  ) {
+  async uploadHealthReport(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -143,7 +143,7 @@ export class HealthReportsController {
 
     if (!allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException(
-        `Invalid file type. Allowed types: ${allowedMimeTypes.join(', ')}`
+        `Invalid file type. Allowed types: ${allowedMimeTypes.join(', ')}`,
       );
     }
 
@@ -160,7 +160,7 @@ export class HealthReportsController {
       if (isNaN(testDate.getTime())) {
         throw new Error('Invalid date');
       }
-    } catch (error) {
+    } catch (_error) {
       throw new BadRequestException('Invalid test date format. Use YYYY-MM-DD');
     }
 
@@ -219,7 +219,8 @@ export class HealthReportsController {
   @ApiResponse({ status: 404, description: 'Health report not found' })
   async reprocessReport(
     @Param('id') id: string,
-    @Body() options: {
+    @Body()
+    options: {
       skipOCR?: boolean;
       skipExtraction?: boolean;
       skipInterpretation?: boolean;
@@ -234,7 +235,8 @@ export class HealthReportsController {
   @ApiResponse({ status: 404, description: 'Health report not found' })
   async completeReview(
     @Param('id') id: string,
-    @Body() reviewData: {
+    @Body()
+    reviewData: {
       reviewerId: string;
       approved: boolean;
       notes?: string;
@@ -272,14 +274,14 @@ export class HealthReportsController {
 
     // Filter by category if specified
     if (category) {
-      entities = entities.filter(entity => 
-        entity.category?.toLowerCase() === category.toLowerCase()
+      entities = entities.filter(
+        (entity) => entity.category?.toLowerCase() === category.toLowerCase(),
       );
     }
 
     // Filter abnormal only if specified
     if (abnormalOnly === 'true') {
-      entities = entities.filter(entity => entity.isAbnormal);
+      entities = entities.filter((entity) => entity.isAbnormal);
     }
 
     return entities;
@@ -314,7 +316,7 @@ export class HealthReportsController {
   /**
    * Extract client IP from request (mock implementation)
    */
-  private getClientIp(body: any): string {
+  private getClientIp(_body: any): string {
     // In real implementation, this would extract from request headers
     return '127.0.0.1';
   }

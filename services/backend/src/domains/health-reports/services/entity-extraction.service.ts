@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { StructuredEntity, EntityType, DataType, CriticalityLevel } from '../entities/structured-entity.entity';
+import { StructuredEntity, EntityType, DataType } from '../entities/structured-entity.entity';
 import { AIRoutingService } from '../../ai-routing/services/ai-routing.service';
 import { RequestType } from '../../ai-routing/entities/ai-routing-decision.entity';
 
@@ -127,16 +127,17 @@ export class EntityExtractionService {
         unrecognizedText: this.findUnrecognizedText(text, validatedEntities),
       };
 
-      this.logger.log(`Entity extraction completed: ${validatedEntities.length} entities found in ${result.processingTimeMs}ms`);
+      this.logger.log(
+        `Entity extraction completed: ${validatedEntities.length} entities found in ${result.processingTimeMs}ms`,
+      );
       return result;
-
     } catch (error) {
       this.logger.error(`Entity extraction failed: ${error.message}`);
-      
+
       // Fallback to rule-based extraction only
       const fallbackEntities = this.performRuleBasedExtraction(text, options);
       const normalizedEntities = this.normalizeEntities(fallbackEntities, options);
-      
+
       return {
         entities: normalizedEntities,
         processingTimeMs: Date.now() - startTime,
@@ -157,9 +158,9 @@ export class EntityExtractionService {
   ): Promise<ExtractedEntity[]> {
     // This would make actual API call to the routed AI provider
     // For now, implementing mock extraction that follows the patterns
-    
+
     const prompt = this.buildExtractionPrompt(text, options);
-    
+
     // Mock AI response - in production, this would call the actual AI provider
     const mockEntities: ExtractedEntity[] = [
       {
@@ -267,15 +268,15 @@ export class EntityExtractionService {
    */
   private performRuleBasedExtraction(text: string, options: any): ExtractedEntity[] {
     const entities: ExtractedEntity[] = [];
-    
+
     // Extract numeric biomarkers with units
     const numericPattern = /([A-Za-z\s]+):\s*(\d+\.?\d*)\s*([a-zA-Z\/μμ%]+)/g;
     let match;
-    
+
     while ((match = numericPattern.exec(text)) !== null) {
       const [fullMatch, name, value, unit] = match;
       const cleanName = name.trim();
-      
+
       // Check if this is a known biomarker
       const mapping = this.findBiomarkerMapping(cleanName);
       if (mapping) {
@@ -299,7 +300,7 @@ export class EntityExtractionService {
     while ((match = percentagePattern.exec(text)) !== null) {
       const [fullMatch, name, value] = match;
       const cleanName = name.trim();
-      
+
       const mapping = this.findBiomarkerMapping(cleanName);
       if (mapping) {
         entities.push({
@@ -352,20 +353,23 @@ Return structured data in JSON format.
   /**
    * Merge AI and rule-based extraction results
    */
-  private mergeExtractionResults(aiEntities: ExtractedEntity[], ruleEntities: ExtractedEntity[]): ExtractedEntity[] {
+  private mergeExtractionResults(
+    aiEntities: ExtractedEntity[],
+    ruleEntities: ExtractedEntity[],
+  ): ExtractedEntity[] {
     const merged = [...aiEntities];
-    
+
     // Add rule-based entities that weren't found by AI
     for (const ruleEntity of ruleEntities) {
-      const exists = aiEntities.some(aiEntity => 
-        aiEntity.entityName.toLowerCase() === ruleEntity.entityName.toLowerCase()
+      const exists = aiEntities.some(
+        (aiEntity) => aiEntity.entityName.toLowerCase() === ruleEntity.entityName.toLowerCase(),
       );
-      
+
       if (!exists) {
         merged.push(ruleEntity);
       }
     }
-    
+
     return merged;
   }
 
@@ -373,27 +377,31 @@ Return structured data in JSON format.
    * Normalize units and apply reference ranges
    */
   private normalizeEntities(entities: ExtractedEntity[], options: any): ExtractedEntity[] {
-    return entities.map(entity => {
+    return entities.map((entity) => {
       const mapping = this.findBiomarkerMapping(entity.entityName);
       if (mapping) {
         // Normalize unit
         entity.unit = this.normalizeUnit(entity.unit, mapping.units, mapping.standardUnit);
-        
+
         // Apply age/gender-specific reference range
-        const refRange = this.getAgeGenderSpecificRange(mapping, options.userAge, options.userGender);
+        const refRange = this.getAgeGenderSpecificRange(
+          mapping,
+          options.userAge,
+          options.userGender,
+        );
         if (refRange && !entity.referenceRange) {
           entity.referenceRange = refRange;
         }
-        
+
         // Set standard codes
         if (mapping.loincCode) {
           entity.standardCode = mapping.loincCode;
           entity.codeSystem = 'LOINC';
         }
-        
+
         entity.category = mapping.category;
       }
-      
+
       return entity;
     });
   }
@@ -402,24 +410,27 @@ Return structured data in JSON format.
    * Validate extracted entities
    */
   private validateExtractedEntities(entities: ExtractedEntity[]): ExtractedEntity[] {
-    return entities.filter(entity => {
+    return entities.filter((entity) => {
       // Minimum confidence threshold
       if (entity.confidence < 0.7) {
         return false;
       }
-      
+
       // Must have a value for numeric entities
-      if (entity.dataType === DataType.NUMERIC && (entity.value === null || entity.value === undefined)) {
+      if (
+        entity.dataType === DataType.NUMERIC &&
+        (entity.value === null || entity.value === undefined)
+      ) {
         return false;
       }
-      
+
       // Reasonable value ranges
       if (entity.dataType === DataType.NUMERIC) {
         if (entity.value < 0 || entity.value > 100000) {
           return false;
         }
       }
-      
+
       return true;
     });
   }
@@ -429,7 +440,7 @@ Return structured data in JSON format.
    */
   private calculateOverallConfidence(entities: ExtractedEntity[]): number {
     if (entities.length === 0) return 0;
-    
+
     const totalConfidence = entities.reduce((sum, entity) => sum + entity.confidence, 0);
     return totalConfidence / entities.length;
   }
@@ -439,13 +450,14 @@ Return structured data in JSON format.
    */
   private findUnrecognizedText(text: string, entities: ExtractedEntity[]): string[] {
     // Simple implementation - in production would be more sophisticated
-    const lines = text.split('\n').filter(line => line.trim().length > 0);
-    const recognizedLines = entities.map(e => e.originalText);
-    
-    return lines.filter(line => 
-      !recognizedLines.some(recognized => 
-        line.includes(recognized) || recognized.includes(line)
-      )
+    const lines = text.split('\n').filter((line) => line.trim().length > 0);
+    const recognizedLines = entities.map((e) => e.originalText);
+
+    return lines.filter(
+      (line) =>
+        !recognizedLines.some(
+          (recognized) => line.includes(recognized) || recognized.includes(line),
+        ),
     );
   }
 
@@ -462,17 +474,20 @@ Return structured data in JSON format.
    */
   private findBiomarkerMapping(name: string): BiomakrerMapping | undefined {
     const normalized = name.toLowerCase().trim();
-    
+
     for (const [key, mapping] of this.biomarkerMappings.entries()) {
-      if (mapping.names.some(mappingName => 
-        mappingName.toLowerCase() === normalized ||
-        normalized.includes(mappingName.toLowerCase()) ||
-        mappingName.toLowerCase().includes(normalized)
-      )) {
+      if (
+        mapping.names.some(
+          (mappingName) =>
+            mappingName.toLowerCase() === normalized ||
+            normalized.includes(mappingName.toLowerCase()) ||
+            mappingName.toLowerCase().includes(normalized),
+        )
+      ) {
         return mapping;
       }
     }
-    
+
     return undefined;
   }
 
@@ -481,13 +496,14 @@ Return structured data in JSON format.
    */
   private normalizeUnit(unit: string, validUnits: string[], standardUnit: string): string {
     if (!unit) return standardUnit;
-    
+
     const normalized = unit.toLowerCase().trim();
-    const found = validUnits.find(validUnit => 
-      validUnit.toLowerCase() === normalized ||
-      validUnit.toLowerCase().replace(/[\/\s]/g, '') === normalized.replace(/[\/\s]/g, '')
+    const found = validUnits.find(
+      (validUnit) =>
+        validUnit.toLowerCase() === normalized ||
+        validUnit.toLowerCase().replace(/[\/\s]/g, '') === normalized.replace(/[\/\s]/g, ''),
     );
-    
+
     return found || standardUnit;
   }
 
@@ -495,27 +511,28 @@ Return structured data in JSON format.
    * Get age and gender specific reference range
    */
   private getAgeGenderSpecificRange(
-    mapping: BiomakrerMapping, 
-    age?: number, 
-    gender?: 'male' | 'female'
+    mapping: BiomakrerMapping,
+    age?: number,
+    gender?: 'male' | 'female',
   ): { min?: number; max?: number; text?: string } | undefined {
-    
     if (!age || !gender) {
       // Return general range
-      const generalRange = mapping.referenceRanges.find(r => r.gender === 'all');
-      return generalRange ? {
-        min: generalRange.min,
-        max: generalRange.max,
-        text: generalRange.text,
-      } : undefined;
+      const generalRange = mapping.referenceRanges.find((r) => r.gender === 'all');
+      return generalRange
+        ? {
+            min: generalRange.min,
+            max: generalRange.max,
+            text: generalRange.text,
+          }
+        : undefined;
     }
-    
+
     // Find age-specific range
     const ageGroup = age >= 65 ? 'elderly' : age >= 40 ? 'adult' : 'young_adult';
-    const specificRange = mapping.referenceRanges.find(r => 
-      r.ageGroup === ageGroup && (r.gender === gender || r.gender === 'all')
+    const specificRange = mapping.referenceRanges.find(
+      (r) => r.ageGroup === ageGroup && (r.gender === gender || r.gender === 'all'),
     );
-    
+
     if (specificRange) {
       return {
         min: specificRange.min,
@@ -523,14 +540,16 @@ Return structured data in JSON format.
         text: specificRange.text,
       };
     }
-    
+
     // Fallback to general range
-    const fallbackRange = mapping.referenceRanges.find(r => r.gender === 'all');
-    return fallbackRange ? {
-      min: fallbackRange.min,
-      max: fallbackRange.max,
-      text: fallbackRange.text,
-    } : undefined;
+    const fallbackRange = mapping.referenceRanges.find((r) => r.gender === 'all');
+    return fallbackRange
+      ? {
+          min: fallbackRange.min,
+          max: fallbackRange.max,
+          text: fallbackRange.text,
+        }
+      : undefined;
   }
 
   /**
@@ -607,9 +626,7 @@ Return structured data in JSON format.
       units: ['%', 'percent'],
       standardUnit: '%',
       loincCode: '4548-4',
-      referenceRanges: [
-        { ageGroup: 'adult', gender: 'all', max: 5.7, text: '<5.7% (Normal)' },
-      ],
+      referenceRanges: [{ ageGroup: 'adult', gender: 'all', max: 5.7, text: '<5.7% (Normal)' }],
     });
 
     // Complete Blood Count
