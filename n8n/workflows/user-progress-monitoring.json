@@ -1,0 +1,556 @@
+{
+  "name": "User Progress Monitoring & Health Alerts",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "hourly-monitor-trigger",
+      "name": "Hourly Monitoring",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */4 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/users/health-monitoring/status",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Monitoring-Type",
+              "value": "health_alerts"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "monitoringWindow",
+              "value": "4h"
+            },
+            {
+              "name": "includeSyncedDevices",
+              "value": true
+            },
+            {
+              "name": "checkThresholds",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-health-metrics",
+      "name": "Check Health Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-alerts",
+              "leftValue": "={{$json.alerts && $json.alerts.length > 0}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-for-alerts",
+      "name": "Check for Health Alerts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "critical-alerts",
+              "name": "criticalAlerts",
+              "value": "={{$json.alerts.filter(alert => alert.severity === 'critical')}}"
+            },
+            {
+              "id": "warning-alerts",
+              "name": "warningAlerts", 
+              "value": "={{$json.alerts.filter(alert => alert.severity === 'warning')}}"
+            },
+            {
+              "id": "info-alerts",
+              "name": "infoAlerts",
+              "value": "={{$json.alerts.filter(alert => alert.severity === 'info')}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "categorize-alerts",
+      "name": "Categorize Alerts",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-critical",
+              "leftValue": "={{$json.criticalAlerts.length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-critical-alerts",
+      "name": "Check Critical Alerts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 100]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/notifications/emergency-alert",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Priority",
+              "value": "critical"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "alerts",
+              "value": "={{$json.criticalAlerts}}"
+            },
+            {
+              "name": "notificationType",
+              "value": "critical_health_alert"
+            },
+            {
+              "name": "immediateAction",
+              "value": true
+            },
+            {
+              "name": "escalateToEmergency",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-critical-alerts",
+      "name": "Send Critical Alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-warnings",
+              "leftValue": "={{$json.warningAlerts.length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-warning-alerts",
+      "name": "Check Warning Alerts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/meal-planning/health-based-adaptation",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "healthAlerts",
+              "value": "={{$json.warningAlerts}}"
+            },
+            {
+              "name": "adaptationType",
+              "value": "health_warning_response"
+            },
+            {
+              "name": "autoImplement",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adapt-plans-warnings",
+      "name": "Adapt Plans for Warnings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/fitness-planning/health-based-adaptation",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "healthAlerts",
+              "value": "={{$json.warningAlerts}}"
+            },
+            {
+              "name": "adaptationType",
+              "value": "health_warning_response"
+            },
+            {
+              "name": "autoImplement",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adapt-fitness-warnings",
+      "name": "Adapt Fitness for Warnings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 320]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/analytics/user-progress/batch-update",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userIds",
+              "value": "={{$json.infoAlerts.map(alert => alert.userId)}}"
+            },
+            {
+              "name": "updateType",
+              "value": "routine_health_check"
+            },
+            {
+              "name": "includeDeviceData",
+              "value": true
+            },
+            {
+              "name": "calculateTrends",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-progress-analytics",
+      "name": "Update Progress Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 320]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/notifications/progress-updates",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "users",
+              "value": "={{$json.progressUpdates}}"
+            },
+            {
+              "name": "notificationType",
+              "value": "progress_milestone"
+            },
+            {
+              "name": "includeMotivation",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-progress-notifications",
+      "name": "Send Progress Notifications",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 320]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/analytics/workflow-metrics",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "workflowName",
+              "value": "health-progress-monitoring"
+            },
+            {
+              "name": "alertsProcessed",
+              "value": "={{$json.totalAlerts}}"
+            },
+            {
+              "name": "criticalAlerts",
+              "value": "={{$json.criticalAlerts.length}}"
+            },
+            {
+              "name": "warningAlerts",
+              "value": "={{$json.warningAlerts.length}}"
+            },
+            {
+              "name": "status",
+              "value": "completed"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-monitoring-metrics",
+      "name": "Log Monitoring Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 300]
+    }
+  ],
+  "connections": {
+    "hourly-monitor-trigger": {
+      "main": [
+        [
+          {
+            "node": "check-health-metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check-health-metrics": {
+      "main": [
+        [
+          {
+            "node": "check-for-alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check-for-alerts": {
+      "main": [
+        [
+          {
+            "node": "categorize-alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "categorize-alerts": {
+      "main": [
+        [
+          {
+            "node": "check-critical-alerts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "check-warning-alerts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "update-progress-analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check-critical-alerts": {
+      "main": [
+        [
+          {
+            "node": "send-critical-alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check-warning-alerts": {
+      "main": [
+        [
+          {
+            "node": "adapt-plans-warnings",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "adapt-fitness-warnings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update-progress-analytics": {
+      "main": [
+        [
+          {
+            "node": "send-progress-notifications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-progress-notifications": {
+      "main": [
+        [
+          {
+            "node": "log-monitoring-metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "health-monitoring",
+      "name": "Health Monitoring"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

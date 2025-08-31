@@ -221,6 +221,14 @@ describe('ExerciseLibraryService', () => {
       const exerciseWithRating = {
         ...mockExercise,
         updateRating: jest.fn(),
+        isAvailableForEquipment: jest.fn().mockReturnValue(true),
+        isSafeForConditions: jest.fn().mockReturnValue(true),
+        isSuitableForLevel: jest.fn().mockReturnValue(true),
+        incrementUsage: jest.fn(),
+        approve: jest.fn(),
+        getEstimatedCaloriesBurn: jest.fn().mockReturnValue(200),
+        getRecommendedSets: jest.fn().mockReturnValue(3),
+        getRecommendedReps: jest.fn().mockReturnValue({ min: 8, max: 12 }),
       };
 
       repository.findOne.mockResolvedValue(exerciseWithRating);
@@ -245,6 +253,14 @@ describe('ExerciseLibraryService', () => {
       const exerciseToApprove = {
         ...mockExercise,
         approve: jest.fn(),
+        isAvailableForEquipment: jest.fn().mockReturnValue(true),
+        isSafeForConditions: jest.fn().mockReturnValue(true),
+        isSuitableForLevel: jest.fn().mockReturnValue(true),
+        incrementUsage: jest.fn(),
+        updateRating: jest.fn(),
+        getEstimatedCaloriesBurn: jest.fn().mockReturnValue(200),
+        getRecommendedSets: jest.fn().mockReturnValue(3),
+        getRecommendedReps: jest.fn().mockReturnValue({ min: 8, max: 12 }),
       };
 
       repository.findOne.mockResolvedValue(exerciseToApprove);

@@ -193,6 +193,18 @@ describe('SafetyValidationService', () => {
         targetSets: 3,
         targetRepsPerSet: 12,
         intensityLevel: 6,
+        notes: '',
+        isCompleted: jest.fn().mockReturnValue(false),
+        isSkipped: jest.fn().mockReturnValue(false),
+        getCompletionPercentage: jest.fn().mockReturnValue(0),
+        getTotalRepsCompleted: jest.fn().mockReturnValue(0),
+        getTotalWeightLifted: jest.fn().mockReturnValue(0),
+        getAverageWeight: jest.fn().mockReturnValue(0),
+        getAverageReps: jest.fn().mockReturnValue(0),
+        start: jest.fn(),
+        complete: jest.fn(),
+        skip: jest.fn(),
+        modify: jest.fn(),
       } as any,
       {
         id: 'exercise2',
@@ -200,6 +212,18 @@ describe('SafetyValidationService', () => {
         targetSets: 3,
         targetRepsPerSet: 10,
         intensityLevel: 7,
+        notes: '',
+        isCompleted: jest.fn().mockReturnValue(false),
+        isSkipped: jest.fn().mockReturnValue(false),
+        getCompletionPercentage: jest.fn().mockReturnValue(0),
+        getTotalRepsCompleted: jest.fn().mockReturnValue(0),
+        getTotalWeightLifted: jest.fn().mockReturnValue(0),
+        getAverageWeight: jest.fn().mockReturnValue(0),
+        getAverageReps: jest.fn().mockReturnValue(0),
+        start: jest.fn(),
+        complete: jest.fn(),
+        skip: jest.fn(),
+        modify: jest.fn(),
       } as any,
     ];
 
@@ -285,7 +309,7 @@ describe('SafetyValidationService', () => {
       const highIntensityExercises = mockExercises.map((ex) => ({
         ...ex,
         intensityLevel: 10,
-      }));
+      } as any));
 
       const result = service.validateWorkout(mockWorkout, highIntensityExercises, mockUserProfile);
 
@@ -303,6 +327,29 @@ describe('SafetyValidationService', () => {
       progressiveOverloadEnabled: true,
       autoProgressionRate: 1.05,
       deloadWeekFrequency: 4,
+      isActive: jest.fn().mockReturnValue(true),
+      getDaysRemaining: jest.fn().mockReturnValue(84),
+      getWeeksRemaining: jest.fn().mockReturnValue(12),
+      getCurrentWeek: jest.fn().mockReturnValue(1),
+      getTotalPlannedWorkouts: jest.fn().mockReturnValue(48),
+      getWorkoutCompletionRate: jest.fn().mockReturnValue(0),
+      isDeloadWeek: jest.fn().mockReturnValue(false),
+      activate: jest.fn(),
+      pause: jest.fn(),
+      resume: jest.fn(),
+      complete: jest.fn(),
+      cancel: jest.fn(),
+      updateProgress: jest.fn(),
+      addAdaptation: jest.fn(),
+      updateSatisfactionRating: jest.fn(),
+      hasHealthCondition: jest.fn().mockReturnValue(false),
+      canPerformExercise: jest.fn().mockReturnValue(true),
+      isRecommendedFor: jest.fn().mockReturnValue(true),
+      exportToCalendar: jest.fn(),
+      exportToJSON: jest.fn(),
+      getUpcomingWorkouts: jest.fn().mockReturnValue([]),
+      getCompletedWorkouts: jest.fn().mockReturnValue([]),
+      getProgressSummary: jest.fn().mockReturnValue({}),
     } as any;
 
     it('should validate a reasonable fitness plan', () => {
@@ -315,7 +362,7 @@ describe('SafetyValidationService', () => {
       const longPlan = {
         ...mockPlan,
         durationWeeks: 60,
-      };
+      } as any;
 
       const result = service.validateFitnessPlan(longPlan, mockUserProfile);
 
@@ -326,7 +373,7 @@ describe('SafetyValidationService', () => {
       const shortPlan = {
         ...mockPlan,
         durationWeeks: 2,
-      };
+      } as any;
 
       const result = service.validateFitnessPlan(shortPlan, mockUserProfile);
 
@@ -337,7 +384,7 @@ describe('SafetyValidationService', () => {
       const aggressivePlan = {
         ...mockPlan,
         autoProgressionRate: 1.2, // 20% per week
-      };
+      } as any;
 
       const result = service.validateFitnessPlan(aggressivePlan, mockUserProfile);
 
@@ -348,7 +395,7 @@ describe('SafetyValidationService', () => {
       const infrequentDeloadPlan = {
         ...mockPlan,
         deloadWeekFrequency: 10,
-      };
+      } as any;
 
       const result = service.validateFitnessPlan(infrequentDeloadPlan, mockUserProfile);
 
@@ -423,7 +470,7 @@ describe('SafetyValidationService', () => {
 
       expect(result.shouldProgress).toBe(true);
       expect(result.adjustments.volumeAdjustment).toBe(5);
-      expect(result.recommendations).toContain(expect.stringContaining('Ready for progression'));
+      expect(result.recommendations).toContainEqual(expect.stringContaining('Ready for progression'));
     });
 
     it('should recommend volume reduction for low adherence', () => {
@@ -433,7 +480,7 @@ describe('SafetyValidationService', () => {
       );
 
       expect(result.adjustments.volumeAdjustment).toBe(-10);
-      expect(result.recommendations).toContain(expect.stringContaining('Consider reducing volume'));
+      expect(result.recommendations).toContainEqual(expect.stringContaining('Consider reducing volume'));
     });
 
     it('should recommend deload for high fatigue', () => {
@@ -445,14 +492,14 @@ describe('SafetyValidationService', () => {
 
       expect(result.shouldDeload).toBe(true);
       expect(result.adjustments.volumeAdjustment).toBe(-15);
-      expect(result.recommendations).toContain(expect.stringContaining('High fatigue detected'));
+      expect(result.recommendations).toContainEqual(expect.stringContaining('High fatigue detected'));
     });
 
     it('should recommend deload on scheduled week', () => {
       const result = service.getProgressionRecommendations(mockCurrentPlan, 85);
 
       expect(result.shouldDeload).toBe(true);
-      expect(result.recommendations).toContain(expect.stringContaining('Scheduled deload week'));
+      expect(result.recommendations).toContainEqual(expect.stringContaining('Scheduled deload week'));
     });
 
     it('should recommend intensity reduction for high difficulty', () => {
@@ -463,7 +510,7 @@ describe('SafetyValidationService', () => {
       );
 
       expect(result.adjustments.intensityAdjustment).toBe(-5);
-      expect(result.recommendations).toContain(expect.stringContaining('Reduce intensity'));
+      expect(result.recommendations).toContainEqual(expect.stringContaining('Reduce intensity'));
     });
   });
 });
