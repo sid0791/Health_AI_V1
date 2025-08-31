@@ -24,10 +24,10 @@ export class AnalyticsService {
 
     // Get today's nutrition
     const todayNutrition = await this.getTodayNutritionSummary(userId);
-    
+
     // Get this week's progress
     const weekProgress = await this.getWeekProgress(userId);
-    
+
     // Get active meal plan
     const activePlan = await this.mealPlanRepository.findOne({
       where: { userId, isActive: true },
@@ -44,14 +44,16 @@ export class AnalyticsService {
     return {
       todayNutrition,
       weekProgress,
-      activePlan: activePlan ? {
-        id: activePlan.id,
-        name: activePlan.name,
-        daysRemaining: activePlan.getDaysRemaining(),
-        adherenceScore: activePlan.adherenceScore,
-        progressPercentage: activePlan.getProgressPercentage(),
-      } : null,
-      recentActivity: recentLogs.map(log => ({
+      activePlan: activePlan
+        ? {
+            id: activePlan.id,
+            name: activePlan.name,
+            daysRemaining: activePlan.getDaysRemaining(),
+            adherenceScore: activePlan.adherenceScore,
+            progressPercentage: activePlan.getProgressPercentage(),
+          }
+        : null,
+      recentActivity: recentLogs.map((log) => ({
         id: log.id,
         foodName: log.foodName,
         mealType: log.mealType,
@@ -66,23 +68,25 @@ export class AnalyticsService {
     // Mock weight data - in production this would come from a weight logs table
     const mockWeightData = [];
     const baseWeight = 70; // kg
-    
+
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      
+
       // Generate some realistic weight variation
       const variation = Math.sin(i * 0.1) * 0.5 + Math.random() * 0.3 - 0.15;
-      const weight = baseWeight + variation - (i * 0.02); // Slight downward trend
-      
+      const weight = baseWeight + variation - i * 0.02; // Slight downward trend
+
       mockWeightData.push({
         date: date.toISOString().split('T')[0],
         weight: Math.round(weight * 10) / 10,
       });
     }
 
-    const weightChange = mockWeightData.length > 1 ? 
-      mockWeightData[mockWeightData.length - 1].weight - mockWeightData[0].weight : 0;
+    const weightChange =
+      mockWeightData.length > 1
+        ? mockWeightData[mockWeightData.length - 1].weight - mockWeightData[0].weight
+        : 0;
 
     return {
       data: mockWeightData,
@@ -94,7 +98,11 @@ export class AnalyticsService {
       goals: {
         targetWeight: 68,
         goalType: 'weight_loss',
-        estimatedETA: this.calculateWeightETA(mockWeightData[mockWeightData.length - 1].weight, 68, weightChange),
+        estimatedETA: this.calculateWeightETA(
+          mockWeightData[mockWeightData.length - 1].weight,
+          68,
+          weightChange,
+        ),
       },
     };
   }
@@ -117,15 +125,18 @@ export class AnalyticsService {
         carbs: acc.carbs + (Number(log.carbsGrams) || 0),
         fat: acc.fat + (Number(log.fatGrams) || 0),
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
     );
 
     const totalCalories = totals.calories;
-    const macroPercentages = totalCalories > 0 ? {
-      protein: Math.round((totals.protein * 4 / totalCalories) * 100),
-      carbs: Math.round((totals.carbs * 4 / totalCalories) * 100),
-      fat: Math.round((totals.fat * 9 / totalCalories) * 100),
-    } : { protein: 0, carbs: 0, fat: 0 };
+    const macroPercentages =
+      totalCalories > 0
+        ? {
+            protein: Math.round(((totals.protein * 4) / totalCalories) * 100),
+            carbs: Math.round(((totals.carbs * 4) / totalCalories) * 100),
+            fat: Math.round(((totals.fat * 9) / totalCalories) * 100),
+          }
+        : { protein: 0, carbs: 0, fat: 0 };
 
     // Daily breakdown
     const dailyData = [];
@@ -135,9 +146,7 @@ export class AnalyticsService {
       const dayEnd = new Date(currentDate);
       dayEnd.setHours(23, 59, 59, 999);
 
-      const dayLogs = logs.filter(log => 
-        log.loggedAt >= dayStart && log.loggedAt <= dayEnd
-      );
+      const dayLogs = logs.filter((log) => log.loggedAt >= dayStart && log.loggedAt <= dayEnd);
 
       const dayTotals = dayLogs.reduce(
         (acc, log) => ({
@@ -146,7 +155,7 @@ export class AnalyticsService {
           carbs: acc.carbs + (Number(log.carbsGrams) || 0),
           fat: acc.fat + (Number(log.fatGrams) || 0),
         }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        { calories: 0, protein: 0, carbs: 0, fat: 0 },
       );
 
       dailyData.push({
@@ -178,21 +187,48 @@ export class AnalyticsService {
   async getMicronutrientAnalysis(userId: string, days: number): Promise<any> {
     // Mock micronutrient data - in production this would be calculated from detailed food data
     const mockDeficiencies = [
-      { nutrient: 'Vitamin D', currentIntake: 15, recommendedIntake: 20, unit: 'mcg', deficiency: 25 },
+      {
+        nutrient: 'Vitamin D',
+        currentIntake: 15,
+        recommendedIntake: 20,
+        unit: 'mcg',
+        deficiency: 25,
+      },
       { nutrient: 'Iron', currentIntake: 12, recommendedIntake: 15, unit: 'mg', deficiency: 20 },
-      { nutrient: 'Calcium', currentIntake: 800, recommendedIntake: 1000, unit: 'mg', deficiency: 20 },
-      { nutrient: 'Vitamin B12', currentIntake: 2.0, recommendedIntake: 2.4, unit: 'mcg', deficiency: 17 },
-      { nutrient: 'Folate', currentIntake: 350, recommendedIntake: 400, unit: 'mcg', deficiency: 12 },
+      {
+        nutrient: 'Calcium',
+        currentIntake: 800,
+        recommendedIntake: 1000,
+        unit: 'mg',
+        deficiency: 20,
+      },
+      {
+        nutrient: 'Vitamin B12',
+        currentIntake: 2.0,
+        recommendedIntake: 2.4,
+        unit: 'mcg',
+        deficiency: 17,
+      },
+      {
+        nutrient: 'Folate',
+        currentIntake: 350,
+        recommendedIntake: 400,
+        unit: 'mcg',
+        deficiency: 12,
+      },
     ];
 
     return {
       period: `Last ${days} days`,
-      deficiencies: mockDeficiencies.map(def => ({
+      deficiencies: mockDeficiencies.map((def) => ({
         ...def,
         status: def.deficiency > 20 ? 'low' : def.deficiency > 10 ? 'borderline' : 'adequate',
         improvementSuggestions: this.getMicronutrientSuggestions(def.nutrient),
       })),
-      overallScore: Math.round((100 - mockDeficiencies.reduce((sum, def) => sum + def.deficiency, 0) / mockDeficiencies.length)),
+      overallScore: Math.round(
+        100 -
+          mockDeficiencies.reduce((sum, def) => sum + def.deficiency, 0) / mockDeficiencies.length,
+      ),
       recommendations: [
         'Consider adding more leafy greens for iron and folate',
         'Include dairy or fortified alternatives for calcium',
@@ -236,17 +272,22 @@ export class AnalyticsService {
     ];
 
     return {
-      goals: goals.map(goal => ({
+      goals: goals.map((goal) => ({
         ...goal,
         eta: this.calculateGoalETA(goal),
-        status: goal.progress >= 100 ? 'achieved' : goal.progress >= 75 ? 'on_track' : 'needs_attention',
+        status:
+          goal.progress >= 100 ? 'achieved' : goal.progress >= 75 ? 'on_track' : 'needs_attention',
       })),
-      overallProgress: Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length),
-      activePlan: activePlan ? {
-        name: activePlan.name,
-        adherence: activePlan.adherenceScore,
-        daysRemaining: activePlan.getDaysRemaining(),
-      } : null,
+      overallProgress: Math.round(
+        goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length,
+      ),
+      activePlan: activePlan
+        ? {
+            name: activePlan.name,
+            adherence: activePlan.adherenceScore,
+            daysRemaining: activePlan.getDaysRemaining(),
+          }
+        : null,
     };
   }
 
@@ -256,7 +297,7 @@ export class AnalyticsService {
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      
+
       activities.push({
         date: date.toISOString().split('T')[0],
         steps: Math.floor(Math.random() * 3000) + 7000,
@@ -273,7 +314,7 @@ export class AnalyticsService {
         activeMinutes: acc.activeMinutes + day.activeMinutes,
         workouts: acc.workouts + day.workouts,
       }),
-      { steps: 0, caloriesBurned: 0, activeMinutes: 0, workouts: 0 }
+      { steps: 0, caloriesBurned: 0, activeMinutes: 0, workouts: 0 },
     );
 
     return {
@@ -354,7 +395,7 @@ export class AnalyticsService {
         carbs: acc.carbs + (Number(log.carbsGrams) || 0),
         fat: acc.fat + (Number(log.fatGrams) || 0),
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
     );
 
     return {
@@ -366,7 +407,7 @@ export class AnalyticsService {
 
   private async getWeekProgress(userId: string): Promise<any> {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    
+
     const weekLogs = await this.mealLogRepository.find({
       where: {
         userId,
@@ -376,31 +417,39 @@ export class AnalyticsService {
 
     return {
       totalMealsLogged: weekLogs.length,
-      averageDailyCalories: weekLogs.length > 0 ? 
-        Math.round(weekLogs.reduce((sum, log) => sum + (Number(log.caloriesConsumed) || 0), 0) / 7) : 0,
+      averageDailyCalories:
+        weekLogs.length > 0
+          ? Math.round(
+              weekLogs.reduce((sum, log) => sum + (Number(log.caloriesConsumed) || 0), 0) / 7,
+            )
+          : 0,
     };
   }
 
   private generateInsights(userId: string): string[] {
     return [
-      'You\'re maintaining consistent meal logging!',
+      "You're maintaining consistent meal logging!",
       'Consider adding more vegetables to increase fiber intake',
       'Your protein intake is on track for your goals',
     ];
   }
 
-  private calculateWeightETA(currentWeight: number, targetWeight: number, weeklyChange: number): string {
+  private calculateWeightETA(
+    currentWeight: number,
+    targetWeight: number,
+    weeklyChange: number,
+  ): string {
     if (weeklyChange === 0) return 'Unable to estimate';
-    
+
     const remainingWeight = Math.abs(currentWeight - targetWeight);
     const weeksToGoal = Math.ceil(remainingWeight / Math.abs(weeklyChange));
-    
+
     return `${weeksToGoal} weeks`;
   }
 
   private generateMacroRecommendations(percentages: any): string[] {
     const recommendations = [];
-    
+
     if (percentages.protein < 20) {
       recommendations.push('Consider increasing protein intake with lean meats, legumes, or dairy');
     }
@@ -410,25 +459,33 @@ export class AnalyticsService {
     if (percentages.fat > 35) {
       recommendations.push('Consider reducing fat intake and focus on healthy fats');
     }
-    
+
     return recommendations;
   }
 
   private getMicronutrientSuggestions(nutrient: string): string[] {
     const suggestions: Record<string, string[]> = {
-      'Vitamin D': ['Get 15-20 minutes of sunlight daily', 'Include fatty fish like salmon', 'Consider fortified foods'],
-      'Iron': ['Add spinach and leafy greens', 'Include lean meats', 'Pair with vitamin C foods'],
-      'Calcium': ['Include dairy products', 'Try fortified plant milks', 'Add sesame seeds'],
-      'Vitamin B12': ['Include fish and meat', 'Try fortified cereals', 'Consider supplements if vegetarian'],
-      'Folate': ['Add more leafy greens', 'Include legumes and beans', 'Try fortified grains'],
+      'Vitamin D': [
+        'Get 15-20 minutes of sunlight daily',
+        'Include fatty fish like salmon',
+        'Consider fortified foods',
+      ],
+      Iron: ['Add spinach and leafy greens', 'Include lean meats', 'Pair with vitamin C foods'],
+      Calcium: ['Include dairy products', 'Try fortified plant milks', 'Add sesame seeds'],
+      'Vitamin B12': [
+        'Include fish and meat',
+        'Try fortified cereals',
+        'Consider supplements if vegetarian',
+      ],
+      Folate: ['Add more leafy greens', 'Include legumes and beans', 'Try fortified grains'],
     };
-    
+
     return suggestions[nutrient] || ['Consult with a nutritionist for specific recommendations'];
   }
 
   private calculateGoalETA(goal: any): string {
     if (goal.progress >= 100) return 'Achieved';
-    
+
     // Simple estimation based on current progress rate
     return '2-3 weeks';
   }
@@ -444,7 +501,11 @@ export class AnalyticsService {
     } else if (score >= 60) {
       return ['Try setting meal reminders', 'Log meals immediately after eating'];
     } else {
-      return ['Start with logging one meal per day', 'Use quick-add foods to save time', 'Set daily logging goals'];
+      return [
+        'Start with logging one meal per day',
+        'Use quick-add foods to save time',
+        'Set daily logging goals',
+      ];
     }
   }
 }

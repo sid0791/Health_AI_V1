@@ -4,7 +4,13 @@ import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { AIRoutingService } from '../services/ai-routing.service';
-import { AIRoutingDecision, AIServiceLevel, AIProvider, AIModel, RequestType } from '../entities/ai-routing-decision.entity';
+import {
+  AIRoutingDecision,
+  AIServiceLevel,
+  AIProvider,
+  AIModel,
+  RequestType,
+} from '../entities/ai-routing-decision.entity';
 
 describe('AIRoutingService', () => {
   let service: AIRoutingService;
@@ -31,17 +37,17 @@ describe('AIRoutingService', () => {
   const mockConfigService = {
     get: jest.fn((key: string, defaultValue?: any) => {
       const configs = {
-        'AI_LEVEL1_DAILY_QUOTA': 1000000,
-        'AI_LEVEL2_DAILY_QUOTA': 5000000,
-        'AI_FREE_DAILY_QUOTA': 10000000,
-        'OPENAI_API_KEY': 'test-openai-key',
-        'ANTHROPIC_API_KEY': 'test-anthropic-key',
-        'OPENROUTER_API_KEY': 'test-openrouter-key',
-        'HUGGINGFACE_API_KEY': 'test-huggingface-key',
-        'TOGETHER_API_KEY': 'test-together-key',
-        'GROQ_API_KEY': 'test-groq-key',
-        'DLP_ENABLE_REDACTION': true,
-        'DLP_ENABLE_PSEUDONYMIZATION': true,
+        AI_LEVEL1_DAILY_QUOTA: 1000000,
+        AI_LEVEL2_DAILY_QUOTA: 5000000,
+        AI_FREE_DAILY_QUOTA: 10000000,
+        OPENAI_API_KEY: 'test-openai-key',
+        ANTHROPIC_API_KEY: 'test-anthropic-key',
+        OPENROUTER_API_KEY: 'test-openrouter-key',
+        HUGGINGFACE_API_KEY: 'test-huggingface-key',
+        TOGETHER_API_KEY: 'test-together-key',
+        GROQ_API_KEY: 'test-groq-key',
+        DLP_ENABLE_REDACTION: true,
+        DLP_ENABLE_PSEUDONYMIZATION: true,
       };
       return configs[key] || defaultValue;
     }),
@@ -277,20 +283,24 @@ describe('AIRoutingService', () => {
       // Create a scenario where step-down is actually needed
       // Mock the getAvailableModelsWithQuotaPercentage to simulate quota exhaustion
       const originalMethod = service['getAvailableModelsWithQuotaPercentage'];
-      
-      service['getAvailableModelsWithQuotaPercentage'] = jest.fn()
+
+      service['getAvailableModelsWithQuotaPercentage'] = jest
+        .fn()
         .mockResolvedValueOnce([]) // No models at 100%
         .mockResolvedValueOnce([]) // No models at 95%
-        .mockResolvedValueOnce([{  // Models available at 90%
-          provider: AIProvider.ANTHROPIC,
-          model: AIModel.CLAUDE_3_OPUS,
-          endpoint: 'https://api.anthropic.com/v1/messages',
-          apiKey: 'test-key',
-          costPerToken: 0.000075,
-          accuracyScore: 96,
-          availability: 98,
-          quotaRemaining: 100000,
-        }]);
+        .mockResolvedValueOnce([
+          {
+            // Models available at 90%
+            provider: AIProvider.ANTHROPIC,
+            model: AIModel.CLAUDE_3_OPUS,
+            endpoint: 'https://api.anthropic.com/v1/messages',
+            apiKey: 'test-key',
+            costPerToken: 0.000075,
+            accuracyScore: 96,
+            availability: 98,
+            quotaRemaining: 100000,
+          },
+        ]);
 
       const request = {
         userId: 'test-user',
@@ -314,7 +324,7 @@ describe('AIRoutingService', () => {
       // Should trigger step-down logic and mention quota level
       expect(result.routingReason).toContain('quota level: 90%');
       expect(result.routingDecision).toBe('quota_exceeded_stepdown');
-      
+
       // Restore original method
       service['getAvailableModelsWithQuotaPercentage'] = originalMethod;
     });
@@ -394,7 +404,8 @@ describe('AIRoutingService', () => {
 
   describe('Retry logic', () => {
     it('should retry failed operations with exponential backoff', async () => {
-      const operation = jest.fn()
+      const operation = jest
+        .fn()
         .mockRejectedValueOnce(new Error('First failure'))
         .mockRejectedValueOnce(new Error('Second failure'))
         .mockResolvedValueOnce('Success');
@@ -408,9 +419,9 @@ describe('AIRoutingService', () => {
     it('should throw after max retries exceeded', async () => {
       const operation = jest.fn().mockRejectedValue(new Error('Persistent failure'));
 
-      await expect(
-        service.executeWithRetry(operation, 'test operation', 2)
-      ).rejects.toThrow('Persistent failure');
+      await expect(service.executeWithRetry(operation, 'test operation', 2)).rejects.toThrow(
+        'Persistent failure',
+      );
 
       expect(operation).toHaveBeenCalledTimes(2);
     });

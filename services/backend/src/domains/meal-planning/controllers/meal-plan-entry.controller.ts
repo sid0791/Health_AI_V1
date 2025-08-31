@@ -44,7 +44,12 @@ export class MealPlanEntryController {
 
   @Get('meal-plan/:mealPlanId')
   @ApiOperation({ summary: 'Get all entries for a specific meal plan' })
-  @ApiQuery({ name: 'dayNumber', required: false, type: Number, description: 'Filter by day number' })
+  @ApiQuery({
+    name: 'dayNumber',
+    required: false,
+    type: Number,
+    description: 'Filter by day number',
+  })
   @ApiQuery({ name: 'mealType', required: false, description: 'Filter by meal type' })
   @ApiResponse({ status: 200, description: 'Meal plan entries retrieved successfully' })
   async findByMealPlan(

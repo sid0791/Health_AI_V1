@@ -39,15 +39,15 @@ export class MealPlanService {
 
   async findAllByUser(userId: string, query: MealPlanQueryDto): Promise<MealPlan[]> {
     const where: any = { userId };
-    
+
     if (query.status) {
       where.status = query.status;
     }
-    
+
     if (query.planType) {
       where.planType = query.planType;
     }
-    
+
     if (query.active !== undefined) {
       where.isActive = query.active;
     }
@@ -80,10 +80,10 @@ export class MealPlanService {
 
   async findActivePlan(userId: string): Promise<MealPlan | null> {
     return this.mealPlanRepository.findOne({
-      where: { 
-        userId, 
-        isActive: true, 
-        status: MealPlanStatus.ACTIVE 
+      where: {
+        userId,
+        isActive: true,
+        status: MealPlanStatus.ACTIVE,
       },
       relations: ['entries', 'entries.recipe'],
       order: { activatedAt: 'DESC' },
@@ -92,7 +92,7 @@ export class MealPlanService {
 
   async getCurrentWeekPlan(userId: string): Promise<MealPlan | null> {
     const activePlan = await this.findActivePlan(userId);
-    
+
     if (!activePlan) {
       return null;
     }
@@ -108,7 +108,7 @@ export class MealPlanService {
 
   async getTodayMeals(userId: string): Promise<any> {
     const activePlan = await this.getCurrentWeekPlan(userId);
-    
+
     if (!activePlan) {
       return {
         totalMeals: 0,
@@ -130,8 +130,8 @@ export class MealPlanService {
     const dayNumber = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
     // Get today's meals
-    const todayMeals = activePlan.entries.filter(entry => entry.dayNumber === dayNumber);
-    const completedMeals = todayMeals.filter(entry => entry.isCompleted()).length;
+    const todayMeals = activePlan.entries.filter((entry) => entry.dayNumber === dayNumber);
+    const completedMeals = todayMeals.filter((entry) => entry.isCompleted()).length;
 
     // Calculate nutrition summary
     const nutritionSummary = todayMeals.reduce(
@@ -141,13 +141,13 @@ export class MealPlanService {
         carbs: acc.carbs + Number(meal.carbsGrams),
         fat: acc.fat + Number(meal.fatGrams),
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
     );
 
     return {
       totalMeals: todayMeals.length,
       completedMeals,
-      meals: todayMeals.map(meal => ({
+      meals: todayMeals.map((meal) => ({
         id: meal.id,
         mealType: meal.mealType,
         mealName: meal.mealName,
@@ -163,7 +163,11 @@ export class MealPlanService {
     };
   }
 
-  async update(id: string, updateMealPlanDto: UpdateMealPlanDto, userId: string): Promise<MealPlan> {
+  async update(
+    id: string,
+    updateMealPlanDto: UpdateMealPlanDto,
+    userId: string,
+  ): Promise<MealPlan> {
     const existingPlan = await this.findOne(id, userId);
     if (!existingPlan) {
       throw new NotFoundException('Meal plan not found');
@@ -185,10 +189,10 @@ export class MealPlanService {
     }
 
     await this.deactivateExistingPlans(userId);
-    
+
     mealPlan.activate();
     await this.mealPlanRepository.save(mealPlan);
-    
+
     return mealPlan;
   }
 
@@ -200,7 +204,7 @@ export class MealPlanService {
 
     mealPlan.pause();
     await this.mealPlanRepository.save(mealPlan);
-    
+
     return mealPlan;
   }
 
@@ -212,7 +216,7 @@ export class MealPlanService {
 
     mealPlan.complete();
     await this.mealPlanRepository.save(mealPlan);
-    
+
     return mealPlan;
   }
 
@@ -278,7 +282,7 @@ export class MealPlanService {
   private async deactivateExistingPlans(userId: string): Promise<void> {
     await this.mealPlanRepository.update(
       { userId, isActive: true },
-      { isActive: false, status: MealPlanStatus.PAUSED }
+      { isActive: false, status: MealPlanStatus.PAUSED },
     );
   }
 

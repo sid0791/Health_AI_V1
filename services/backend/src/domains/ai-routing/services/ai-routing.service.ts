@@ -380,18 +380,20 @@ export class AIRoutingService {
       models: [
         {
           model: AIModel.LLAMA_3_1_8B,
-          endpoint: 'https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3.1-8B-Instruct',
+          endpoint:
+            'https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3.1-8B-Instruct',
           apiKeyConfig: 'HUGGINGFACE_API_KEY',
-          costPerToken: 0.000000, // Free tier
+          costPerToken: 0.0, // Free tier
           accuracyScore: 82,
           maxTokens: 128000,
           availability: 90,
         },
         {
           model: AIModel.MISTRAL_7B,
-          endpoint: 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3',
+          endpoint:
+            'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3',
           apiKeyConfig: 'HUGGINGFACE_API_KEY',
-          costPerToken: 0.000000, // Free tier
+          costPerToken: 0.0, // Free tier
           accuracyScore: 80,
           maxTokens: 32000,
           availability: 88,
@@ -562,7 +564,8 @@ export class AIRoutingService {
       // Level 2: Prioritize cost, then accuracy (sort by cost asc, then accuracy desc)
       sortedModels = availableModels.sort((a, b) => {
         const costDiff = a.costPerToken - b.costPerToken;
-        if (Math.abs(costDiff) > 0.000001) { // If cost difference is significant
+        if (Math.abs(costDiff) > 0.000001) {
+          // If cost difference is significant
           return costDiff; // Lower cost first
         }
         return b.accuracyScore - a.accuracyScore; // Higher accuracy second
@@ -638,7 +641,7 @@ export class AIRoutingService {
    */
   resetDailyQuotas(): void {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Remove all entries that are not from today
     for (const key of this.dailyQuotaUsage.keys()) {
       if (!key.startsWith(today)) {
@@ -660,17 +663,21 @@ export class AIRoutingService {
     if (serviceLevel === AIServiceLevel.LEVEL_1) {
       // Enhanced step-down percentages for Level 1: 100% -> 95% -> 90% -> 85% -> 80%
       const stepDownPercentages = [100, 95, 90, 85, 80];
-      
+
       for (const percentage of stepDownPercentages) {
         const availableModels = await this.getAvailableModelsWithQuotaPercentage(
           serviceLevel,
           request,
           percentage,
         );
-        
+
         if (availableModels.length > 0) {
-          const selectedModel = await this.selectOptimalModel(availableModels, request, serviceLevel);
-          
+          const selectedModel = await this.selectOptimalModel(
+            availableModels,
+            request,
+            serviceLevel,
+          );
+
           if (percentage < 100) {
             selectedModel.routingReason = `Step-down quota selection (quota level: ${percentage}%)`;
             selectedModel.routingDecision = RoutingDecision.QUOTA_EXCEEDED_STEPDOWN;
@@ -678,22 +685,27 @@ export class AIRoutingService {
           return selectedModel;
         }
       }
-      
+
       // If Level 1 exhausted, check if emergency - allow fallback to cost-optimized models
       if (request.emergencyRequest) {
         this.logger.warn('Emergency request: Level 1 quota exhausted, falling back to Level 2');
         const level2Models = await this.getAvailableModels(AIServiceLevel.LEVEL_2, request);
         if (level2Models.length > 0) {
-          const selectedModel = await this.selectOptimalModel(level2Models, request, AIServiceLevel.LEVEL_2);
-          selectedModel.routingReason = 'Emergency fallback to Level 2 due to Level 1 quota exhaustion';
+          const selectedModel = await this.selectOptimalModel(
+            level2Models,
+            request,
+            AIServiceLevel.LEVEL_2,
+          );
+          selectedModel.routingReason =
+            'Emergency fallback to Level 2 due to Level 1 quota exhaustion';
           selectedModel.routingDecision = RoutingDecision.EMERGENCY_OVERRIDE;
           return selectedModel;
         }
       }
-      
+
       throw new Error('Level 1 quota exceeded and no available fallback options');
     }
-    
+
     // Enhanced Level 2 processing with smart cost optimization
     return this.selectOptimalModelEnhanced(serviceLevel, request);
   }
@@ -802,25 +814,27 @@ export class AIRoutingService {
         // First priority: Free models (cost = 0)
         if (a.costPerToken === 0 && b.costPerToken > 0) return -1;
         if (b.costPerToken === 0 && a.costPerToken > 0) return 1;
-        
+
         // Second priority: Cost optimization within accuracy range
         const costDiff = a.costPerToken - b.costPerToken;
-        if (Math.abs(costDiff) > 0.000001) { // If cost difference is significant
+        if (Math.abs(costDiff) > 0.000001) {
+          // If cost difference is significant
           return costDiff; // Lower cost first
         }
-        
+
         // Third priority: Higher accuracy
         return b.accuracyScore - a.accuracyScore;
       });
-      
+
       const selectedModel = availableModels[0];
-      const reason = selectedModel.costPerToken === 0 
-        ? 'Free open source model selected for optimal cost efficiency'
-        : 'Cost-optimized model selection with accuracy consideration';
-      
+      const reason =
+        selectedModel.costPerToken === 0
+          ? 'Free open source model selected for optimal cost efficiency'
+          : 'Cost-optimized model selection with accuracy consideration';
+
       return this.buildModelResult(selectedModel, availableModels, request, serviceLevel, reason);
     }
-    
+
     // Level 1: Accuracy-first selection
     return this.selectOptimalModel(availableModels, request, serviceLevel);
   }
@@ -828,7 +842,13 @@ export class AIRoutingService {
   /**
    * Build model result with retry configuration
    */
-  private buildModelResult(selectedModel: any, availableModels: any[], request: AIRoutingRequest, serviceLevel: AIServiceLevel, reason?: string): any {
+  private buildModelResult(
+    selectedModel: any,
+    availableModels: any[],
+    request: AIRoutingRequest,
+    serviceLevel: AIServiceLevel,
+    reason?: string,
+  ): any {
     // Estimate cost
     const estimatedTokens = (request.contextTokens || 1000) + (request.maxResponseTokens || 1000);
     const estimatedCost = estimatedTokens * selectedModel.costPerToken;
@@ -884,28 +904,29 @@ export class AIRoutingService {
     maxRetries: number = this.retryConfiguration.maxRetries,
   ): Promise<T> {
     let lastError: Error;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await operation();
       } catch (error) {
         lastError = error;
         this.logger.warn(`${context} attempt ${attempt}/${maxRetries} failed:`, error.message);
-        
+
         if (attempt === maxRetries) {
           break;
         }
-        
+
         // Calculate delay with exponential backoff
         const delay = Math.min(
-          this.retryConfiguration.baseDelay * Math.pow(this.retryConfiguration.backoffFactor, attempt - 1),
+          this.retryConfiguration.baseDelay *
+            Math.pow(this.retryConfiguration.backoffFactor, attempt - 1),
           this.retryConfiguration.maxDelay,
         );
-        
+
         await this.sleep(delay);
       }
     }
-    
+
     throw lastError;
   }
 
@@ -913,6 +934,6 @@ export class AIRoutingService {
    * Sleep utility for retry delays
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
