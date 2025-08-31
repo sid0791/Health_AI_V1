@@ -1,21 +1,15 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AIPromptTemplate } from './entities/ai-prompt-template.entity';
-import { AIPromptExecution } from './entities/ai-prompt-execution.entity';
-import { AIPromptOptimizationService } from './services/ai-prompt-optimization.service';
-import { AIPromptOptimizationController } from './controllers/ai-prompt-optimization.controller';
-import { PromptTemplateSeeder } from './templates/prompt-template-seeder.service';
-import { AIRoutingModule } from '../ai-routing/ai-routing.module';
-import { UsersModule } from '../users/users.module';
+import { User } from '../users/entities/user.entity';
+import { PromptOptimizationService } from './services/prompt-optimization.service';
+import { PromptOptimizationController } from './controllers/prompt-optimization.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AIPromptTemplate, AIPromptExecution]),
-    AIRoutingModule,
-    UsersModule,
+    TypeOrmModule.forFeature([User])
   ],
-  controllers: [AIPromptOptimizationController],
-  providers: [AIPromptOptimizationService, PromptTemplateSeeder],
-  exports: [AIPromptOptimizationService, TypeOrmModule],
+  providers: [PromptOptimizationService],
+  controllers: [PromptOptimizationController],
+  exports: [PromptOptimizationService],
 })
 export class AIPromptOptimizationModule {}

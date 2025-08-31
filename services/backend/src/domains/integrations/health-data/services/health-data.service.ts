@@ -243,15 +243,14 @@ export class HealthDataService {
           result.recordsSuccess++;
           
           // Create log entry for successful sync
-          await this.logsService.createLogEntry({
-            userId: connection.userId,
+          await this.logsService.createLogEntry(connection.userId, {
             logType: this.mapDataTypeToLogType(dataType),
-            source: this.mapProviderToLogSource(connection.provider),
-            loggedAt: record.timestamp || new Date(),
-            data: record,
+            logSource: this.mapProviderToLogSource(connection.provider),
+            title: `${dataType} data synced from ${connection.provider}`,
             value: record.value,
             unit: record.unit,
-            externalId: record.id,
+            metadata: record,
+            loggedAt: record.timestamp || new Date(),
           });
         } catch (error) {
           result.recordsError++;
