@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import {
   AIRoutingDecision,
   AIServiceLevel,
@@ -64,11 +66,18 @@ export class AIRoutingService {
   private readonly logger = new Logger(AIRoutingService.name);
   private readonly providers: Map<AIProvider, ProviderConfig> = new Map();
   private readonly dailyQuotaUsage: Map<string, number> = new Map(); // date-provider -> usage
+  private readonly retryConfiguration = {
+    maxRetries: 3,
+    baseDelay: 1000, // 1 second
+    maxDelay: 30000, // 30 seconds
+    backoffFactor: 2,
+  };
 
   constructor(
     @InjectRepository(AIRoutingDecision)
     private readonly routingRepository: Repository<AIRoutingDecision>,
     private readonly configService: ConfigService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.initializeProviders();
   }
@@ -78,6 +87,13 @@ export class AIRoutingService {
    */
   async routeRequest(request: AIRoutingRequest): Promise<AIRoutingResult> {
     this.logger.debug(`Routing AI request: ${request.requestType}`);
+
+    // Check cache first
+    const cacheKey = this.generateCacheKey(request);
+    const cachedResult = await this.checkCache(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
+    }
 
     const requestId = this.generateRequestId();
     const serviceLevel = this.determineServiceLevel(request.requestType);
@@ -98,15 +114,8 @@ export class AIRoutingService {
     });
 
     try {
-      // Get available models for service level
-      const availableModels = await this.getAvailableModels(serviceLevel, request);
-
-      if (availableModels.length === 0) {
-        throw new Error('No available models for request');
-      }
-
-      // Select optimal model
-      const selectedModel = await this.selectOptimalModel(availableModels, request, serviceLevel);
+      // Use step-down logic for optimal selection
+      const selectedModel = await this.selectModelWithQuotaStepDown(serviceLevel, request);
 
       // Update decision record
       decision.provider = selectedModel.provider;
@@ -135,6 +144,9 @@ export class AIRoutingService {
         fallbackOptions: selectedModel.fallbackOptions,
         decisionId: decision.id,
       };
+
+      // Cache the result
+      await this.cacheResult(cacheKey, result);
 
       this.logger.debug(`Routed to ${selectedModel.provider}/${selectedModel.model}`);
       return result;
@@ -361,6 +373,94 @@ export class AIRoutingService {
         tokensPerMinute: 100000,
       },
     });
+
+    // Open Source/Free AI Providers (Cost-Free Options)
+    this.providers.set(AIProvider.HUGGINGFACE, {
+      provider: AIProvider.HUGGINGFACE,
+      models: [
+        {
+          model: AIModel.LLAMA_3_1_8B,
+          endpoint: 'https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3.1-8B-Instruct',
+          apiKeyConfig: 'HUGGINGFACE_API_KEY',
+          costPerToken: 0.000000, // Free tier
+          accuracyScore: 82,
+          maxTokens: 128000,
+          availability: 90,
+        },
+        {
+          model: AIModel.MISTRAL_7B,
+          endpoint: 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3',
+          apiKeyConfig: 'HUGGINGFACE_API_KEY',
+          costPerToken: 0.000000, // Free tier
+          accuracyScore: 80,
+          maxTokens: 32000,
+          availability: 88,
+        },
+      ],
+      dailyQuota: this.configService.get('AI_FREE_DAILY_QUOTA', 10000000), // Higher quota for free tier
+      rateLimits: {
+        requestsPerMinute: 200,
+        tokensPerMinute: 50000,
+      },
+    });
+
+    this.providers.set(AIProvider.TOGETHER, {
+      provider: AIProvider.TOGETHER,
+      models: [
+        {
+          model: AIModel.LLAMA_3_1_70B,
+          endpoint: 'https://api.together.xyz/v1/chat/completions',
+          apiKeyConfig: 'TOGETHER_API_KEY',
+          costPerToken: 0.000003, // $3 per 1M tokens
+          accuracyScore: 84,
+          maxTokens: 128000,
+          availability: 94,
+        },
+        {
+          model: AIModel.QWEN_2_72B,
+          endpoint: 'https://api.together.xyz/v1/chat/completions',
+          apiKeyConfig: 'TOGETHER_API_KEY',
+          costPerToken: 0.000002, // $2 per 1M tokens - very cost effective
+          accuracyScore: 83,
+          maxTokens: 32000,
+          availability: 92,
+        },
+      ],
+      dailyQuota: this.configService.get('AI_LEVEL2_DAILY_QUOTA', 8000000),
+      rateLimits: {
+        requestsPerMinute: 1500,
+        tokensPerMinute: 150000,
+      },
+    });
+
+    this.providers.set(AIProvider.GROQ, {
+      provider: AIProvider.GROQ,
+      models: [
+        {
+          model: AIModel.LLAMA_3_1_70B,
+          endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+          apiKeyConfig: 'GROQ_API_KEY',
+          costPerToken: 0.000001, // $1 per 1M tokens - extremely cost effective
+          accuracyScore: 84,
+          maxTokens: 128000,
+          availability: 96,
+        },
+        {
+          model: AIModel.MIXTRAL_8X7B,
+          endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+          apiKeyConfig: 'GROQ_API_KEY',
+          costPerToken: 0.0000005, // $0.5 per 1M tokens - best cost efficiency
+          accuracyScore: 81,
+          maxTokens: 32000,
+          availability: 97,
+        },
+      ],
+      dailyQuota: this.configService.get('AI_LEVEL2_DAILY_QUOTA', 12000000),
+      rateLimits: {
+        requestsPerMinute: 2000,
+        tokensPerMinute: 200000,
+      },
+    });
   }
 
   private determineServiceLevel(requestType: RequestType): AIServiceLevel {
@@ -451,18 +551,21 @@ export class AIRoutingService {
     let sortedModels;
 
     if (serviceLevel === AIServiceLevel.LEVEL_1) {
-      // Level 1: Prioritize accuracy, then cost
+      // Level 1: Prioritize accuracy, then cost (sort by accuracy desc, then cost asc)
       sortedModels = availableModels.sort((a, b) => {
-        const scoreA = a.accuracyScore * 0.7 + (100 - a.costPerToken * 100000) * 0.3;
-        const scoreB = b.accuracyScore * 0.7 + (100 - b.costPerToken * 100000) * 0.3;
-        return scoreB - scoreA;
+        if (a.accuracyScore !== b.accuracyScore) {
+          return b.accuracyScore - a.accuracyScore; // Higher accuracy first
+        }
+        return a.costPerToken - b.costPerToken; // Lower cost second
       });
     } else {
-      // Level 2: Prioritize cost, then accuracy
+      // Level 2: Prioritize cost, then accuracy (sort by cost asc, then accuracy desc)
       sortedModels = availableModels.sort((a, b) => {
-        const scoreA = (100 - a.costPerToken * 100000) * 0.7 + a.accuracyScore * 0.3;
-        const scoreB = (100 - b.costPerToken * 100000) * 0.7 + b.accuracyScore * 0.3;
-        return scoreB - scoreA;
+        const costDiff = a.costPerToken - b.costPerToken;
+        if (Math.abs(costDiff) > 0.000001) { // If cost difference is significant
+          return costDiff; // Lower cost first
+        }
+        return b.accuracyScore - a.accuracyScore; // Higher accuracy second
       });
     }
 
@@ -534,17 +637,282 @@ export class AIRoutingService {
    * Reset daily quotas (should be called daily via cron job)
    */
   resetDailyQuotas(): void {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayKey = yesterday.toISOString().split('T')[0];
-
-    // Remove old entries
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Remove all entries that are not from today
     for (const key of this.dailyQuotaUsage.keys()) {
-      if (key.startsWith(yesterdayKey)) {
+      if (!key.startsWith(today)) {
         this.dailyQuotaUsage.delete(key);
       }
     }
 
     this.logger.log('Daily AI quotas reset');
+  }
+
+  /**
+   * Implement enhanced step-down quota ladder for Level 1 requests
+   * Uses aggressive step-down percentages with fallback to open source models
+   */
+  private async selectModelWithQuotaStepDown(
+    serviceLevel: AIServiceLevel,
+    request: AIRoutingRequest,
+  ): Promise<any> {
+    if (serviceLevel === AIServiceLevel.LEVEL_1) {
+      // Enhanced step-down percentages for Level 1: 100% -> 95% -> 90% -> 85% -> 80%
+      const stepDownPercentages = [100, 95, 90, 85, 80];
+      
+      for (const percentage of stepDownPercentages) {
+        const availableModels = await this.getAvailableModelsWithQuotaPercentage(
+          serviceLevel,
+          request,
+          percentage,
+        );
+        
+        if (availableModels.length > 0) {
+          const selectedModel = await this.selectOptimalModel(availableModels, request, serviceLevel);
+          
+          if (percentage < 100) {
+            selectedModel.routingReason = `Step-down quota selection (quota level: ${percentage}%)`;
+            selectedModel.routingDecision = RoutingDecision.QUOTA_EXCEEDED_STEPDOWN;
+          }
+          return selectedModel;
+        }
+      }
+      
+      // If Level 1 exhausted, check if emergency - allow fallback to cost-optimized models
+      if (request.emergencyRequest) {
+        this.logger.warn('Emergency request: Level 1 quota exhausted, falling back to Level 2');
+        const level2Models = await this.getAvailableModels(AIServiceLevel.LEVEL_2, request);
+        if (level2Models.length > 0) {
+          const selectedModel = await this.selectOptimalModel(level2Models, request, AIServiceLevel.LEVEL_2);
+          selectedModel.routingReason = 'Emergency fallback to Level 2 due to Level 1 quota exhaustion';
+          selectedModel.routingDecision = RoutingDecision.EMERGENCY_OVERRIDE;
+          return selectedModel;
+        }
+      }
+      
+      throw new Error('Level 1 quota exceeded and no available fallback options');
+    }
+    
+    // Enhanced Level 2 processing with smart cost optimization
+    return this.selectOptimalModelEnhanced(serviceLevel, request);
+  }
+
+  /**
+   * Get available models with quota percentage filtering
+   */
+  private async getAvailableModelsWithQuotaPercentage(
+    serviceLevel: AIServiceLevel,
+    request: AIRoutingRequest,
+    quotaPercentage: number,
+  ): Promise<any[]> {
+    const availableModels = [];
+
+    for (const [provider, config] of this.providers.entries()) {
+      const quotaUsed = this.getDailyQuotaUsage(provider);
+      const adjustedQuota = (config.dailyQuota * quotaPercentage) / 100;
+      const quotaRemaining = adjustedQuota - quotaUsed;
+
+      if (quotaRemaining <= 0) continue;
+
+      for (const modelConfig of config.models) {
+        const apiKey = this.configService.get(modelConfig.apiKeyConfig);
+        if (!apiKey || apiKey === 'DEMO_KEY') continue;
+
+        // Check if model meets service level requirements
+        if (serviceLevel === AIServiceLevel.LEVEL_1 && modelConfig.accuracyScore < 90) {
+          continue;
+        }
+
+        // Check regional availability
+        if (request.userRegion && modelConfig.region && modelConfig.region !== request.userRegion) {
+          continue;
+        }
+
+        availableModels.push({
+          provider,
+          model: modelConfig.model,
+          endpoint: modelConfig.endpoint,
+          apiKey,
+          costPerToken: modelConfig.costPerToken,
+          accuracyScore: modelConfig.accuracyScore,
+          availability: modelConfig.availability,
+          quotaRemaining,
+        });
+      }
+    }
+
+    return availableModels;
+  }
+
+  /**
+   * Generate cache key for request
+   */
+  private generateCacheKey(request: AIRoutingRequest): string {
+    const keyData = {
+      requestType: request.requestType,
+      userTier: request.userTier,
+      userRegion: request.userRegion,
+      emergencyRequest: request.emergencyRequest,
+      accuracyRequirement: request.accuracyRequirement,
+    };
+    return `ai_routing:${Buffer.from(JSON.stringify(keyData)).toString('base64')}`;
+  }
+
+  /**
+   * Check cache for routing result
+   */
+  private async checkCache(cacheKey: string): Promise<AIRoutingResult | null> {
+    try {
+      const cached = await this.cacheManager.get<AIRoutingResult>(cacheKey);
+      return cached || null;
+    } catch (error) {
+      this.logger.warn('Cache check failed', error);
+      return null;
+    }
+  }
+
+  /**
+   * Cache routing result
+   */
+  private async cacheResult(cacheKey: string, result: AIRoutingResult): Promise<void> {
+    try {
+      // Cache for 5 minutes
+      await this.cacheManager.set(cacheKey, result, 300000);
+    } catch (error) {
+      this.logger.warn('Cache set failed', error);
+    }
+  }
+
+  /**
+   * Enhanced model selection with intelligent cost optimization and open source prioritization
+   */
+  private async selectOptimalModelEnhanced(
+    serviceLevel: AIServiceLevel,
+    request: AIRoutingRequest,
+  ): Promise<any> {
+    const availableModels = await this.getAvailableModels(serviceLevel, request);
+    if (availableModels.length === 0) {
+      throw new Error('No available models for request');
+    }
+
+    if (serviceLevel === AIServiceLevel.LEVEL_2) {
+      // Enhanced Level 2 optimization: Prioritize free/cheap models with good accuracy
+      availableModels.sort((a, b) => {
+        // First priority: Free models (cost = 0)
+        if (a.costPerToken === 0 && b.costPerToken > 0) return -1;
+        if (b.costPerToken === 0 && a.costPerToken > 0) return 1;
+        
+        // Second priority: Cost optimization within accuracy range
+        const costDiff = a.costPerToken - b.costPerToken;
+        if (Math.abs(costDiff) > 0.000001) { // If cost difference is significant
+          return costDiff; // Lower cost first
+        }
+        
+        // Third priority: Higher accuracy
+        return b.accuracyScore - a.accuracyScore;
+      });
+      
+      const selectedModel = availableModels[0];
+      const reason = selectedModel.costPerToken === 0 
+        ? 'Free open source model selected for optimal cost efficiency'
+        : 'Cost-optimized model selection with accuracy consideration';
+      
+      return this.buildModelResult(selectedModel, availableModels, request, serviceLevel, reason);
+    }
+    
+    // Level 1: Accuracy-first selection
+    return this.selectOptimalModel(availableModels, request, serviceLevel);
+  }
+
+  /**
+   * Build model result with retry configuration
+   */
+  private buildModelResult(selectedModel: any, availableModels: any[], request: AIRoutingRequest, serviceLevel: AIServiceLevel, reason?: string): any {
+    // Estimate cost
+    const estimatedTokens = (request.contextTokens || 1000) + (request.maxResponseTokens || 1000);
+    const estimatedCost = estimatedTokens * selectedModel.costPerToken;
+
+    // Determine routing decision
+    let routingDecision: RoutingDecision;
+    let routingReason: string = reason || 'Optimal model selected';
+
+    if (request.emergencyRequest) {
+      routingDecision = RoutingDecision.EMERGENCY_OVERRIDE;
+      routingReason = 'Emergency request routed to highest accuracy model';
+    } else if (serviceLevel === AIServiceLevel.LEVEL_1) {
+      routingDecision = RoutingDecision.ACCURACY_REQUIREMENT;
+      routingReason = 'Level 1 request routed for highest accuracy';
+    } else {
+      routingDecision = RoutingDecision.COST_OPTIMIZATION;
+      routingReason = reason || 'Level 2 request routed for cost optimization';
+    }
+
+    const alternatives = availableModels.slice(1, 4).map((model, index) => ({
+      provider: model.provider,
+      model: model.model,
+      score: 100 - (index + 1) * 10,
+      reason: index === 0 ? 'Second choice' : `Alternative ${index + 1}`,
+    }));
+
+    return {
+      provider: selectedModel.provider,
+      model: selectedModel.model,
+      endpoint: selectedModel.endpoint,
+      apiKey: selectedModel.apiKey,
+      routingDecision,
+      routingReason,
+      estimatedCost,
+      quotaRemaining: selectedModel.quotaRemaining,
+      alternatives,
+      fallbackOptions: availableModels.slice(1, 3).map((m) => ({
+        provider: m.provider,
+        model: m.model,
+        endpoint: m.endpoint,
+      })),
+      fallbackProvider: availableModels[1]?.provider,
+      fallbackModel: availableModels[1]?.model,
+    };
+  }
+
+  /**
+   * Execute request with retry logic
+   */
+  async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    context: string,
+    maxRetries: number = this.retryConfiguration.maxRetries,
+  ): Promise<T> {
+    let lastError: Error;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        this.logger.warn(`${context} attempt ${attempt}/${maxRetries} failed:`, error.message);
+        
+        if (attempt === maxRetries) {
+          break;
+        }
+        
+        // Calculate delay with exponential backoff
+        const delay = Math.min(
+          this.retryConfiguration.baseDelay * Math.pow(this.retryConfiguration.backoffFactor, attempt - 1),
+          this.retryConfiguration.maxDelay,
+        );
+        
+        await this.sleep(delay);
+      }
+    }
+    
+    throw lastError;
+  }
+
+  /**
+   * Sleep utility for retry delays
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

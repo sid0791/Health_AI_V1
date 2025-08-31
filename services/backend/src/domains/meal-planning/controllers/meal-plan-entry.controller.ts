@@ -49,9 +49,9 @@ export class MealPlanEntryController {
   @ApiResponse({ status: 200, description: 'Meal plan entries retrieved successfully' })
   async findByMealPlan(
     @Param('mealPlanId') mealPlanId: string,
+    @Req() req: Request,
     @Query('dayNumber') dayNumber?: number,
     @Query('mealType') mealType?: string,
-    @Req() req: Request,
   ): Promise<MealPlanEntry[]> {
     const userId = req.user?.['sub'];
     if (!userId) {

@@ -19,6 +19,8 @@ export enum AIProvider {
   AZURE_OPENAI = 'azure_openai',
   OPENROUTER = 'openrouter',
   TOGETHER = 'together',
+  HUGGINGFACE = 'huggingface',
+  GROQ = 'groq',
   SELF_HOSTED = 'self_hosted',
 }
 
@@ -42,7 +44,8 @@ export enum AIModel {
   LLAMA_3_1_70B = 'llama-3.1-70b',
   LLAMA_3_1_8B = 'llama-3.1-8b',
   MIXTRAL_8X22B = 'mixtral-8x22b',
-  QWEN2_72B = 'qwen2-72b',
+  MIXTRAL_8X7B = 'mixtral-8x7b',
+  QWEN_2_72B = 'qwen-2-72b',
   MISTRAL_7B = 'mistral-7b',
 }
 
