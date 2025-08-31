@@ -16,6 +16,12 @@ import { AuthModule } from './domains/auth/auth.module';
 import { HealthReportsModule } from './domains/health-reports/health-reports.module';
 import { RecipeModule } from './domains/recipes/recipe.module';
 import { FitnessPlanningModule } from './domains/fitness-planning/fitness-planning.module';
+import { MealPlanningModule } from './domains/meal-planning/meal-planning.module';
+import { NutritionModule } from './domains/nutrition/nutrition.module';
+import { AIRoutingModule } from './domains/ai-routing/ai-routing.module';
+import { AnalyticsModule } from './domains/analytics/analytics.module';
+import { LogsModule } from './domains/logs/logs.module';
+import { ChatModule } from './domains/chat/chat.module';
 import { ExternalApiModule } from './external-apis/external-api.module';
 
 // Entity imports for TypeORM
@@ -24,6 +30,7 @@ import { UserProfile } from './domains/users/entities/user-profile.entity';
 import { UserConsent } from './domains/users/entities/user-consent.entity';
 import { UserPreferences } from './domains/users/entities/user-preferences.entity';
 import { UserGoals } from './domains/users/entities/user-goals.entity';
+import { UserTokenUsage } from './domains/users/entities/user-token-usage.entity';
 import { HealthReport } from './domains/health-reports/entities/health-report.entity';
 import { StructuredEntity } from './domains/health-reports/entities/structured-entity.entity';
 
@@ -46,12 +53,21 @@ import { FitnessPlanExercise } from './domains/fitness-planning/entities/fitness
 
 // Logs entities
 import { MealLog } from './domains/logs/entities/meal-log.entity';
+import { LogEntry } from './domains/logs/entities/log-entry.entity';
 
 // Auth entities
 import { UserSession } from './domains/auth/entities/user-session.entity';
 import { UserOTP } from './domains/auth/entities/user-otp.entity';
 import { UserOAuthAccount } from './domains/auth/entities/user-oauth-account.entity';
 import { AuditLog } from './domains/auth/entities/audit-log.entity';
+
+// AI Routing entities
+import { AIRoutingDecision } from './domains/ai-routing/entities/ai-routing-decision.entity';
+
+// Chat entities (Phase 13)
+import { ChatSession } from './domains/chat/entities/chat-session.entity';
+import { ChatMessage } from './domains/chat/entities/chat-message.entity';
+import { ChatContext } from './domains/chat/entities/chat-context.entity';
 
 @Module({
   imports: [
@@ -79,6 +95,7 @@ import { AuditLog } from './domains/auth/entities/audit-log.entity';
           UserConsent,
           UserPreferences,
           UserGoals,
+          UserTokenUsage,
 
           // Health reports entities
           HealthReport,
@@ -103,12 +120,21 @@ import { AuditLog } from './domains/auth/entities/audit-log.entity';
 
           // Logs entities
           MealLog,
+          LogEntry,
 
           // Auth entities
           UserSession,
           UserOTP,
           UserOAuthAccount,
           AuditLog,
+
+          // AI Routing entities
+          AIRoutingDecision,
+
+          // Chat entities (Phase 13)
+          ChatSession,
+          ChatMessage,
+          ChatContext,
         ],
         synchronize: false, // Never use synchronize in production
         logging: configService.get('NODE_ENV') === 'development',
@@ -189,6 +215,12 @@ import { AuditLog } from './domains/auth/entities/audit-log.entity';
     HealthReportsModule,
     RecipeModule,
     FitnessPlanningModule,
+    MealPlanningModule,
+    NutritionModule,
+    AIRoutingModule,
+    AnalyticsModule,
+    LogsModule,
+    ChatModule, // Phase 13
     ExternalApiModule,
 
     // Health Check Module

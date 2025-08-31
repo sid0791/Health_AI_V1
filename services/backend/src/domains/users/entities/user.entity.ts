@@ -98,6 +98,28 @@ export class User {
   @Column({ name: 'locked_until', type: 'timestamp', nullable: true })
   lockedUntil?: Date;
 
+  // Token usage tracking for AI chat features
+  @Column({ name: 'daily_token_limit', default: 10000 })
+  dailyTokenLimit: number;
+
+  @Column({ name: 'monthly_token_limit', default: 250000 })
+  monthlyTokenLimit: number;
+
+  @Column({ name: 'daily_tokens_used', default: 0 })
+  dailyTokensUsed: number;
+
+  @Column({ name: 'monthly_tokens_used', default: 0 })
+  monthlyTokensUsed: number;
+
+  @Column({ name: 'last_token_reset_date', type: 'date', nullable: true })
+  lastTokenResetDate?: Date;
+
+  @Column({ name: 'user_tier', default: 'free' })
+  userTier: string; // 'free', 'premium', 'enterprise'
+
+  @Column({ name: 'fallback_to_free_tier', default: true })
+  fallbackToFreeTier: boolean;
+
   // Data classification tags for compliance
   @Column({ name: 'data_residency_region', length: 10, default: 'IN' })
   dataResidencyRegion: string;
@@ -156,5 +178,67 @@ export class User {
   unlock(): void {
     this.lockedUntil = null;
     this.failedLoginAttempts = 0;
+  }
+
+  // Token management methods
+  canConsumeTokens(tokenCount: number): boolean {
+    const today = new Date().toDateString();
+    const currentMonth = new Date().getMonth();
+    
+    // Reset daily counter if it's a new day
+    if (!this.lastTokenResetDate || this.lastTokenResetDate.toDateString() !== today) {
+      this.resetDailyTokens();
+    }
+
+    // Reset monthly counter if it's a new month
+    if (!this.lastTokenResetDate || this.lastTokenResetDate.getMonth() !== currentMonth) {
+      this.resetMonthlyTokens();
+    }
+
+    return (this.dailyTokensUsed + tokenCount <= this.dailyTokenLimit) &&
+           (this.monthlyTokensUsed + tokenCount <= this.monthlyTokenLimit);
+  }
+
+  consumeTokens(tokenCount: number): boolean {
+    if (this.canConsumeTokens(tokenCount)) {
+      this.dailyTokensUsed += tokenCount;
+      this.monthlyTokensUsed += tokenCount;
+      this.lastTokenResetDate = new Date();
+      return true;
+    }
+    return false;
+  }
+
+  resetDailyTokens(): void {
+    this.dailyTokensUsed = 0;
+    this.lastTokenResetDate = new Date();
+  }
+
+  resetMonthlyTokens(): void {
+    this.monthlyTokensUsed = 0;
+    this.lastTokenResetDate = new Date();
+  }
+
+  getRemainingDailyTokens(): number {
+    return Math.max(0, this.dailyTokenLimit - this.dailyTokensUsed);
+  }
+
+  getRemainingMonthlyTokens(): number {
+    return Math.max(0, this.monthlyTokenLimit - this.monthlyTokensUsed);
+  }
+
+  shouldFallbackToFreeTier(): boolean {
+    return this.fallbackToFreeTier && !this.canConsumeTokens(1);
+  }
+
+  upgradeTier(tier: 'premium' | 'enterprise'): void {
+    this.userTier = tier;
+    if (tier === 'premium') {
+      this.dailyTokenLimit = 50000;
+      this.monthlyTokenLimit = 1000000;
+    } else if (tier === 'enterprise') {
+      this.dailyTokenLimit = 200000;
+      this.monthlyTokenLimit = 5000000;
+    }
   }
 }

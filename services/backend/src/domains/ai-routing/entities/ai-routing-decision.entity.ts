@@ -76,6 +76,7 @@ export enum RoutingDecision {
   ACCURACY_REQUIREMENT = 'accuracy_requirement',
   EMERGENCY_OVERRIDE = 'emergency_override',
   USER_PREFERENCE = 'user_preference',
+  FREE_TIER_FALLBACK = 'free_tier_fallback',
 }
 
 export enum ProcessingStatus {

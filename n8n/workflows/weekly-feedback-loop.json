@@ -1,0 +1,274 @@
+{
+  "name": "Weekly Feedback Loop - Plan Adaptation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "schedule-weekly-trigger",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * 1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/fitness-planning/weekly-adaptation/trigger",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Webhook",
+              "value": "weekly-feedback-loop"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "triggerType",
+              "value": "weekly_schedule"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$now}}"
+            }
+          ]
+        }
+      },
+      "id": "trigger-adaptation",
+      "name": "Trigger Weekly Adaptation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/meal-planning/weekly-adaptation/trigger",
+        "authentication": "predefinedCredentialType", 
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Webhook",
+              "value": "weekly-feedback-loop"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "triggerType",
+              "value": "weekly_schedule"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$now}}"
+            }
+          ]
+        }
+      },
+      "id": "trigger-meal-adaptation",
+      "name": "Trigger Meal Plan Adaptation", 
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 420]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/users/weekly-measurement-request",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth", 
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Webhook", 
+              "value": "weekly-feedback-loop"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "triggerType",
+              "value": "weekly_measurement_request"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$now}}"
+            }
+          ]
+        }
+      },
+      "id": "request-measurements",
+      "name": "Request Weekly Measurements",
+      "type": "n8n-nodes-base.httpRequest", 
+      "typeVersion": 4.1,
+      "position": [460, 540]
+    },
+    {
+      "parameters": {
+        "mode": "passThrough"
+      },
+      "id": "consolidate-results",
+      "name": "Consolidate Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [680, 420]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/analytics/weekly-feedback-completed",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type", 
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "completedAt",
+              "value": "={{$now}}"
+            },
+            {
+              "name": "results",
+              "value": "={{$json}}"
+            }
+          ]
+        }
+      },
+      "id": "log-completion",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1, 
+      "position": [900, 420]
+    }
+  ],
+  "connections": {
+    "Weekly Schedule": {
+      "main": [
+        [
+          {
+            "node": "Trigger Weekly Adaptation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Trigger Meal Plan Adaptation",
+            "type": "main", 
+            "index": 0
+          },
+          {
+            "node": "Request Weekly Measurements",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Weekly Adaptation": {
+      "main": [
+        [
+          {
+            "node": "Consolidate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Meal Plan Adaptation": {
+      "main": [
+        [
+          {
+            "node": "Consolidate Results", 
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Request Weekly Measurements": {
+      "main": [
+        [
+          {
+            "node": "Consolidate Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Consolidate Results": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "error-handling-workflow",
+    "timezone": "Asia/Kolkata"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "weekly-feedback-loop",
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z", 
+      "id": "phase-13",
+      "name": "phase-13"
+    },
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "weekly-adaptation", 
+      "name": "weekly-adaptation"
+    }
+  ]
+}
