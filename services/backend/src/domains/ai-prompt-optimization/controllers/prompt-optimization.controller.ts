@@ -70,12 +70,9 @@ export class PromptOptimizationController {
       },
     },
   })
-  async executePrompt(
-    @Request() req: any,
-    @Body() executePromptDto: ExecutePromptDto,
-  ) {
+  async executePrompt(@Request() req: any, @Body() executePromptDto: ExecutePromptDto) {
     const userId = req.user?.id;
-    
+
     const result = await this.promptOptimizationService.executePrompt(
       userId,
       executePromptDto.category,
@@ -85,7 +82,7 @@ export class PromptOptimizationController {
         language: executePromptDto.language,
         model: executePromptDto.model,
         maxTokens: executePromptDto.maxTokens,
-      }
+      },
     );
 
     return {
@@ -103,14 +100,15 @@ export class PromptOptimizationController {
   })
   async getNutritionAdvice(
     @Request() req: any,
-    @Body() body: { 
-      query: string; 
+    @Body()
+    body: {
+      query: string;
       language?: 'en' | 'hi' | 'hinglish';
       additionalContext?: Record<string, any>;
     },
   ) {
     const userId = req.user?.id;
-    
+
     const userInput = {
       user_query: body.query,
       ...body.additionalContext,
@@ -120,7 +118,7 @@ export class PromptOptimizationController {
       userId,
       PromptCategory.NUTRITION_ADVICE,
       userInput,
-      { language: body.language || 'en' }
+      { language: body.language || 'en' },
     );
 
     return {
@@ -142,7 +140,8 @@ export class PromptOptimizationController {
   })
   async getMealPlanningPrompt(
     @Request() req: any,
-    @Body() body: { 
+    @Body()
+    body: {
       focus?: string;
       days?: number;
       mealTypes?: string[];
@@ -151,7 +150,7 @@ export class PromptOptimizationController {
     },
   ) {
     const userId = req.user?.id;
-    
+
     const userInput = {
       meal_focus: body.focus || 'balanced nutrition',
       days: body.days || 7,
@@ -163,7 +162,7 @@ export class PromptOptimizationController {
       userId,
       PromptCategory.MEAL_PLANNING,
       userInput,
-      { language: body.language || 'en' }
+      { language: body.language || 'en' },
     );
 
     return {
@@ -183,7 +182,8 @@ export class PromptOptimizationController {
   })
   async getFitnessGuidance(
     @Request() req: any,
-    @Body() body: { 
+    @Body()
+    body: {
       query: string;
       fitnessLevel?: string;
       targetWeight?: number;
@@ -193,7 +193,7 @@ export class PromptOptimizationController {
     },
   ) {
     const userId = req.user?.id;
-    
+
     const userInput = {
       user_query: body.query,
       fitness_level: body.fitnessLevel || 'beginner',
@@ -206,7 +206,7 @@ export class PromptOptimizationController {
       userId,
       PromptCategory.FITNESS_GUIDANCE,
       userInput,
-      { language: body.language || 'en' }
+      { language: body.language || 'en' },
     );
 
     return {
@@ -224,13 +224,11 @@ export class PromptOptimizationController {
     status: HttpStatus.OK,
     description: 'Templates retrieved successfully',
   })
-  async getTemplates(
-    @Query('category') category?: PromptCategory,
-  ) {
+  async getTemplates(@Query('category') category?: PromptCategory) {
     if (category) {
       const templates = this.promptOptimizationService.getTemplatesByCategory(category);
       return {
-        templates: templates.map(t => ({
+        templates: templates.map((t) => ({
           id: t.id,
           name: t.name,
           description: t.description,
@@ -248,8 +246,8 @@ export class PromptOptimizationController {
     // Get all categories and their template counts
     const categoryCounts: Record<string, number> = {};
     const allCategories = Object.values(PromptCategory);
-    
-    allCategories.forEach(cat => {
+
+    allCategories.forEach((cat) => {
       const templates = this.promptOptimizationService.getTemplatesByCategory(cat);
       categoryCounts[cat] = templates.length;
     });
@@ -271,7 +269,7 @@ export class PromptOptimizationController {
   })
   async getTemplate(@Param('templateId') templateId: string) {
     const template = this.promptOptimizationService.getTemplate(templateId);
-    
+
     if (!template) {
       return {
         found: false,
@@ -289,7 +287,7 @@ export class PromptOptimizationController {
         category: template.category,
         language: template.language,
         costOptimized: template.costOptimized,
-        variables: template.variables.map(v => ({
+        variables: template.variables.map((v) => ({
           name: v.name,
           type: v.type,
           required: v.required,
@@ -297,7 +295,8 @@ export class PromptOptimizationController {
           description: v.description,
           hasDefault: v.defaultValue !== undefined,
         })),
-        templatePreview: template.template.substring(0, 500) + (template.template.length > 500 ? '...' : ''),
+        templatePreview:
+          template.template.substring(0, 500) + (template.template.length > 500 ? '...' : ''),
       },
       timestamp: new Date(),
     };
@@ -309,13 +308,10 @@ export class PromptOptimizationController {
     status: HttpStatus.CREATED,
     description: 'Template created successfully',
   })
-  async createTemplate(
-    @Request() req: any,
-    @Body() createTemplateDto: CreateTemplateDto,
-  ) {
+  async createTemplate(@Request() req: any, @Body() createTemplateDto: CreateTemplateDto) {
     // Generate unique ID for custom template
     const templateId = `custom_${createTemplateDto.category}_${Date.now()}`;
-    
+
     const template = {
       id: templateId,
       category: createTemplateDto.category,
@@ -324,7 +320,7 @@ export class PromptOptimizationController {
       template: createTemplateDto.template,
       language: createTemplateDto.language,
       costOptimized: true, // Mark custom templates as cost optimized
-      variables: createTemplateDto.variables.map(v => ({
+      variables: createTemplateDto.variables.map((v) => ({
         name: v.name,
         type: v.type,
         required: v.required,
@@ -363,16 +359,16 @@ export class PromptOptimizationController {
     description: 'Categories retrieved successfully',
   })
   async getCategories() {
-    const categories = Object.values(PromptCategory).map(category => {
+    const categories = Object.values(PromptCategory).map((category) => {
       const templates = this.promptOptimizationService.getTemplatesByCategory(category);
-      
+
       return {
         category,
         name: this.getCategoryDisplayName(category),
         description: this.getCategoryDescription(category),
         templateCount: templates.length,
-        languages: [...new Set(templates.map(t => t.language))],
-        costOptimizedCount: templates.filter(t => t.costOptimized).length,
+        languages: [...new Set(templates.map((t) => t.language))],
+        costOptimizedCount: templates.filter((t) => t.costOptimized).length,
       };
     });
 
@@ -391,14 +387,15 @@ export class PromptOptimizationController {
   })
   async testVariables(
     @Request() req: any,
-    @Body() body: {
+    @Body()
+    body: {
       templateId: string;
       testInput: Record<string, any>;
     },
   ) {
     const userId = req.user?.id;
     const template = this.promptOptimizationService.getTemplate(body.templateId);
-    
+
     if (!template) {
       return {
         success: false,
@@ -412,7 +409,7 @@ export class PromptOptimizationController {
       userId,
       template.category,
       body.testInput,
-      { template: body.templateId }
+      { template: body.templateId },
     );
 
     return {
@@ -452,7 +449,8 @@ export class PromptOptimizationController {
    */
   private getCategoryDescription(category: PromptCategory): string {
     const descriptions: Record<PromptCategory, string> = {
-      [PromptCategory.NUTRITION_ADVICE]: 'Personalized nutrition recommendations and dietary guidance',
+      [PromptCategory.NUTRITION_ADVICE]:
+        'Personalized nutrition recommendations and dietary guidance',
       [PromptCategory.MEAL_PLANNING]: 'Custom meal plans and recipe suggestions',
       [PromptCategory.FITNESS_GUIDANCE]: 'Exercise recommendations and workout planning',
       [PromptCategory.HEALTH_ANALYSIS]: 'Health data interpretation and insights',
@@ -527,7 +525,7 @@ export class PromptOptimizationController {
         model: executePromptDto.model,
         maxTokens: executePromptDto.maxTokens,
         enableBatching: executePromptDto.enableBatching || true, // Enable by default
-      }
+      },
     );
 
     return {
@@ -611,7 +609,8 @@ export class PromptOptimizationController {
   })
   async batchExecutePrompts(
     @Request() req: any,
-    @Body() body: {
+    @Body()
+    body: {
       requests: Array<{
         category: PromptCategory;
         userInput: Record<string, any>;
@@ -633,7 +632,7 @@ export class PromptOptimizationController {
           template: request.template,
           language: request.language,
           enableBatching: true,
-        }
+        },
       );
 
       results.push({
@@ -653,5 +652,4 @@ export class PromptOptimizationController {
       timestamp: new Date(),
     };
   }
-}
 }

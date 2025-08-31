@@ -17,36 +17,103 @@ export enum AIProvider {
   ANTHROPIC = 'anthropic',
   GOOGLE = 'google',
   AZURE_OPENAI = 'azure_openai',
+  XAI = 'xai', // xAI (Grok models)
+  DEEPSEEK = 'deepseek', // DeepSeek API
+  MISTRAL = 'mistral', // Mistral AI
+  COHERE = 'cohere', // Cohere API
   OPENROUTER = 'openrouter',
   TOGETHER = 'together',
   HUGGINGFACE = 'huggingface',
   GROQ = 'groq',
-  SELF_HOSTED = 'self_hosted',
+  OLLAMA = 'ollama', // Local models with full privacy
+  SELF_HOSTED = 'self_hosted', // On-premise solutions
 }
 
 export enum AIModel {
-  // OpenAI Models
-  GPT_4_TURBO = 'gpt-4-turbo',
-  GPT_4O = 'gpt-4o',
+  // OpenAI Models (August 2025 - Latest)
+  GPT_5 = 'gpt-5', // Next-generation model with enhanced reasoning and multimodal capabilities
+  GPT_5_TURBO = 'gpt-5-turbo', // High-performance variant of GPT-5
+  O1 = 'o1', // Fully released reasoning model (successor to o1-preview)
+  O1_PRO = 'o1-pro', // Enhanced reasoning model for complex tasks
+  GPT_4O_ULTRA = 'gpt-4o-ultra', // Latest multimodal model with enhanced capabilities
+  GPT_4O = 'gpt-4o', // Continued support for GPT-4o
+  O1_PREVIEW = 'o1-preview', // Legacy reasoning model
+  O1_MINI = 'o1-mini', // Faster reasoning model
+  GPT_4_TURBO = 'gpt-4-turbo', // Previous generation but still strong
+  GPT_4O_MINI = 'gpt-4o-mini', // Cost-effective alternative
   GPT_4 = 'gpt-4',
   GPT_3_5_TURBO = 'gpt-3.5-turbo',
 
-  // Anthropic Models
+  // Anthropic Models (August 2025 - Latest)
+  CLAUDE_4 = 'claude-4', // Next-generation Claude with enhanced capabilities
+  CLAUDE_4_TURBO = 'claude-4-turbo', // High-performance Claude 4 variant
+  CLAUDE_3_5_OPUS = 'claude-3.5-opus', // Enhanced Opus model
+  CLAUDE_3_5_SONNET_V2 = 'claude-3.5-sonnet-v2', // Updated Sonnet with improved performance
+  CLAUDE_3_5_SONNET = 'claude-3.5-sonnet', // Often outperforms GPT-4 in benchmarks
+  CLAUDE_3_5_HAIKU_V2 = 'claude-3.5-haiku-v2', // Enhanced fast and cost-effective model
+  CLAUDE_3_5_HAIKU = 'claude-3.5-haiku', // Fast and cost-effective
   CLAUDE_3_OPUS = 'claude-3-opus',
   CLAUDE_3_SONNET = 'claude-3-sonnet',
   CLAUDE_3_HAIKU = 'claude-3-haiku',
 
-  // Google Models
+  // Google Models (August 2025 - Latest)
+  GEMINI_3_0 = 'gemini-3.0', // Next-generation Gemini with advanced capabilities
+  GEMINI_2_5_PRO = 'gemini-2.5-pro', // Enhanced Pro model with larger context
+  GEMINI_2_0_FLASH_V2 = 'gemini-2.0-flash-v2', // Updated Flash model
+  GEMINI_2_0_FLASH = 'gemini-2.0-flash', // Latest Google model (Dec 2024)
+  GEMINI_1_5_PRO = 'gemini-1.5-pro', // Strong performance, large context
   GEMINI_PRO = 'gemini-pro',
-  GEMINI_2_5_PRO = 'gemini-2.5-pro',
 
-  // Open Source Models
+  // xAI Models (Grok)
+  GROK_2 = 'grok-2', // Latest Grok model with enhanced reasoning
+  GROK_1_5 = 'grok-1.5', // Improved Grok model
+
+  // Meta Llama 4 Series (August 2025)
+  LLAMA_4_70B = 'llama-4-70b', // Next-generation Llama model
+  LLAMA_4_8B = 'llama-4-8b', // Efficient Llama 4 variant
+  LLAMA_3_2_90B = 'llama-3.2-90b', // Latest Llama 3 series
   LLAMA_3_1_70B = 'llama-3.1-70b',
   LLAMA_3_1_8B = 'llama-3.1-8b',
+  LLAMA_3_1_70B_INSTRUCT = 'llama-3.1-70b-instruct',
+  LLAMA_3_1_8B_INSTANT = 'llama-3.1-8b-instant',
+
+  // DeepSeek Models (August 2025 - Latest)
+  DEEPSEEK_V4 = 'deepseek-v4', // Latest DeepSeek model with enhanced capabilities
+  DEEPSEEK_CODER_V4 = 'deepseek-coder-v4', // Latest coding-specialized model
+  DEEPSEEK_MATH_V3 = 'deepseek-math-v3', // Mathematical reasoning specialist
+  DEEPSEEK_V3 = 'deepseek-v3', // Previous generation
+  DEEPSEEK_CODER_V3 = 'deepseek-coder-v3', // Previous coding model
+  DEEPSEEK_CODER_V2 = 'deepseek-coder-v2', // Legacy coding model
+
+  // Mistral AI Models (August 2025)
+  MISTRAL_LARGE_V3 = 'mistral-large-v3', // Latest large Mistral model
+  MISTRAL_MEDIUM_V2 = 'mistral-medium-v2', // Balanced performance model
+  MIXTRAL_8X22B_V2 = 'mixtral-8x22b-v2', // Enhanced MoE model
   MIXTRAL_8X22B = 'mixtral-8x22b',
   MIXTRAL_8X7B = 'mixtral-8x7b',
-  QWEN_2_72B = 'qwen-2-72b',
+  MISTRAL_7B_V3 = 'mistral-7b-v3', // Latest 7B model
   MISTRAL_7B = 'mistral-7b',
+
+  // Cohere Models (August 2025)
+  COMMAND_R_PLUS_V2 = 'command-r-plus-v2', // Enhanced Command model
+  COMMAND_R_V2 = 'command-r-v2', // Updated Command model
+
+  // Additional Open Source Models (August 2025)
+  QWEN_2_5_72B = 'qwen-2.5-72b', // Latest Qwen model
+  QWEN_2_72B = 'qwen-2-72b',
+  YI_34B_V2 = 'yi-34b-v2', // Updated Yi model
+  WIZARD_CODER_V2 = 'wizard-coder-v2', // Enhanced coding model
+  STARCODER_V3 = 'starcoder-v3', // Latest coding model
+
+  // Local/Ollama Models (August 2025)
+  OLLAMA_LLAMA4_8B = 'llama4:8b', // Llama 4 on Ollama
+  OLLAMA_LLAMA4_70B = 'llama4:70b', // Llama 4 large on Ollama
+  OLLAMA_LLAMA3_2_90B = 'llama3.2:90b', // Llama 3.2 on Ollama
+  OLLAMA_LLAMA3_8B = 'llama3.1:8b',
+  OLLAMA_DEEPSEEK_V4 = 'deepseek-v4:latest', // DeepSeek V4 on Ollama
+  OLLAMA_MISTRAL_V3 = 'mistral-v3:7b', // Mistral V3 on Ollama
+  OLLAMA_CODELLAMA_13B = 'codellama:13b',
+  OLLAMA_MISTRAL_7B = 'mistral:7b',
 }
 
 export enum RequestType {

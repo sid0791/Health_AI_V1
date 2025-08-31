@@ -35,11 +35,15 @@ export class DatabaseHealthIndicator extends HealthIndicator {
 
       const isHealthy = queryTime < maxQueryTime && poolStats.usageRatio < maxPoolUsage;
 
-      const result = this.getStatus(key, isHealthy, {
-        queryTime: `${queryTime}ms`,
-        connectionPool: poolStats,
-        database: this.dataSource.options.database,
-      });
+      // Health check result
+      const result: HealthIndicatorResult = {
+        [key]: {
+          status: isHealthy ? 'up' : 'down',
+          queryTime: `${queryTime}ms`,
+          connectionPool: poolStats,
+          database: this.dataSource.options.database,
+        },
+      };
 
       if (!isHealthy) {
         throw new HealthCheckError('Database health check failed', result);
@@ -48,9 +52,13 @@ export class DatabaseHealthIndicator extends HealthIndicator {
       return result;
     } catch (error) {
       this.logger.error(`Database health check failed: ${error.message}`);
-      throw new HealthCheckError('Database health check failed', this.getStatus(key, false, {
-        error: error.message,
-      }));
+      const errorResult: HealthIndicatorResult = {
+        [key]: {
+          status: 'down',
+          error: error.message,
+        },
+      };
+      throw new HealthCheckError('Database health check failed', errorResult);
     }
   }
 
@@ -85,13 +93,16 @@ export class DatabaseHealthIndicator extends HealthIndicator {
 export class QueryOptimizationService {
   private readonly logger = new Logger(QueryOptimizationService.name);
   private readonly slowQueryThreshold = 1000; // 1 second
-  private readonly queryMetrics = new Map<string, {
-    count: number;
-    totalTime: number;
-    avgTime: number;
-    maxTime: number;
-    slowQueries: number;
-  }>();
+  private readonly queryMetrics = new Map<
+    string,
+    {
+      count: number;
+      totalTime: number;
+      avgTime: number;
+      maxTime: number;
+      slowQueries: number;
+    }
+  >();
 
   constructor(private readonly dataSource: DataSource) {
     this.initializeQueryLogging();
@@ -110,11 +121,7 @@ export class QueryOptimizationService {
   /**
    * Execute optimized query with performance tracking
    */
-  async executeQuery<T>(
-    query: string,
-    parameters?: any[],
-    queryName?: string
-  ): Promise<T> {
+  async executeQuery<T>(query: string, parameters?: any[], queryName?: string): Promise<T> {
     const start = Date.now();
     const name = queryName || this.generateQueryName(query);
 
