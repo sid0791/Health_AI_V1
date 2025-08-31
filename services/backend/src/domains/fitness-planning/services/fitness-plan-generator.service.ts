@@ -756,4 +756,113 @@ export class FitnessPlanGeneratorService {
   private capitalizeFirst(str: string): string {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
+
+  /**
+   * Generate a single weekly plan (used for adaptations)
+   */
+  async generateWeeklyPlan(
+    planType: FitnessPlanType,
+    experienceLevel: ExperienceLevel,
+    weekNumber: number,
+    workoutsPerWeek: number,
+    availableEquipment: EquipmentType[],
+    focusAreas?: string[],
+    adaptations?: any,
+  ): Promise<FitnessPlanWeek> {
+    const weeklyPlan = new FitnessPlanWeek();
+    weeklyPlan.weekNumber = weekNumber;
+    weeklyPlan.startDate = new Date();
+    weeklyPlan.endDate = new Date();
+    weeklyPlan.endDate.setDate(weeklyPlan.startDate.getDate() + 6);
+    weeklyPlan.workouts = [];
+
+    // Apply adaptations if provided
+    let adjustedIntensity = this.getBaseIntensity(experienceLevel);
+    let adjustedVolume = this.getBaseVolume(experienceLevel);
+
+    if (adaptations) {
+      if (adaptations.intensityIncrease) {
+        adjustedIntensity *= (1 + adaptations.intensityIncrease);
+      }
+      if (adaptations.volumeIncrease) {
+        adjustedVolume *= (1 + adaptations.volumeIncrease);
+      }
+    }
+
+    // Generate workouts for the week
+    for (let day = 1; day <= workoutsPerWeek; day++) {
+      const workout = await this.generateSingleWorkout(
+        planType,
+        experienceLevel,
+        day,
+        availableEquipment,
+        focusAreas,
+        adjustedIntensity,
+        adjustedVolume,
+      );
+      weeklyPlan.workouts.push(workout);
+    }
+
+    return weeklyPlan;
+  }
+
+  private getBaseIntensity(experienceLevel: ExperienceLevel): number {
+    switch (experienceLevel) {
+      case ExperienceLevel.BEGINNER:
+        return 0.6;
+      case ExperienceLevel.INTERMEDIATE:
+        return 0.75;
+      case ExperienceLevel.ADVANCED:
+        return 0.85;
+      default:
+        return 0.7;
+    }
+  }
+
+  private getBaseVolume(experienceLevel: ExperienceLevel): number {
+    switch (experienceLevel) {
+      case ExperienceLevel.BEGINNER:
+        return 1.0;
+      case ExperienceLevel.INTERMEDIATE:
+        return 1.2;
+      case ExperienceLevel.ADVANCED:
+        return 1.4;
+      default:
+        return 1.0;
+    }
+  }
+
+  private async generateSingleWorkout(
+    planType: FitnessPlanType,
+    experienceLevel: ExperienceLevel,
+    dayNumber: number,
+    availableEquipment: EquipmentType[],
+    focusAreas?: string[],
+    intensity: number = 0.7,
+    volume: number = 1.0,
+  ): Promise<FitnessPlanWorkout> {
+    const workout = new FitnessPlanWorkout();
+    workout.dayOfWeek = dayNumber;
+    workout.workoutName = `Day ${dayNumber} Workout`;
+    workout.workoutType = WorkoutType.STRENGTH;
+    workout.status = WorkoutStatus.PLANNED;
+    workout.estimatedDurationMinutes = 60;
+    workout.exercises = [];
+
+    // Basic workout structure - simplified for this fix
+    const exerciseCount = Math.floor(6 * volume);
+    for (let i = 0; i < exerciseCount; i++) {
+      const exercise = new FitnessPlanExercise();
+      exercise.sortOrder = i + 1;
+      exercise.targetSets = 3;
+      exercise.targetRepsPerSet = 12;
+      exercise.restTimeSeconds = 60;
+      exercise.exerciseType = ExerciseType.COMPOUND;
+      exercise.status = ExerciseStatus.PLANNED;
+      exercise.exerciseName = `Exercise ${i + 1}`;
+      workout.exercises.push(exercise);
+    }
+
+    return workout;
+  }
 }

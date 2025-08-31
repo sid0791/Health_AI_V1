@@ -14,6 +14,7 @@ import { SafetyValidationService } from './safety-validation.service';
 
 // Integration with logs domain for adherence tracking
 import { LogEntry } from '../../logs/entities/log-entry.entity';
+import { LogType } from '../../logs/entities/log-entry.entity';
 
 // Integration with AI routing for plan generation
 import { AIRoutingService, AIRoutingRequest } from '../../ai-routing/services/ai-routing.service';
@@ -101,7 +102,7 @@ export class WeeklyAdaptationService {
   /**
    * Scheduled weekly adaptation runner (called by n8n workflow)
    */
-  @Cron(CronExpression.EVERY_MONDAY_AT_6AM, {
+  @Cron('0 6 * * 1', { // Every Monday at 6 AM
     name: 'weekly-fitness-adaptation',
     timeZone: 'Asia/Kolkata',
   })
@@ -188,7 +189,7 @@ export class WeeklyAdaptationService {
 
     const result: WeeklyAdaptationResult = {
       userId,
-      weekNumber: activePlan.currentWeek + 1,
+      weekNumber: activePlan.getCurrentWeek() + 1,
       adaptationsApplied: validatedAdaptations,
       adherenceScore: adherenceAnalysis.overallScore,
       deficiencies,
@@ -244,14 +245,14 @@ export class WeeklyAdaptationService {
     const workoutLogs = await this.logRepository.find({
       where: {
         userId,
-        type: 'workout',
-        timestamp: Between(oneWeekAgo, new Date()),
+        logType: LogType.EXERCISE,
+        loggedAt: Between(oneWeekAgo, new Date()),
       },
-      order: { timestamp: 'DESC' },
+      order: { loggedAt: 'DESC' },
     });
 
     // Get scheduled workouts for the past week
-    const currentWeek = plan.weeks.find(w => w.weekNumber === plan.currentWeek);
+    const currentWeek = plan.weeks.find(w => w.weekNumber === plan.getCurrentWeek());
     const scheduledWorkouts = currentWeek?.workouts || [];
 
     // Calculate adherence metrics
@@ -371,7 +372,7 @@ export class WeeklyAdaptationService {
         payload: {
           planSummary: {
             planType: plan.planType,
-            currentWeek: plan.currentWeek,
+            currentWeek: plan.getCurrentWeek(),
             totalWeeks: plan.durationWeeks,
             workoutsPerWeek: plan.workoutsPerWeek,
           },
@@ -386,10 +387,6 @@ export class WeeklyAdaptationService {
             availableEquipment: plan.availableEquipment,
             physicalLimitations: plan.physicalLimitations,
           },
-        },
-        context: {
-          domain: 'fitness_adaptation',
-          priority: deficiencies.volumeDeficiency > 50 ? 'high' : 'medium',
         },
       };
 
@@ -427,8 +424,10 @@ export class WeeklyAdaptationService {
       try {
         const isValid = await this.safetyValidationService.validateAdaptation(
           adaptation,
-          user,
-          plan
+          {
+            experienceLevel: plan.experienceLevel,
+            healthConditions: plan.physicalLimitations,
+          },
         );
 
         if (isValid) {
@@ -453,29 +452,32 @@ export class WeeklyAdaptationService {
     adaptations: AdaptationChange[],
     deficiencies: DeficiencyAnalysis
   ): Promise<WeeklyPlanSummary> {
-    const nextWeekNumber = plan.currentWeek + 1;
+    const nextWeekNumber = plan.getCurrentWeek() + 1;
     
     // Apply adaptations to create modified plan parameters
     let adjustedParams = this.applyAdaptationsToParams(plan, adaptations);
     
     // Generate next week using adjusted parameters
     const nextWeek = await this.planGeneratorService.generateWeeklyPlan(
-      adjustedParams,
+      plan.planType,
+      plan.experienceLevel,
       nextWeekNumber,
-      deficiencies
+      plan.workoutsPerWeek,
+      [], // Available equipment - will be populated from user profile
+      [], // Focus areas - will be populated from plan
+      adaptations[0] || null,
     );
 
-    // Update the plan's current week
+    // Update the plan's last updated time
     await this.fitnessPlanRepository.update(plan.id, {
-      currentWeek: nextWeekNumber,
       updatedAt: new Date(),
     });
 
     return {
       weekNumber: nextWeekNumber,
       totalWorkouts: nextWeek.workouts.length,
-      estimatedDuration: nextWeek.workouts.reduce((sum, w) => sum + w.estimatedDuration, 0),
-      primaryFocus: nextWeek.focus || [],
+      estimatedDuration: nextWeek.workouts.reduce((sum, w) => sum + (w.estimatedDurationMinutes || 60), 0),
+      primaryFocus: [], // Focus areas would be determined from workout analysis
       newExercises: this.countNewExercises(nextWeek, plan),
       progressionChanges: adaptations.filter(a => a.type === 'progression').length,
       difficultyAdjustment: this.determineDifficultyChange(adaptations),
@@ -573,7 +575,7 @@ export class WeeklyAdaptationService {
   private calculateConsistencyScore(workoutLogs: LogEntry[]): number {
     // Simple consistency score based on workout frequency patterns
     const daysWithWorkouts = new Set(
-      workoutLogs.map(log => log.timestamp.toDateString())
+      workoutLogs.map(log => log.loggedAt.toDateString())
     ).size;
     
     return Math.min(100, (daysWithWorkouts / 7) * 100);
@@ -662,7 +664,7 @@ export class WeeklyAdaptationService {
     plan.weeks.forEach(week => {
       week.workouts.forEach(workout => {
         workout.exercises.forEach(exercise => {
-          existingExercises.add(exercise.exerciseId);
+          existingExercises.add(exercise.exerciseName);
         });
       });
     });

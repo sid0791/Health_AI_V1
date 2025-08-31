@@ -56,6 +56,7 @@ export enum RequestType {
   RECIPE_GENERATION = 'recipe_generation',
   MEAL_PLANNING = 'meal_planning',
   FITNESS_PLANNING = 'fitness_planning',
+  FITNESS_ADAPTATION = 'fitness_adaptation',
   GENERAL_CHAT = 'general_chat',
   SYMPTOM_ANALYSIS = 'symptom_analysis',
   MEDICATION_INTERACTION = 'medication_interaction',

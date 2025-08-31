@@ -23,6 +23,8 @@ import { AnalyticsModule } from './domains/analytics/analytics.module';
 import { LogsModule } from './domains/logs/logs.module';
 import { ChatModule } from './domains/chat/chat.module';
 import { ExternalApiModule } from './external-apis/external-api.module';
+import { IntegrationsModule } from './domains/integrations/integrations.module';
+import { AIPromptOptimizationModule } from './domains/ai-prompt-optimization/ai-prompt-optimization.module';
 
 // Entity imports for TypeORM
 import { User } from './domains/users/entities/user.entity';
@@ -222,6 +224,10 @@ import { ChatContext } from './domains/chat/entities/chat-context.entity';
     LogsModule,
     ChatModule, // Phase 13
     ExternalApiModule,
+    
+    // Phase 14 Modules
+    IntegrationsModule,
+    AIPromptOptimizationModule,
 
     // Health Check Module
     HealthModule,

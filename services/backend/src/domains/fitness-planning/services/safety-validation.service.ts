@@ -640,4 +640,45 @@ export class SafetyValidationService {
 
     return { warnings, recommendations };
   }
+
+  /**
+   * Validate fitness adaptation for safety and reasonableness
+   */
+  async validateAdaptation(adaptation: any, userProfile: UserProfile): Promise<boolean> {
+    // Basic validation for adaptation parameters
+    if (!adaptation || typeof adaptation !== 'object') {
+      return false;
+    }
+
+    // Check if adaptation contains required fields
+    const requiredFields = ['type', 'adjustments'];
+    for (const field of requiredFields) {
+      if (!(field in adaptation)) {
+        return false;
+      }
+    }
+
+    // Validate adjustment ranges are reasonable
+    if (adaptation.adjustments) {
+      // Check if weight/intensity increases are safe (max 10% increase per week)
+      if (adaptation.adjustments.intensityIncrease && adaptation.adjustments.intensityIncrease > 0.1) {
+        return false;
+      }
+
+      // Check if volume increases are safe (max 15% increase per week)
+      if (adaptation.adjustments.volumeIncrease && adaptation.adjustments.volumeIncrease > 0.15) {
+        return false;
+      }
+    }
+
+    // Additional safety checks based on user profile
+    if (userProfile.experienceLevel === ExperienceLevel.BEGINNER) {
+      // More conservative limits for beginners
+      if (adaptation.adjustments?.intensityIncrease && adaptation.adjustments.intensityIncrease > 0.05) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }
