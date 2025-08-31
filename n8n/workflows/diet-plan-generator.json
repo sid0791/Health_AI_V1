@@ -1,0 +1,527 @@
+{
+  "name": "Diet Plan Generator Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-diet-plan",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Diet Plan Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "generate-diet-plan"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/users/{{$json.userId}}/context",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "retrieve-user-context",
+      "name": "Retrieve User Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "compute-tdee-macros",
+      "name": "Compute TDEE & Macros",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "code": "// Compute Total Daily Energy Expenditure (TDEE) and macronutrient targets\nconst userContext = $input.first().json;\nconst requestData = $('Diet Plan Request').first().json;\n\n// User demographics\nconst age = userContext.age || 30;\nconst weight = userContext.weight || 70; // kg\nconst height = userContext.height || 170; // cm\nconst gender = userContext.gender || 'male';\nconst activityLevel = userContext.activityLevel || 'moderate';\nconst goal = requestData.goal || userContext.goal || 'maintain';\n\n// Calculate BMR using Mifflin-St Jeor Equation\nlet bmr;\nif (gender === 'male') {\n  bmr = 10 * weight + 6.25 * height - 5 * age + 5;\n} else {\n  bmr = 10 * weight + 6.25 * height - 5 * age - 161;\n}\n\n// Activity multipliers\nconst activityMultipliers = {\n  sedentary: 1.2,\n  light: 1.375,\n  moderate: 1.55,\n  active: 1.725,\n  very_active: 1.9\n};\n\nconst tdee = bmr * (activityMultipliers[activityLevel] || 1.55);\n\n// Adjust for goal\nlet targetCalories = tdee;\nif (goal === 'lose_weight') {\n  targetCalories = tdee - 500; // 500 calorie deficit\n} else if (goal === 'gain_weight') {\n  targetCalories = tdee + 300; // 300 calorie surplus\n}\n\n// Macro distribution (adjust based on health conditions)\nlet proteinPercent = 0.25; // 25% protein\nlet carbPercent = 0.45;    // 45% carbs\nlet fatPercent = 0.30;     // 30% fat\n\n// Adjust for health conditions\nif (userContext.healthConditions) {\n  if (userContext.healthConditions.includes('diabetes') || userContext.healthConditions.includes('prediabetes')) {\n    carbPercent = 0.35; // Lower carbs\n    proteinPercent = 0.30; // Higher protein\n    fatPercent = 0.35;\n  }\n  if (userContext.healthConditions.includes('fatty_liver')) {\n    fatPercent = 0.25; // Lower fat\n    carbPercent = 0.40;\n    proteinPercent = 0.35;\n  }\n}\n\n// Calculate macro targets in grams\nconst proteinGrams = Math.round((targetCalories * proteinPercent) / 4);\nconst carbGrams = Math.round((targetCalories * carbPercent) / 4);\nconst fatGrams = Math.round((targetCalories * fatPercent) / 9);\n\nreturn {\n  userId: requestData.userId,\n  planId: `plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,\n  userContext: userContext,\n  metabolicData: {\n    bmr: Math.round(bmr),\n    tdee: Math.round(tdee),\n    targetCalories: Math.round(targetCalories),\n    goal: goal\n  },\n  macroTargets: {\n    protein: proteinGrams,\n    carbs: carbGrams,\n    fat: fatGrams,\n    calories: Math.round(targetCalories)\n  },\n  generationTimestamp: new Date().toISOString()\n};"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/ai-routing/route",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "requestType",
+              "value": "diet_plan_generation"
+            },
+            {
+              "name": "content",
+              "value": "={{JSON.stringify($json)}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "level",
+              "value": "2"
+            },
+            {
+              "name": "requiresIndianCuisine",
+              "value": true
+            },
+            {
+              "name": "dietaryRestrictions",
+              "value": "={{$json.userContext.dietaryRestrictions}}"
+            },
+            {
+              "name": "cuisinePreferences",
+              "value": "={{$json.userContext.cuisinePreferences}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-7day-plan",
+      "name": "Generate 7-Day Plan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/nutrition/calculate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "mealPlan",
+              "value": "={{$json.generatedPlan}}"
+            },
+            {
+              "name": "planId",
+              "value": "={{$('Compute TDEE & Macros').first().json.planId}}"
+            },
+            {
+              "name": "includeGI",
+              "value": true
+            },
+            {
+              "name": "includeMicronutrients",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "nutrient-calculation",
+      "name": "Nutrient Calculation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 300],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "validate-plan",
+      "name": "Validate Plan",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "code": "// Validate the generated meal plan\nconst planData = $('Generate 7-Day Plan').first().json;\nconst nutritionData = $input.first().json;\nconst targets = $('Compute TDEE & Macros').first().json.macroTargets;\nconst userContext = $('Compute TDEE & Macros').first().json.userContext;\n\nlet validationResults = {\n  isValid: true,\n  warnings: [],\n  errors: [],\n  suggestions: []\n};\n\n// Check if plan meets macro targets (within 10% tolerance)\nconst tolerance = 0.1;\n\nif (nutritionData.dailyAverages) {\n  const avgCalories = nutritionData.dailyAverages.calories;\n  const avgProtein = nutritionData.dailyAverages.protein;\n  const avgCarbs = nutritionData.dailyAverages.carbs;\n  const avgFat = nutritionData.dailyAverages.fat;\n  \n  // Calorie validation\n  if (Math.abs(avgCalories - targets.calories) > targets.calories * tolerance) {\n    validationResults.warnings.push(`Calorie target missed by ${Math.abs(avgCalories - targets.calories)} calories`);\n  }\n  \n  // Protein validation\n  if (avgProtein < targets.protein * (1 - tolerance)) {\n    validationResults.warnings.push(`Protein target not met: ${avgProtein}g vs ${targets.protein}g target`);\n  }\n  \n  // Check for dietary restrictions compliance\n  if (userContext.dietaryRestrictions) {\n    userContext.dietaryRestrictions.forEach(restriction => {\n      if (nutritionData.restrictionViolations && nutritionData.restrictionViolations[restriction]) {\n        validationResults.errors.push(`Dietary restriction violated: ${restriction}`);\n        validationResults.isValid = false;\n      }\n    });\n  }\n  \n  // Check for allergen compliance\n  if (userContext.allergies) {\n    userContext.allergies.forEach(allergy => {\n      if (nutritionData.allergenPresent && nutritionData.allergenPresent.includes(allergy)) {\n        validationResults.errors.push(`Allergen present: ${allergy}`);\n        validationResults.isValid = false;\n      }\n    });\n  }\n  \n  // Health condition specific validations\n  if (userContext.healthConditions) {\n    if (userContext.healthConditions.includes('diabetes')) {\n      if (nutritionData.averageGI > 60) {\n        validationResults.warnings.push('Average GI is high for diabetic user');\n      }\n    }\n    \n    if (userContext.healthConditions.includes('hypertension')) {\n      if (nutritionData.averageSodium > 2300) {\n        validationResults.warnings.push('Sodium content exceeds recommended limit for hypertension');\n      }\n    }\n  }\n}\n\n// Add suggestions for improvement\nif (validationResults.warnings.length === 0 && validationResults.errors.length === 0) {\n  validationResults.suggestions.push('Plan meets all targets and restrictions');\n}\n\nreturn {\n  planId: $('Compute TDEE & Macros').first().json.planId,\n  userId: $('Compute TDEE & Macros').first().json.userId,\n  validation: validationResults,\n  planData: planData.generatedPlan,\n  nutritionData: nutritionData,\n  targets: targets,\n  validatedAt: new Date().toISOString()\n};"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "plan-valid",
+              "leftValue": "={{$json.validation.isValid}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-validation",
+      "name": "Check Validation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/meal-plans",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "planId",
+              "value": "={{$json.planId}}"
+            },
+            {
+              "name": "planData",
+              "value": "={{$json.planData}}"
+            },
+            {
+              "name": "nutritionData",
+              "value": "={{$json.nutritionData}}"
+            },
+            {
+              "name": "targets",
+              "value": "={{$json.targets}}"
+            },
+            {
+              "name": "metabolicData",
+              "value": "={{$('Compute TDEE & Macros').first().json.metabolicData}}"
+            },
+            {
+              "name": "validation",
+              "value": "={{$json.validation}}"
+            },
+            {
+              "name": "status",
+              "value": "active"
+            },
+            {
+              "name": "generatedAt",
+              "value": "={{$('Compute TDEE & Macros').first().json.generationTimestamp}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "store-plan",
+      "name": "Store Meal Plan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 200],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/ai-routing/route",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "requestType",
+              "value": "diet_plan_regeneration"
+            },
+            {
+              "name": "content",
+              "value": "={{JSON.stringify({ issues: $json.validation.errors, warnings: $json.validation.warnings, originalPlan: $json.planData })}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "level",
+              "value": "2"
+            },
+            {
+              "name": "retryAttempt",
+              "value": 1
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "regenerate-plan",
+      "name": "Regenerate Plan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 400],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/notifications/send",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$('Store Meal Plan').first().json.userId}}"
+            },
+            {
+              "name": "type",
+              "value": "meal_plan_ready"
+            },
+            {
+              "name": "title",
+              "value": "Your Meal Plan is Ready!"
+            },
+            {
+              "name": "message",
+              "value": "Your personalized 7-day meal plan has been generated with {{$('Store Meal Plan').first().json.targets.calories}} calories/day."
+            },
+            {
+              "name": "priority",
+              "value": "normal"
+            },
+            {
+              "name": "data",
+              "value": "={{$('Store Meal Plan').first().json}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-user-success",
+      "name": "Notify User - Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2000, 200],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2220, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Diet Plan Request": {
+      "main": [
+        [
+          {
+            "node": "Retrieve User Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve User Context": {
+      "main": [
+        [
+          {
+            "node": "Compute TDEE & Macros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute TDEE & Macros": {
+      "main": [
+        [
+          {
+            "node": "Generate 7-Day Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate 7-Day Plan": {
+      "main": [
+        [
+          {
+            "node": "Nutrient Calculation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nutrient Calculation": {
+      "main": [
+        [
+          {
+            "node": "Validate Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Plan": {
+      "main": [
+        [
+          {
+            "node": "Check Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Validation": {
+      "main": [
+        [
+          {
+            "node": "Store Meal Plan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Regenerate Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Meal Plan": {
+      "main": [
+        [
+          {
+            "node": "Notify User - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regenerate Plan": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify User - Success": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "diet-plan-generator-workflow",
+  "tags": ["meal-planning", "nutrition", "tdee", "macros", "indian-cuisine"]
+}

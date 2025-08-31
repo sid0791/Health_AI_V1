@@ -1,0 +1,417 @@
+{
+  "name": "Notifications and Nudges Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-notification",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Notification Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "send-notification"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/users/{{$json.userId}}/preferences",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-user-preferences",
+      "name": "Get User Preferences",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "check-quiet-hours",
+      "name": "Check Quiet Hours & Preferences",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "code": "// Check if notification should be sent based on user preferences and quiet hours\nconst notificationRequest = $('Notification Request').first().json;\nconst userPrefs = $input.first().json;\n\nconst now = new Date();\nconst currentHour = now.getHours();\nconst currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.\n\n// Default quiet hours: 10 PM to 7 AM\nconst quietStart = userPrefs.quietHours?.start || 22;\nconst quietEnd = userPrefs.quietHours?.end || 7;\n\n// Check if current time is in quiet hours\nlet isQuietTime = false;\nif (quietStart > quietEnd) {\n  // Quiet hours span midnight (e.g., 10 PM to 7 AM)\n  isQuietTime = currentHour >= quietStart || currentHour < quietEnd;\n} else {\n  // Quiet hours within same day\n  isQuietTime = currentHour >= quietStart && currentHour < quietEnd;\n}\n\n// Check if notification type is enabled\nconst notificationType = notificationRequest.type;\nconst typePrefs = userPrefs.notificationTypes || {};\nconst isTypeEnabled = typePrefs[notificationType] !== false; // Default to true if not specified\n\n// Check if push notifications are globally enabled\nconst pushEnabled = userPrefs.pushNotifications !== false;\n\n// Emergency notifications bypass quiet hours\nconst isEmergency = notificationRequest.priority === 'critical' || \n                   notificationRequest.type === 'physician_alert';\n\nconst shouldSend = pushEnabled && isTypeEnabled && (!isQuietTime || isEmergency);\n\n// If notification should be delayed, calculate next available time\nlet scheduleFor = null;\nif (!shouldSend && !isEmergency && isQuietTime) {\n  const nextMorning = new Date(now);\n  nextMorning.setHours(quietEnd, 0, 0, 0);\n  if (nextMorning <= now) {\n    nextMorning.setDate(nextMorning.getDate() + 1);\n  }\n  scheduleFor = nextMorning.toISOString();\n}\n\nreturn {\n  ...notificationRequest,\n  userPreferences: userPrefs,\n  shouldSend: shouldSend,\n  isQuietTime: isQuietTime,\n  isEmergency: isEmergency,\n  scheduleFor: scheduleFor,\n  checkTimestamp: now.toISOString()\n};"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "should-send",
+              "leftValue": "={{$json.shouldSend}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-send-decision",
+      "name": "Should Send Now?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "generate-personalized-content",
+      "name": "Generate Personalized Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 200],
+      "code": "// Generate personalized notification content\nconst data = $input.first().json;\nconst userPrefs = data.userPreferences;\n\n// Personalization based on user data\nconst userName = userPrefs.firstName || 'there';\nconst preferredLanguage = userPrefs.language || 'en';\nconst timezone = userPrefs.timezone || 'Asia/Kolkata';\n\n// Notification templates with personalization\nconst templates = {\n  meal_reminder: {\n    en: {\n      title: `Meal time, ${userName}! 🍽️`,\n      body: \"Don't forget to log your {{mealType}}. Your nutrition goals are within reach!\",\n      emoji: \"🍽️\"\n    },\n    hi: {\n      title: `खाने का समय, ${userName}! 🍽️`,\n      body: \"अपना {{mealType}} लॉग करना न भूलें। आपके पोषण लक्ष्य पहुंच में हैं!\",\n      emoji: \"🍽️\"\n    }\n  },\n  water_reminder: {\n    en: {\n      title: `Stay hydrated, ${userName}! 💧`,\n      body: \"Time for your {{glassNumber}} glass of water today. Keep going!\",\n      emoji: \"💧\"\n    },\n    hi: {\n      title: `हाइड्रेटेड रहें, ${userName}! 💧`,\n      body: \"आज अपना {{glassNumber}}वां गिलास पानी पीने का समय। चलते रहें!\",\n      emoji: \"💧\"\n    }\n  },\n  workout_reminder: {\n    en: {\n      title: `Workout time, ${userName}! 💪`,\n      body: \"Your {{workoutType}} is scheduled now. Let's crush those fitness goals!\",\n      emoji: \"💪\"\n    },\n    hi: {\n      title: `कसरत का समय, ${userName}! 💪`,\n      body: \"आपकी {{workoutType}} अभी निर्धारित है। आइए उन फिटनेस लक्ष्यों को पूरा करें!\",\n      emoji: \"💪\"\n    }\n  },\n  progress_celebration: {\n    en: {\n      title: `Amazing progress, ${userName}! 🎉`,\n      body: \"You've achieved {{achievement}}! Keep up the fantastic work.\",\n      emoji: \"🎉\"\n    },\n    hi: {\n      title: `शानदार प्रगति, ${userName}! 🎉`,\n      body: \"आपने {{achievement}} हासिल किया है! इसी तरह का शानदार काम जारी रखें।\",\n      emoji: \"🎉\"\n    }\n  },\n  physician_alert: {\n    en: {\n      title: \"Important Health Alert 🚨\",\n      body: \"Your recent health data shows concerning patterns. Please consult your physician.\",\n      emoji: \"🚨\"\n    },\n    hi: {\n      title: \"महत्वपूर्ण स्वास्थ्य अलर्ट 🚨\",\n      body: \"आपके हाल के स्वास्थ्य डेटा में चिंताजनक पैटर्न दिखाई दे रहे हैं। कृपया अपने चिकित्सक से सलाह लें।\",\n      emoji: \"🚨\"\n    }\n  },\n  weekly_report: {\n    en: {\n      title: `Your weekly report is ready, ${userName}! 📊`,\n      body: \"See how you performed this week and get personalized recommendations.\",\n      emoji: \"📊\"\n    },\n    hi: {\n      title: `आपकी साप्ताहिक रिपोर्ट तैयार है, ${userName}! 📊`,\n      body: \"देखें कि आपने इस सप्ताह कैसा प्रदर्शन किया और व्यक्तिगत सिफारिशें प्राप्त करें।\",\n      emoji: \"📊\"\n    }\n  }\n};\n\n// Get template for notification type and language\nconst notificationType = data.type;\nconst template = templates[notificationType]?.[preferredLanguage] || templates[notificationType]?.en;\n\nif (!template) {\n  // Fallback for unknown notification types\n  return {\n    ...data,\n    finalTitle: data.title || \"HealthCoachAI Notification\",\n    finalBody: data.message || \"You have a new notification from HealthCoachAI\",\n    emoji: \"💚\",\n    language: preferredLanguage\n  };\n}\n\n// Replace template variables\nlet finalTitle = template.title;\nlet finalBody = template.body;\n\n// Replace common variables\nif (data.data) {\n  Object.keys(data.data).forEach(key => {\n    const placeholder = `{{${key}}}`;\n    finalTitle = finalTitle.replace(new RegExp(placeholder, 'g'), data.data[key]);\n    finalBody = finalBody.replace(new RegExp(placeholder, 'g'), data.data[key]);\n  });\n}\n\n// Time-based personalization\nconst currentTime = new Date();\nconst hour = currentTime.getHours();\nlet timeGreeting = \"\";\n\nif (preferredLanguage === 'hi') {\n  if (hour < 12) timeGreeting = \"सुप्रभात\";\n  else if (hour < 17) timeGreeting = \"नमस्ते\";\n  else timeGreeting = \"शुभ संध्या\";\n} else {\n  if (hour < 12) timeGreeting = \"Good morning\";\n  else if (hour < 17) timeGreeting = \"Good afternoon\";\n  else timeGreeting = \"Good evening\";\n}\n\n// Add time greeting for certain notification types\nif (['meal_reminder', 'workout_reminder'].includes(notificationType)) {\n  finalTitle = `${timeGreeting}, ${finalTitle.replace(`${userName}!`, '')}${userName}!`;\n}\n\nreturn {\n  ...data,\n  finalTitle: finalTitle,\n  finalBody: finalBody,\n  emoji: template.emoji,\n  language: preferredLanguage,\n  timeGreeting: timeGreeting,\n  personalizedAt: currentTime.toISOString()\n};"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "route-to-channels",
+      "name": "Route to Channels",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "code": "// Route notification to appropriate channels\nconst data = $input.first().json;\nconst userPrefs = data.userPreferences;\n\n// Determine which channels to use\nconst channels = [];\n\n// Push notification (primary channel)\nif (userPrefs.pushNotifications !== false) {\n  channels.push({\n    type: 'push',\n    platform: userPrefs.platform || 'android', // android, ios, web\n    deviceTokens: userPrefs.deviceTokens || [],\n    priority: data.priority || 'normal'\n  });\n}\n\n// In-app notification (always included)\nchannels.push({\n  type: 'in_app',\n  persist: true,\n  category: data.type\n});\n\n// Email for critical notifications\nif (data.priority === 'critical' && userPrefs.email && userPrefs.emailNotifications !== false) {\n  channels.push({\n    type: 'email',\n    address: userPrefs.email,\n    template: 'critical_alert'\n  });\n}\n\n// SMS for physician alerts (if phone number available)\nif (data.type === 'physician_alert' && userPrefs.phoneNumber && userPrefs.smsNotifications === true) {\n  channels.push({\n    type: 'sms',\n    phoneNumber: userPrefs.phoneNumber,\n    template: 'physician_alert'\n  });\n}\n\nreturn {\n  ...data,\n  channels: channels,\n  routedAt: new Date().toISOString()\n};"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.PUSH_SERVICE_URL}}/send",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{$json.finalTitle}}"
+            },
+            {
+              "name": "body",
+              "value": "={{$json.finalBody}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "type",
+              "value": "={{$json.type}}"
+            },
+            {
+              "name": "priority",
+              "value": "={{$json.priority || 'normal'}}"
+            },
+            {
+              "name": "data",
+              "value": "={{$json.data}}"
+            },
+            {
+              "name": "channels",
+              "value": "={{$json.channels}}"
+            },
+            {
+              "name": "badge",
+              "value": "={{$json.emoji}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-push-notification",
+      "name": "Send Push Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 200],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "push-service-token",
+          "name": "Push Service Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/notifications/schedule",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "notificationData",
+              "value": "={{$json}}"
+            },
+            {
+              "name": "scheduleFor",
+              "value": "={{$json.scheduleFor}}"
+            },
+            {
+              "name": "reason",
+              "value": "quiet_hours"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "schedule-for-later",
+      "name": "Schedule for Later",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 400],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/notifications/log",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$('Send Push Notification').first().json.userId}}"
+            },
+            {
+              "name": "type",
+              "value": "={{$('Send Push Notification').first().json.type}}"
+            },
+            {
+              "name": "title",
+              "value": "={{$('Send Push Notification').first().json.finalTitle}}"
+            },
+            {
+              "name": "body",
+              "value": "={{$('Send Push Notification').first().json.finalBody}}"
+            },
+            {
+              "name": "status",
+              "value": "={{$json.success ? 'delivered' : 'failed'}}"
+            },
+            {
+              "name": "channels",
+              "value": "={{$('Send Push Notification').first().json.channels}}"
+            },
+            {
+              "name": "deliveredAt",
+              "value": "={{new Date().toISOString()}}"
+            },
+            {
+              "name": "response",
+              "value": "={{$json}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-delivery",
+      "name": "Log Delivery Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 200],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Notification Request": {
+      "main": [
+        [
+          {
+            "node": "Get User Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Preferences": {
+      "main": [
+        [
+          {
+            "node": "Check Quiet Hours & Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Quiet Hours & Preferences": {
+      "main": [
+        [
+          {
+            "node": "Should Send Now?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Send Now?": {
+      "main": [
+        [
+          {
+            "node": "Generate Personalized Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Schedule for Later",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Personalized Content": {
+      "main": [
+        [
+          {
+            "node": "Route to Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to Channels": {
+      "main": [
+        [
+          {
+            "node": "Send Push Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Push Notification": {
+      "main": [
+        [
+          {
+            "node": "Log Delivery Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule for Later": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Delivery Status": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "notifications-nudges-engine-workflow",
+  "tags": ["notifications", "nudges", "personalization", "quiet-hours", "multilingual"]
+}
