@@ -15,6 +15,13 @@ import { ChatSessionService } from './chat-session.service';
 import { AIRoutingService, AIRoutingRequest } from '../../ai-routing/services/ai-routing.service';
 import { RequestType } from '../../ai-routing/entities/ai-routing-decision.entity';
 
+// Token management integration
+import { 
+  TokenManagementService,
+  TokenConsumptionRequest,
+} from '../../users/services/token-management.service';
+import { TokenUsageType, TokenProvider } from '../../users/entities/user-token-usage.entity';
+
 // DLP integration for privacy
 import { DLPService } from '../../auth/services/dlp.service';
 
@@ -111,6 +118,7 @@ export class DomainScopedChatService {
     private readonly chatSessionService: ChatSessionService,
     private readonly aiRoutingService: AIRoutingService,
     private readonly dlpService: DLPService,
+    private readonly tokenManagementService: TokenManagementService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -165,6 +173,10 @@ export class DomainScopedChatService {
       // Determine AI routing level based on domain
       const routingLevel = this.determineRoutingLevel(domainClassification.domain);
       
+      // Check user token limits before routing
+      const estimatedTokens = this.estimateTokenUsage(dlpProcessedContent.processedText, ragContext);
+      const canConsumeTokens = await this.tokenManagementService.canConsumeTokens(userId, estimatedTokens);
+      
       // Build AI request with RAG context
       const aiRequest = await this.buildAIRequest(
         userId,
@@ -175,8 +187,11 @@ export class DomainScopedChatService {
         session
       );
 
-      // Route to AI provider
-      const aiResponse = await this.aiRoutingService.routeRequest(aiRequest);
+      // Route to AI provider with token awareness
+      const aiResponse = await this.aiRoutingService.routeRequestWithUserTokens({
+        ...aiRequest,
+        forceFreeTier: !canConsumeTokens,
+      });
 
       // Process AI response for actions and citations
       const processedResponse = await this.processAIResponse(
@@ -184,6 +199,30 @@ export class DomainScopedChatService {
         ragContext,
         domainClassification
       );
+
+      // Record token consumption
+      const actualTokensUsed = this.calculateActualTokenUsage(
+        dlpProcessedContent.processedText,
+        processedResponse.content
+      );
+
+      if (!aiResponse.usedFreeTier) {
+        await this.tokenManagementService.consumeTokens({
+          userId,
+          usageType: TokenUsageType.CHAT_MESSAGE,
+          provider: this.mapAIProviderToTokenProvider(aiResponse.provider),
+          inputTokens: Math.floor(actualTokensUsed * 0.6), // Rough estimate
+          outputTokens: Math.floor(actualTokensUsed * 0.4), // Rough estimate
+          modelName: aiResponse.model,
+          sessionId: session.id,
+          requestId: aiResponse.decisionId,
+          metadata: {
+            domainClassification: domainClassification.domain,
+            ragDocumentsUsed: ragContext.metadata.documentsRetrieved,
+            languageDetected: processedMessage.languageDetection,
+          },
+        });
+      }
 
       // Create assistant message record
       const assistantMessage = await this.createAssistantMessage(
@@ -209,7 +248,7 @@ export class DomainScopedChatService {
           ragSources: ragContext.sources,
           performance: {
             processingTimeMs: Date.now() - startTime,
-            tokenCount: 100, // Would be from actual AI response
+            tokenCount: actualTokensUsed,
             retrievalTimeMs: ragContext.metadata.retrievalTimeMs,
             generationTimeMs: 200, // Would be from actual AI response
           },
@@ -218,6 +257,11 @@ export class DomainScopedChatService {
             dlpApplied: dlpProcessedContent.redactedFields.length > 0,
             redactedFields: dlpProcessedContent.redactedFields,
             complianceChecks: ['domain_scope', 'content_safety'],
+          },
+          tokenUsage: {
+            tokensUsed: actualTokensUsed,
+            usedFreeTier: aiResponse.usedFreeTier,
+            cost: aiResponse.estimatedCost,
           },
         }
       );
@@ -636,5 +680,43 @@ export class DomainScopedChatService {
       default:
         throw new Error(`Unknown action type: ${action.actionType}`);
     }
+  }
+
+  /**
+   * Estimate token usage for a request
+   */
+  private estimateTokenUsage(content: string, ragContext: any): number {
+    // Rough estimation: 1 token ≈ 4 characters
+    const inputTokens = Math.ceil(content.length / 4);
+    const ragTokens = ragContext.sources ? 
+      Math.ceil(ragContext.sources.reduce((sum, source) => sum + source.content.length, 0) / 4) : 0;
+    const expectedOutputTokens = 500; // Typical response length
+
+    return inputTokens + ragTokens + expectedOutputTokens;
+  }
+
+  /**
+   * Calculate actual token usage from request and response
+   */
+  private calculateActualTokenUsage(inputContent: string, outputContent: string): number {
+    // More accurate calculation based on actual content
+    const inputTokens = Math.ceil(inputContent.length / 4);
+    const outputTokens = Math.ceil(outputContent.length / 4);
+
+    return inputTokens + outputTokens;
+  }
+
+  /**
+   * Map AI provider to token provider enum
+   */
+  private mapAIProviderToTokenProvider(aiProvider: string): TokenProvider {
+    const mapping = {
+      'openai': TokenProvider.OPENAI_GPT4,
+      'anthropic': TokenProvider.ANTHROPIC_CLAUDE,
+      'huggingface': TokenProvider.HUGGINGFACE_FREE,
+      'groq': TokenProvider.GROQ_FREE,
+    };
+
+    return mapping[aiProvider] || TokenProvider.GROQ_FREE;
   }
 }

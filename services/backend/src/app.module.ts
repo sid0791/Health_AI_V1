@@ -30,6 +30,7 @@ import { UserProfile } from './domains/users/entities/user-profile.entity';
 import { UserConsent } from './domains/users/entities/user-consent.entity';
 import { UserPreferences } from './domains/users/entities/user-preferences.entity';
 import { UserGoals } from './domains/users/entities/user-goals.entity';
+import { UserTokenUsage } from './domains/users/entities/user-token-usage.entity';
 import { HealthReport } from './domains/health-reports/entities/health-report.entity';
 import { StructuredEntity } from './domains/health-reports/entities/structured-entity.entity';
 
@@ -94,6 +95,7 @@ import { ChatContext } from './domains/chat/entities/chat-context.entity';
           UserConsent,
           UserPreferences,
           UserGoals,
+          UserTokenUsage,
 
           // Health reports entities
           HealthReport,

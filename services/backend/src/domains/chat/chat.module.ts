@@ -7,6 +7,7 @@ import { DomainScopedChatService } from './services/domain-scoped-chat.service';
 import { RAGService } from './services/rag.service';
 import { HinglishNLPService } from './services/hinglish-nlp.service';
 import { ChatSessionService } from './services/chat-session.service';
+import { ChatRateLimitInterceptor } from './interceptors/chat-rate-limit.interceptor';
 
 import { ChatSession } from './entities/chat-session.entity';
 import { ChatMessage } from './entities/chat-message.entity';
@@ -43,6 +44,7 @@ import { RecipeModule } from '../recipes/recipe.module';
     RAGService,
     HinglishNLPService,
     ChatSessionService,
+    ChatRateLimitInterceptor,
   ],
   exports: [
     DomainScopedChatService,

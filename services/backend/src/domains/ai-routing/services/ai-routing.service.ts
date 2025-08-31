@@ -931,6 +931,150 @@ export class AIRoutingService {
   }
 
   /**
+   * Route request with user token awareness and automatic fallback to free tier
+   */
+  async routeRequestWithUserTokens(
+    request: AIRoutingRequest & { forceFreeTier?: boolean }
+  ): Promise<AIRoutingResult & { usedFreeTier: boolean; userTokensConsumed: number }> {
+    this.logger.debug(`Routing AI request with user token awareness: ${request.requestType}`);
+
+    // If user explicitly requests free tier or has no user context, use free providers
+    if (request.forceFreeTier || !request.userId) {
+      return this.routeToFreeTier(request);
+    }
+
+    // First, try normal routing
+    try {
+      const result = await this.routeRequest(request);
+      
+      // Check if this is already a free tier provider
+      if (this.isFreeTierProvider(result.provider)) {
+        return {
+          ...result,
+          usedFreeTier: true,
+          userTokensConsumed: 0,
+        };
+      }
+
+      // Return paid tier result with token consumption info
+      const estimatedTokens = (request.contextTokens || 0) + (request.maxResponseTokens || 1000);
+      
+      return {
+        ...result,
+        usedFreeTier: false,
+        userTokensConsumed: estimatedTokens,
+      };
+    } catch (error) {
+      this.logger.warn(`Paid tier routing failed for user ${request.userId}, falling back to free tier:`, error.message);
+      
+      // Fallback to free tier
+      return this.routeToFreeTier(request);
+    }
+  }
+
+  /**
+   * Route specifically to free tier providers
+   */
+  private async routeToFreeTier(
+    request: AIRoutingRequest
+  ): Promise<AIRoutingResult & { usedFreeTier: boolean; userTokensConsumed: number }> {
+    this.logger.debug('Routing to free tier providers');
+
+    const freeTierProviders = [AIProvider.HUGGINGFACE, AIProvider.GROQ];
+    const availableModels = [];
+
+    // Collect all free tier models
+    for (const provider of freeTierProviders) {
+      const config = this.providers.get(provider);
+      if (!config) continue;
+
+      const quotaUsed = this.getDailyQuotaUsage(provider);
+      const quotaRemaining = config.dailyQuota - quotaUsed;
+
+      if (quotaRemaining <= 0) continue;
+
+      for (const modelConfig of config.models) {
+        availableModels.push({
+          provider,
+          model: modelConfig.model,
+          endpoint: modelConfig.endpoint,
+          apiKey: this.configService.get(modelConfig.apiKeyConfig),
+          costPerToken: 0, // Free tier
+          accuracyScore: modelConfig.accuracyScore,
+          maxTokens: modelConfig.maxTokens,
+          availability: modelConfig.availability,
+          quotaRemaining,
+        });
+      }
+    }
+
+    if (availableModels.length === 0) {
+      throw new Error('No free tier providers available');
+    }
+
+    // Sort by accuracy and availability
+    availableModels.sort((a, b) => {
+      const scoreA = a.accuracyScore * (a.availability / 100);
+      const scoreB = b.accuracyScore * (b.availability / 100);
+      return scoreB - scoreA;
+    });
+
+    const selectedModel = availableModels[0];
+    const requestId = this.generateRequestId();
+
+    // Create routing decision record
+    const decision = this.routingRepository.create({
+      userId: request.userId,
+      sessionId: request.sessionId,
+      requestId,
+      requestType: request.requestType,
+      serviceLevel: AIServiceLevel.LEVEL_2, // Free tier uses Level 2
+      contextTokens: request.contextTokens,
+      maxResponseTokens: request.maxResponseTokens,
+      emergencyRequest: request.emergencyRequest || false,
+      userTier: 'free',
+      userRegion: request.userRegion,
+      accuracyRequirement: request.accuracyRequirement,
+      provider: selectedModel.provider,
+      model: selectedModel.model,
+      endpointUrl: selectedModel.endpoint,
+      routingDecision: RoutingDecision.FREE_TIER_FALLBACK,
+      routingReason: 'Free tier fallback due to user token limits or explicit request',
+      estimatedCostUsd: 0,
+      quotaRemaining: selectedModel.quotaRemaining,
+    });
+
+    await this.routingRepository.save(decision);
+
+    return {
+      provider: selectedModel.provider,
+      model: selectedModel.model,
+      endpoint: selectedModel.endpoint,
+      apiKey: selectedModel.apiKey,
+      routingDecision: RoutingDecision.FREE_TIER_FALLBACK,
+      routingReason: 'Free tier fallback due to user token limits or explicit request',
+      estimatedCost: 0,
+      quotaRemaining: selectedModel.quotaRemaining,
+      fallbackOptions: availableModels.slice(1, 3).map((m) => ({
+        provider: m.provider,
+        model: m.model,
+        endpoint: m.endpoint,
+      })),
+      decisionId: decision.id,
+      usedFreeTier: true,
+      userTokensConsumed: 0,
+    };
+  }
+
+  /**
+   * Check if provider is a free tier provider
+   */
+  private isFreeTierProvider(provider: AIProvider): boolean {
+    const freeTierProviders = [AIProvider.HUGGINGFACE, AIProvider.GROQ];
+    return freeTierProviders.includes(provider);
+  }
+
+  /**
    * Sleep utility for retry delays
    */
   private sleep(ms: number): Promise<void> {

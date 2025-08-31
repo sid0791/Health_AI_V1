@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   HttpStatus,
   HttpCode,
   Logger,
@@ -28,6 +29,8 @@ import { IsString, IsOptional, IsEnum, IsArray, IsBoolean, IsObject } from 'clas
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User } from '../../auth/decorators/user.decorator';
 import { User as UserEntity } from '../../users/entities/user.entity';
+import { ChatRateLimitInterceptor } from '../interceptors/chat-rate-limit.interceptor';
+import { TokenManagementService } from '../../users/services/token-management.service';
 
 import { DomainScopedChatService, ChatRequest, ChatResponse } from '../services/domain-scoped-chat.service';
 import { ChatSessionService, CreateSessionOptions } from '../services/chat-session.service';
@@ -114,6 +117,7 @@ export class ChatController {
   constructor(
     private readonly domainScopedChatService: DomainScopedChatService,
     private readonly chatSessionService: ChatSessionService,
+    private readonly tokenManagementService: TokenManagementService,
   ) {}
 
   /**
@@ -121,6 +125,7 @@ export class ChatController {
    */
   @Post('message')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(ChatRateLimitInterceptor)
   @ApiOperation({
     summary: 'Send message to AI assistant',
     description: 'Send a message to the domain-scoped AI assistant with RAG context',
@@ -133,6 +138,10 @@ export class ChatController {
   @ApiResponse({
     status: 400,
     description: 'Invalid message or processing error',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded',
   })
   async sendMessage(
     @User() user: UserEntity,
@@ -615,5 +624,98 @@ export class ChatController {
       this.logger.error(`Error retrieving session health for ${sessionId}:`, error);
       throw new BadRequestException(error.message || 'Failed to retrieve session health');
     }
+  }
+
+  /**
+   * Get user token usage statistics
+   */
+  @Get('token-usage')
+  @ApiOperation({
+    summary: 'Get user token usage statistics',
+    description: 'Retrieve current token usage and limits for the authenticated user',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Token usage statistics retrieved successfully',
+  })
+  async getTokenUsage(@User() user: UserEntity) {
+    try {
+      this.logger.log(`Retrieving token usage for user ${user.id}`);
+
+      const tokenStats = await this.tokenManagementService.getUserTokenStats(user.id);
+      
+      return {
+        success: true,
+        tokenUsage: tokenStats,
+        recommendations: this.getUsageRecommendations(tokenStats),
+      };
+    } catch (error) {
+      this.logger.error(`Error retrieving token usage for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to retrieve token usage');
+    }
+  }
+
+  /**
+   * Get user token usage history
+   */
+  @Get('token-usage/history')
+  @ApiOperation({
+    summary: 'Get user token usage history',
+    description: 'Retrieve detailed token usage history for the authenticated user',
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of records to retrieve (default: 50)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Token usage history retrieved successfully',
+  })
+  async getTokenUsageHistory(
+    @User() user: UserEntity,
+    @Query('limit') limit?: string,
+  ) {
+    try {
+      this.logger.log(`Retrieving token usage history for user ${user.id}`);
+
+      const limitNumber = limit ? parseInt(limit, 10) : 50;
+      const history = await this.tokenManagementService.getUserTokenHistory(
+        user.id,
+        undefined,
+        undefined,
+        limitNumber,
+      );
+      
+      return {
+        success: true,
+        history,
+        totalRecords: history.length,
+      };
+    } catch (error) {
+      this.logger.error(`Error retrieving token usage history for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to retrieve token usage history');
+    }
+  }
+
+  /**
+   * Get usage recommendations based on token stats
+   */
+  private getUsageRecommendations(tokenStats: any): string[] {
+    const recommendations = [];
+
+    if (tokenStats.dailyUsed / tokenStats.dailyLimit > 0.8) {
+      recommendations.push('You\'ve used over 80% of your daily token limit. Consider upgrading your plan for unlimited usage.');
+    }
+
+    if (tokenStats.shouldFallbackToFree) {
+      recommendations.push('You\'ve reached your token limit and are now using free AI models. Responses may be slower but still helpful.');
+    }
+
+    if (tokenStats.userTier === 'free' && tokenStats.dailyUsed > 5000) {
+      recommendations.push('You\'re a power user! Consider upgrading to Premium for faster responses and higher limits.');
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('Your usage looks healthy. Keep chatting with our AI assistant!');
+    }
+
+    return recommendations;
   }
 }
