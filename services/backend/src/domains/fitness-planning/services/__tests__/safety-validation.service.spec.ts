@@ -119,7 +119,22 @@ describe('SafetyValidationService', () => {
         ...mockExercise,
         category: ExerciseCategory.CALISTHENICS,
         tags: ['high-impact'],
-      };
+        // Ensure mock methods are preserved
+        isSuitableForLevel: jest.fn().mockReturnValue(true),
+        isAvailableForEquipment: jest.fn().mockReturnValue(true),
+        isSafeForConditions: jest.fn().mockReturnValue(true),
+        incrementUsage: jest.fn(),
+        updateRating: jest.fn(),
+        validateSafetyForUser: jest.fn(),
+        getRecommendedIntensity: jest.fn(),
+        getProgressionOptions: jest.fn(),
+        getRegressionOptions: jest.fn(),
+        getModificationOptions: jest.fn(),
+        approve: jest.fn(),
+        getEstimatedCaloriesBurn: jest.fn(),
+        getRecommendedSets: jest.fn(),
+        getRecommendedReps: jest.fn(),
+      } as unknown as Exercise;
 
       const result = service.validateExerciseForUser(highImpactExercise, elderlyUser);
 
@@ -137,7 +152,22 @@ describe('SafetyValidationService', () => {
       const heavyWeightExercise = {
         ...mockExercise,
         tags: ['heavy-weight'],
-      };
+        // Ensure mock methods are preserved
+        isSuitableForLevel: jest.fn().mockReturnValue(true),
+        isAvailableForEquipment: jest.fn().mockReturnValue(true),
+        isSafeForConditions: jest.fn().mockReturnValue(true),
+        incrementUsage: jest.fn(),
+        updateRating: jest.fn(),
+        validateSafetyForUser: jest.fn(),
+        getRecommendedIntensity: jest.fn(),
+        getProgressionOptions: jest.fn(),
+        getRegressionOptions: jest.fn(),
+        getModificationOptions: jest.fn(),
+        approve: jest.fn(),
+        getEstimatedCaloriesBurn: jest.fn(),
+        getRecommendedSets: jest.fn(),
+        getRecommendedReps: jest.fn(),
+      } as unknown as Exercise;
 
       const result = service.validateExerciseForUser(heavyWeightExercise, youngUser);
 
@@ -182,10 +212,31 @@ describe('SafetyValidationService', () => {
     });
 
     it('should warn about high volume workouts', () => {
-      const highVolumeExercises = Array(8).fill({
+      const highVolumeExercises = Array.from({ length: 8 }, (_, index) => ({
         ...mockExercises[0],
+        id: `exercise${index}`,
         targetSets: 4,
-      });
+        // Include all required methods for FitnessPlanExercise
+        isCompleted: false,
+        isSkipped: false,
+        getCompletionPercentage: jest.fn().mockReturnValue(0),
+        markAsCompleted: jest.fn(),
+        markAsSkipped: jest.fn(),
+        updateProgress: jest.fn(),
+        resetProgress: jest.fn(),
+        validateConfiguration: jest.fn(),
+        getEstimatedDuration: jest.fn(),
+        getCaloriesBurned: jest.fn(),
+        getIntensityLevel: jest.fn(),
+        generateProgressionPlan: jest.fn(),
+        adaptToUserFeedback: jest.fn(),
+        getFormCues: jest.fn(),
+        getSafetyReminders: jest.fn(),
+        getModifications: jest.fn(),
+        getEquipmentRequired: jest.fn(),
+        getMuscleGroups: jest.fn(),
+        exportToWorkoutLog: jest.fn(),
+      } as unknown as FitnessPlanExercise));
 
       const result = service.validateWorkout(mockWorkout, highVolumeExercises, mockUserProfile);
 
@@ -198,10 +249,31 @@ describe('SafetyValidationService', () => {
         experienceLevel: ExperienceLevel.BEGINNER,
       };
 
-      const excessiveVolumeExercises = Array(15).fill({
+      const excessiveVolumeExercises = Array.from({ length: 15 }, (_, index) => ({
         ...mockExercises[0],
+        id: `exercise${index}`,
         targetSets: 3,
-      });
+        // Include all required methods for FitnessPlanExercise
+        isCompleted: false,
+        isSkipped: false,
+        getCompletionPercentage: jest.fn().mockReturnValue(0),
+        markAsCompleted: jest.fn(),
+        markAsSkipped: jest.fn(),
+        updateProgress: jest.fn(),
+        resetProgress: jest.fn(),
+        validateConfiguration: jest.fn(),
+        getEstimatedDuration: jest.fn(),
+        getCaloriesBurned: jest.fn(),
+        getIntensityLevel: jest.fn(),
+        generateProgressionPlan: jest.fn(),
+        adaptToUserFeedback: jest.fn(),
+        getFormCues: jest.fn(),
+        getSafetyReminders: jest.fn(),
+        getModifications: jest.fn(),
+        getEquipmentRequired: jest.fn(),
+        getMuscleGroups: jest.fn(),
+        exportToWorkoutLog: jest.fn(),
+      } as unknown as FitnessPlanExercise));
 
       const result = service.validateWorkout(mockWorkout, excessiveVolumeExercises, beginnerUser);
 
