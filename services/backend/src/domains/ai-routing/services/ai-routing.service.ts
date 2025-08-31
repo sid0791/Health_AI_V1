@@ -373,6 +373,94 @@ export class AIRoutingService {
         tokensPerMinute: 100000,
       },
     });
+
+    // Open Source/Free AI Providers (Cost-Free Options)
+    this.providers.set(AIProvider.HUGGINGFACE, {
+      provider: AIProvider.HUGGINGFACE,
+      models: [
+        {
+          model: AIModel.LLAMA_3_1_8B,
+          endpoint: 'https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3.1-8B-Instruct',
+          apiKeyConfig: 'HUGGINGFACE_API_KEY',
+          costPerToken: 0.000000, // Free tier
+          accuracyScore: 82,
+          maxTokens: 128000,
+          availability: 90,
+        },
+        {
+          model: AIModel.MISTRAL_7B,
+          endpoint: 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3',
+          apiKeyConfig: 'HUGGINGFACE_API_KEY',
+          costPerToken: 0.000000, // Free tier
+          accuracyScore: 80,
+          maxTokens: 32000,
+          availability: 88,
+        },
+      ],
+      dailyQuota: this.configService.get('AI_FREE_DAILY_QUOTA', 10000000), // Higher quota for free tier
+      rateLimits: {
+        requestsPerMinute: 200,
+        tokensPerMinute: 50000,
+      },
+    });
+
+    this.providers.set(AIProvider.TOGETHER, {
+      provider: AIProvider.TOGETHER,
+      models: [
+        {
+          model: AIModel.LLAMA_3_1_70B,
+          endpoint: 'https://api.together.xyz/v1/chat/completions',
+          apiKeyConfig: 'TOGETHER_API_KEY',
+          costPerToken: 0.000003, // $3 per 1M tokens
+          accuracyScore: 84,
+          maxTokens: 128000,
+          availability: 94,
+        },
+        {
+          model: AIModel.QWEN_2_72B,
+          endpoint: 'https://api.together.xyz/v1/chat/completions',
+          apiKeyConfig: 'TOGETHER_API_KEY',
+          costPerToken: 0.000002, // $2 per 1M tokens - very cost effective
+          accuracyScore: 83,
+          maxTokens: 32000,
+          availability: 92,
+        },
+      ],
+      dailyQuota: this.configService.get('AI_LEVEL2_DAILY_QUOTA', 8000000),
+      rateLimits: {
+        requestsPerMinute: 1500,
+        tokensPerMinute: 150000,
+      },
+    });
+
+    this.providers.set(AIProvider.GROQ, {
+      provider: AIProvider.GROQ,
+      models: [
+        {
+          model: AIModel.LLAMA_3_1_70B,
+          endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+          apiKeyConfig: 'GROQ_API_KEY',
+          costPerToken: 0.000001, // $1 per 1M tokens - extremely cost effective
+          accuracyScore: 84,
+          maxTokens: 128000,
+          availability: 96,
+        },
+        {
+          model: AIModel.MIXTRAL_8X7B,
+          endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+          apiKeyConfig: 'GROQ_API_KEY',
+          costPerToken: 0.0000005, // $0.5 per 1M tokens - best cost efficiency
+          accuracyScore: 81,
+          maxTokens: 32000,
+          availability: 97,
+        },
+      ],
+      dailyQuota: this.configService.get('AI_LEVEL2_DAILY_QUOTA', 12000000),
+      rateLimits: {
+        requestsPerMinute: 2000,
+        tokensPerMinute: 200000,
+      },
+    });
   }
 
   private determineServiceLevel(requestType: RequestType): AIServiceLevel {
@@ -562,15 +650,16 @@ export class AIRoutingService {
   }
 
   /**
-   * Implement step-down quota ladder for Level 1 requests
+   * Implement enhanced step-down quota ladder for Level 1 requests
+   * Uses aggressive step-down percentages with fallback to open source models
    */
   private async selectModelWithQuotaStepDown(
     serviceLevel: AIServiceLevel,
     request: AIRoutingRequest,
   ): Promise<any> {
     if (serviceLevel === AIServiceLevel.LEVEL_1) {
-      // Define step-down percentages: 100% -> 98% -> 97% -> 95% -> 90%
-      const stepDownPercentages = [100, 98, 97, 95, 90];
+      // Enhanced step-down percentages for Level 1: 100% -> 95% -> 90% -> 85% -> 80%
+      const stepDownPercentages = [100, 95, 90, 85, 80];
       
       for (const percentage of stepDownPercentages) {
         const availableModels = await this.getAvailableModelsWithQuotaPercentage(
@@ -583,26 +672,30 @@ export class AIRoutingService {
           const selectedModel = await this.selectOptimalModel(availableModels, request, serviceLevel);
           
           if (percentage < 100) {
-            selectedModel.routingReason += ` (quota level: ${percentage}%)`;
+            selectedModel.routingReason = `Step-down quota selection (quota level: ${percentage}%)`;
+            selectedModel.routingDecision = RoutingDecision.QUOTA_EXCEEDED_STEPDOWN;
           }
           return selectedModel;
         }
       }
       
-      // If no Level 1 models available, check if user consents to Level 2
-      if (!request.emergencyRequest) {
-        this.logger.warn('Level 1 quota exceeded, falling back to Level 2 without consent');
-        throw new Error('Level 1 quota exceeded and no consent for Level 2 fallback');
+      // If Level 1 exhausted, check if emergency - allow fallback to cost-optimized models
+      if (request.emergencyRequest) {
+        this.logger.warn('Emergency request: Level 1 quota exhausted, falling back to Level 2');
+        const level2Models = await this.getAvailableModels(AIServiceLevel.LEVEL_2, request);
+        if (level2Models.length > 0) {
+          const selectedModel = await this.selectOptimalModel(level2Models, request, AIServiceLevel.LEVEL_2);
+          selectedModel.routingReason = 'Emergency fallback to Level 2 due to Level 1 quota exhaustion';
+          selectedModel.routingDecision = RoutingDecision.EMERGENCY_OVERRIDE;
+          return selectedModel;
+        }
       }
+      
+      throw new Error('Level 1 quota exceeded and no available fallback options');
     }
     
-    // Regular Level 2 processing with enhanced cost optimization
-    const availableModels = await this.getAvailableModels(serviceLevel, request);
-    if (availableModels.length === 0) {
-      throw new Error('No available models for request');
-    }
-    
-    return this.selectOptimalModelEnhanced(availableModels, request, serviceLevel);
+    // Enhanced Level 2 processing with smart cost optimization
+    return this.selectOptimalModelEnhanced(serviceLevel, request);
   }
 
   /**
@@ -692,27 +785,43 @@ export class AIRoutingService {
   }
 
   /**
-   * Enhanced model selection with cost optimization for Level 2
+   * Enhanced model selection with intelligent cost optimization and open source prioritization
    */
   private async selectOptimalModelEnhanced(
-    availableModels: any[],
-    request: AIRoutingRequest,
     serviceLevel: AIServiceLevel,
+    request: AIRoutingRequest,
   ): Promise<any> {
+    const availableModels = await this.getAvailableModels(serviceLevel, request);
+    if (availableModels.length === 0) {
+      throw new Error('No available models for request');
+    }
+
     if (serviceLevel === AIServiceLevel.LEVEL_2) {
-      // For Level 2: Sort by cost first, then accuracy
+      // Enhanced Level 2 optimization: Prioritize free/cheap models with good accuracy
       availableModels.sort((a, b) => {
+        // First priority: Free models (cost = 0)
+        if (a.costPerToken === 0 && b.costPerToken > 0) return -1;
+        if (b.costPerToken === 0 && a.costPerToken > 0) return 1;
+        
+        // Second priority: Cost optimization within accuracy range
         const costDiff = a.costPerToken - b.costPerToken;
         if (Math.abs(costDiff) > 0.000001) { // If cost difference is significant
           return costDiff; // Lower cost first
         }
-        return b.accuracyScore - a.accuracyScore; // Higher accuracy second
+        
+        // Third priority: Higher accuracy
+        return b.accuracyScore - a.accuracyScore;
       });
       
-      return this.buildModelResult(availableModels[0], availableModels, request, serviceLevel, 'Cost-optimized model selection');
+      const selectedModel = availableModels[0];
+      const reason = selectedModel.costPerToken === 0 
+        ? 'Free open source model selected for optimal cost efficiency'
+        : 'Cost-optimized model selection with accuracy consideration';
+      
+      return this.buildModelResult(selectedModel, availableModels, request, serviceLevel, reason);
     }
     
-    // Fallback to original logic
+    // Level 1: Accuracy-first selection
     return this.selectOptimalModel(availableModels, request, serviceLevel);
   }
 

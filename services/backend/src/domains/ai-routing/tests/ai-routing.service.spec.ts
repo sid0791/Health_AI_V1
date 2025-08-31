@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { AIRoutingService } from '../services/ai-routing.service';
-import { AIRoutingDecision, AIServiceLevel, AIProvider, RequestType } from '../entities/ai-routing-decision.entity';
+import { AIRoutingDecision, AIServiceLevel, AIProvider, AIModel, RequestType } from '../entities/ai-routing-decision.entity';
 
 describe('AIRoutingService', () => {
   let service: AIRoutingService;
@@ -33,9 +33,13 @@ describe('AIRoutingService', () => {
       const configs = {
         'AI_LEVEL1_DAILY_QUOTA': 1000000,
         'AI_LEVEL2_DAILY_QUOTA': 5000000,
+        'AI_FREE_DAILY_QUOTA': 10000000,
         'OPENAI_API_KEY': 'test-openai-key',
         'ANTHROPIC_API_KEY': 'test-anthropic-key',
         'OPENROUTER_API_KEY': 'test-openrouter-key',
+        'HUGGINGFACE_API_KEY': 'test-huggingface-key',
+        'TOGETHER_API_KEY': 'test-together-key',
+        'GROQ_API_KEY': 'test-groq-key',
         'DLP_ENABLE_REDACTION': true,
         'DLP_ENABLE_PSEUDONYMIZATION': true,
       };
@@ -110,8 +114,8 @@ describe('AIRoutingService', () => {
 
       const mockDecision = {
         id: 'test-decision-id',
-        provider: AIProvider.OPENROUTER,
-        model: 'llama-3.1-70b',
+        provider: AIProvider.HUGGINGFACE, // Free model should be selected first for cost optimization
+        model: 'llama-3.1-8b',
       };
 
       mockRepository.create.mockReturnValue(mockDecision);
@@ -121,7 +125,7 @@ describe('AIRoutingService', () => {
       const result = await service.routeRequest(request);
 
       expect(result).toBeDefined();
-      expect(result.provider).toBe(AIProvider.OPENROUTER);
+      expect(result.provider).toBe(AIProvider.HUGGINGFACE);
       expect(result.routingDecision).toBe('cost_optimization');
     });
 
@@ -270,6 +274,24 @@ describe('AIRoutingService', () => {
 
   describe('Step-down quota logic', () => {
     it('should implement step-down for Level 1 requests when quota is exceeded', async () => {
+      // Create a scenario where step-down is actually needed
+      // Mock the getAvailableModelsWithQuotaPercentage to simulate quota exhaustion
+      const originalMethod = service['getAvailableModelsWithQuotaPercentage'];
+      
+      service['getAvailableModelsWithQuotaPercentage'] = jest.fn()
+        .mockResolvedValueOnce([]) // No models at 100%
+        .mockResolvedValueOnce([]) // No models at 95%
+        .mockResolvedValueOnce([{  // Models available at 90%
+          provider: AIProvider.ANTHROPIC,
+          model: AIModel.CLAUDE_3_OPUS,
+          endpoint: 'https://api.anthropic.com/v1/messages',
+          apiKey: 'test-key',
+          costPerToken: 0.000075,
+          accuracyScore: 96,
+          availability: 98,
+          quotaRemaining: 100000,
+        }]);
+
       const request = {
         userId: 'test-user',
         requestType: RequestType.HEALTH_REPORT_ANALYSIS,
@@ -277,34 +299,10 @@ describe('AIRoutingService', () => {
         maxResponseTokens: 500,
       };
 
-      // Set up quota usage to force step-down logic
-      // Make ALL providers exceed their 100% quotas, but some available at step-down
-      // This should force the step-down logic to kick in
-      const today = new Date().toISOString().split('T')[0];
-      service['dailyQuotaUsage'].set(`${today}-openai`, 1000100); // Exceeds 1M quota
-      service['dailyQuotaUsage'].set(`${today}-anthropic`, 800100); // Exceeds 800k quota  
-      service['dailyQuotaUsage'].set(`${today}-openrouter`, 5000100); // Exceeds 5M quota
-      
-      // Now at 98% step-down:
-      // OPENAI: 980k limit vs 1000k usage = still exceeded
-      // ANTHROPIC: 784k limit vs 800k usage = still exceeded 
-      // OPENROUTER: 4.9M limit vs 5M usage = still exceeded
-      
-      // At 95% step-down:
-      // ANTHROPIC: 760k limit vs 800k usage = still exceeded
-      
-      // At 90% step-down:  
-      // ANTHROPIC: 720k limit vs 800k usage = still exceeded
-      
-      // This setup will exhaust all step-downs and should throw error
-      // Let me instead allow one provider to work at a step-down level
-      service['dailyQuotaUsage'].set(`${today}-anthropic`, 700000); // Available at 90% (720k limit)
-
       const mockDecision = {
         id: 'step-down-decision-id',
         provider: AIProvider.ANTHROPIC,
         model: 'claude-3-opus',
-        fail: jest.fn(),
       };
 
       mockRepository.create.mockReturnValue(mockDecision);
@@ -313,7 +311,12 @@ describe('AIRoutingService', () => {
 
       const result = await service.routeRequest(request);
 
-      expect(result.routingReason).toContain('quota level');
+      // Should trigger step-down logic and mention quota level
+      expect(result.routingReason).toContain('quota level: 90%');
+      expect(result.routingDecision).toBe('quota_exceeded_stepdown');
+      
+      // Restore original method
+      service['getAvailableModelsWithQuotaPercentage'] = originalMethod;
     });
   });
 
@@ -326,8 +329,8 @@ describe('AIRoutingService', () => {
 
       const mockDecision = {
         id: 'cost-optimized-decision-id',
-        provider: AIProvider.OPENROUTER,
-        model: 'llama-3.1-70b',
+        provider: AIProvider.HUGGINGFACE, // Free model should be selected for best cost optimization
+        model: 'llama-3.1-8b',
       };
 
       mockRepository.create.mockReturnValue(mockDecision);
@@ -336,7 +339,55 @@ describe('AIRoutingService', () => {
 
       const result = await service.routeRequest(request);
 
-      expect(result.provider).toBe(AIProvider.OPENROUTER);
+      expect(result.provider).toBe(AIProvider.HUGGINGFACE);
+      expect(result.routingDecision).toBe('cost_optimization');
+    });
+
+    it('should prioritize free open source models for cost optimization', async () => {
+      const request = {
+        userId: 'test-user',
+        requestType: RequestType.RECIPE_GENERATION,
+      };
+
+      const mockDecision = {
+        id: 'free-model-decision-id',
+        provider: AIProvider.HUGGINGFACE, // Should select free HuggingFace model
+        model: 'llama-3.1-8b',
+      };
+
+      mockRepository.create.mockReturnValue(mockDecision);
+      mockRepository.save.mockResolvedValue(mockDecision);
+      mockCacheManager.get.mockResolvedValue(null);
+
+      const result = await service.routeRequest(request);
+
+      expect(result.routingReason).toContain('Free open source model');
+      expect(result.routingDecision).toBe('cost_optimization');
+    });
+
+    it('should fall back to paid providers when free providers are unavailable', async () => {
+      const request = {
+        userId: 'test-user',
+        requestType: RequestType.GENERAL_CHAT,
+      };
+
+      // Mock scenario where free provider is unavailable
+      const today = new Date().toISOString().split('T')[0];
+      service['dailyQuotaUsage'].set(`${today}-huggingface`, 10000001); // Exceed free quota
+
+      const mockDecision = {
+        id: 'paid-fallback-decision-id',
+        provider: AIProvider.GROQ, // Should fallback to cheapest paid provider
+        model: 'mixtral-8x7b',
+      };
+
+      mockRepository.create.mockReturnValue(mockDecision);
+      mockRepository.save.mockResolvedValue(mockDecision);
+      mockCacheManager.get.mockResolvedValue(null);
+
+      const result = await service.routeRequest(request);
+
+      expect(result.provider).toBe(AIProvider.GROQ);
       expect(result.routingDecision).toBe('cost_optimization');
     });
   });
