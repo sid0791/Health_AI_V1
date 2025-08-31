@@ -23,6 +23,7 @@ export interface AIRoutingRequest {
   userTier?: string;
   userRegion?: string;
   accuracyRequirement?: number;
+  payload?: Record<string, any>;
 }
 
 export interface AIRoutingResult {
@@ -40,6 +41,9 @@ export interface AIRoutingResult {
     endpoint: string;
   }>;
   decisionId: string;
+  success?: boolean;
+  data?: any;
+  error?: string;
 }
 
 export interface ProviderConfig {
