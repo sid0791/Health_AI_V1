@@ -256,7 +256,9 @@ export class WeeklyAdaptationService {
     const scheduledWorkouts = currentWeek?.workouts || [];
 
     // Calculate adherence metrics
-    const completedWorkouts = workoutLogs.filter(log => log.data?.completed === true).length;
+    const completedWorkouts = workoutLogs.filter(log => 
+      log.data?.completed === true || log.metadata?.completed === true
+    ).length;
     const totalScheduledWorkouts = scheduledWorkouts.length;
     const adherencePercentage = totalScheduledWorkouts > 0 
       ? (completedWorkouts / totalScheduledWorkouts) * 100 
@@ -557,18 +559,26 @@ export class WeeklyAdaptationService {
 
   // Helper methods
   private calculateAverageIntensity(workoutLogs: LogEntry[]): number {
-    const intensityLogs = workoutLogs.filter(log => log.data?.intensity);
+    const intensityLogs = workoutLogs.filter(log => 
+      log.data?.intensity || log.metadata?.intensity
+    );
     if (intensityLogs.length === 0) return 0;
     
-    const totalIntensity = intensityLogs.reduce((sum, log) => sum + (log.data.intensity || 0), 0);
+    const totalIntensity = intensityLogs.reduce((sum, log) => 
+      sum + (log.data?.intensity || log.metadata?.intensity || 0), 0
+    );
     return totalIntensity / intensityLogs.length;
   }
 
   private calculateAverageDuration(workoutLogs: LogEntry[]): number {
-    const durationLogs = workoutLogs.filter(log => log.data?.duration);
+    const durationLogs = workoutLogs.filter(log => 
+      log.data?.duration || log.metadata?.duration
+    );
     if (durationLogs.length === 0) return 0;
     
-    const totalDuration = durationLogs.reduce((sum, log) => sum + (log.data.duration || 0), 0);
+    const totalDuration = durationLogs.reduce((sum, log) => 
+      sum + (log.data?.duration || log.metadata?.duration || 0), 0
+    );
     return totalDuration / durationLogs.length;
   }
 
