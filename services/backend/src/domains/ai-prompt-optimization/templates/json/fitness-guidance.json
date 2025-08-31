@@ -1,0 +1,147 @@
+{
+  "id": "fitness_guidance_personalized",
+  "category": "FITNESS_GUIDANCE",
+  "name": "Personalized Fitness Guidance", 
+  "description": "Provides personalized fitness recommendations and workout plans",
+  "version": "1.0.0",
+  "language": "en",
+  "costOptimized": true,
+  "template": "You are a certified fitness trainer and exercise physiologist. Provide safe, effective fitness guidance for {{user_name}}, a {{user_age}} year old {{user_gender}} from {{user_location}}.\n\nUser Profile:\n- Weight: {{user_weight}} kg\n- Height: {{user_height}} cm\n- Current Fitness Level: {{fitness_level}}\n- Activity Level: {{activity_level}}\n- Health Conditions: {{health_conditions}}\n- Previous Injuries: {{injuries}}\n- Fitness Goals: {{user_goals}}\n- Available Equipment: {{equipment}}\n- Time Available: {{time_available}}\n- Preferred Activities: {{preferred_activities}}\n- Location Preference: {{location_preference}}\n\nFitness Request: {{user_query}}\n\nProvide fitness recommendations that:\n1. Are safe and appropriate for their fitness level and health conditions\n2. Align with their goals and preferences\n3. Consider available time and equipment\n4. Include proper form instructions and safety tips\n5. Provide progression guidelines\n\nAlways emphasize safety and recommend consulting healthcare professionals for medical conditions or injuries.",
+  "variables": [
+    {
+      "name": "user_name",
+      "type": "string",
+      "required": true,
+      "source": "user_profile",
+      "defaultValue": "there",
+      "description": "User's name for personalization"
+    },
+    {
+      "name": "user_age",
+      "type": "number",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "adult",
+      "description": "User's age for age-appropriate exercise"
+    },
+    {
+      "name": "user_gender",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "person", 
+      "description": "User's gender for personalized recommendations"
+    },
+    {
+      "name": "user_location",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "India",
+      "description": "User's location for local activity options"
+    },
+    {
+      "name": "user_weight",
+      "type": "number",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not specified",
+      "description": "User's current weight for exercise planning"
+    },
+    {
+      "name": "user_height",
+      "type": "number",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not specified",
+      "description": "User's height for exercise modifications"
+    },
+    {
+      "name": "fitness_level",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "beginner",
+      "description": "User's current fitness level"
+    },
+    {
+      "name": "activity_level",
+      "type": "string",
+      "required": false,
+      "source": "user_profile", 
+      "defaultValue": "moderate",
+      "description": "User's current activity level"
+    },
+    {
+      "name": "health_conditions",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's health conditions affecting exercise"
+    },
+    {
+      "name": "injuries",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's previous or current injuries"
+    },
+    {
+      "name": "user_goals",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "general fitness",
+      "description": "User's fitness goals"
+    },
+    {
+      "name": "equipment",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "bodyweight exercises",
+      "description": "Available exercise equipment"
+    },
+    {
+      "name": "time_available",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "30 minutes",
+      "description": "Time available for workouts"
+    },
+    {
+      "name": "preferred_activities",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "varied activities",
+      "description": "User's preferred types of exercise"
+    },
+    {
+      "name": "location_preference",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "home or gym",
+      "description": "Preferred workout location"
+    },
+    {
+      "name": "user_query",
+      "type": "string",
+      "required": true,
+      "source": "input",
+      "description": "User's specific fitness question or request"
+    }
+  ],
+  "metadata": {
+    "estimatedTokens": 600,
+    "maxTokens": 2500,
+    "model": "gpt-3.5-turbo",
+    "cost": "medium",
+    "responseTime": "medium",
+    "tags": ["fitness", "exercise", "personalized", "health"]
+  }
+}

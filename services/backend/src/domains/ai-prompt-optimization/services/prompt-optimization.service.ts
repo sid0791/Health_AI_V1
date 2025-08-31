@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { JsonTemplateLoaderService } from './json-template-loader.service';
+import { CostOptimizationService, BatchedRequest } from './cost-optimization.service';
 
 export interface PromptTemplate {
   id: string;
@@ -95,12 +97,28 @@ export class PromptOptimizationService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly jsonTemplateLoader: JsonTemplateLoaderService,
+    private readonly costOptimization: CostOptimizationService,
   ) {
     this.initializeDefaultTemplates();
+    this.loadJsonTemplates();
   }
 
   /**
-   * Execute optimized prompt with user context
+   * Load templates from JSON files
+   */
+  private loadJsonTemplates(): void {
+    const jsonTemplates = this.jsonTemplateLoader.getAllTemplates();
+    
+    for (const template of jsonTemplates) {
+      this.templates.set(template.id, template);
+    }
+    
+    this.logger.log(`Loaded ${jsonTemplates.length} JSON templates`);
+  }
+
+  /**
+   * Execute optimized prompt with cost optimization
    */
   async executePrompt(
     userId: string,
@@ -111,22 +129,62 @@ export class PromptOptimizationService {
       language?: 'en' | 'hi' | 'hinglish';
       model?: string;
       maxTokens?: number;
+      enableBatching?: boolean;
     }
   ): Promise<PromptExecutionResult> {
     const startTime = Date.now();
 
     try {
+      // Check quota first
+      const quotaStatus = await this.costOptimization.checkQuota(userId);
+      if (quotaStatus.isOverLimit) {
+        throw new Error('User has exceeded their quota limit');
+      }
+
       // Get user context
       const userContext = await this.getUserContext(userId);
 
-      // Select appropriate template
+      // Select appropriate template (prefer JSON templates)
       const template = this.selectTemplate(category, options?.template, options?.language);
       if (!template) {
         throw new Error(`No template found for category: ${category}`);
       }
 
+      // If batching is enabled and this is a cost-optimized template, add to batch
+      if (options?.enableBatching && template.costOptimized) {
+        const batchRequest: BatchedRequest = {
+          userId,
+          category,
+          templateId: template.id,
+          userQuery: userInput.user_query || JSON.stringify(userInput),
+          variables: userInput,
+          priority: this.determinePriority(category),
+          timestamp: new Date()
+        };
+
+        const batchId = await this.costOptimization.addToBatch(batchRequest);
+        
+        return {
+          prompt: 'Request added to batch for cost optimization',
+          success: true,
+          executionTime: Date.now() - startTime,
+          metadata: {
+            templateId: template.id,
+            category,
+            batchId,
+            batched: true,
+            costOptimized: true
+          },
+        };
+      }
+
       // Generate optimized prompt
       const optimizedPrompt = await this.generateOptimizedPrompt(template, userContext, userInput);
+
+      // Track usage for cost monitoring
+      const estimatedTokens = template.metadata?.estimatedTokens || 500;
+      const estimatedCost = this.estimateCost(estimatedTokens, template.metadata?.model);
+      this.costOptimization.trackRequest(userId, category, template.id, estimatedTokens, estimatedCost);
 
       // Log the prompt execution for cost tracking
       this.logger.log(`Executing prompt for user ${userId}, category: ${category}, template: ${template.id}`);
@@ -141,6 +199,9 @@ export class PromptOptimizationService {
           category,
           variablesResolved: this.getResolvedVariableCount(template, userContext, userInput),
           costOptimized: template.costOptimized,
+          estimatedTokens,
+          estimatedCost,
+          quotaRemaining: quotaStatus.dailyQuota - quotaStatus.dailyUsed
         },
       };
     } catch (error) {
@@ -152,6 +213,43 @@ export class PromptOptimizationService {
         executionTime: Date.now() - startTime,
       };
     }
+  }
+
+  /**
+   * Determine request priority based on category
+   */
+  private determinePriority(category: PromptCategory): 'high' | 'medium' | 'low' {
+    const highPriorityCategories = [
+      PromptCategory.HEALTH_ANALYSIS,
+      PromptCategory.SYMPTOM_CHECKER
+    ];
+    
+    const lowPriorityCategories = [
+      PromptCategory.GENERAL_CHAT,
+      PromptCategory.LIFESTYLE_TIPS
+    ];
+
+    if (highPriorityCategories.includes(category)) {
+      return 'high';
+    } else if (lowPriorityCategories.includes(category)) {
+      return 'low';
+    }
+    
+    return 'medium';
+  }
+
+  /**
+   * Estimate cost based on tokens and model
+   */
+  private estimateCost(tokens: number, model?: string): number {
+    const costPerToken = {
+      'gpt-3.5-turbo': 0.00002,
+      'gpt-4-turbo-preview': 0.00010,
+      'gpt-4': 0.00006
+    };
+
+    const selectedModel = model || 'gpt-3.5-turbo';
+    return tokens * (costPerToken[selectedModel] || costPerToken['gpt-3.5-turbo']);
   }
 
   /**
@@ -707,5 +805,133 @@ Response Hinglish mein dein aur simple language use karein.`,
     });
 
     this.logger.log(`Initialized ${this.templates.size} default prompt templates`);
+  }
+
+  /**
+   * Reload templates from JSON files
+   */
+  async reloadTemplates(): Promise<void> {
+    // Clear existing templates (keep only default ones)
+    const defaultTemplateIds = [
+      'nutrition_advice_basic_legacy',
+      'meal_planning_weekly_legacy', 
+      'fitness_guidance_basic_legacy',
+      'nutrition_advice_hinglish_legacy'
+    ];
+
+    for (const [id, template] of this.templates.entries()) {
+      if (!defaultTemplateIds.includes(id)) {
+        this.templates.delete(id);
+      }
+    }
+
+    // Reload JSON templates
+    this.jsonTemplateLoader.reloadTemplates();
+    this.loadJsonTemplates();
+
+    this.logger.log('Templates reloaded successfully');
+  }
+
+  /**
+   * Get cost metrics for a user
+   */
+  async getCostMetrics(userId: string) {
+    return this.costOptimization.getCostMetrics(userId);
+  }
+
+  /**
+   * Get quota status for a user
+   */
+  async getQuotaStatus(userId: string) {
+    return this.costOptimization.checkQuota(userId);
+  }
+
+  /**
+   * Get template statistics
+   */
+  getTemplateStatistics() {
+    return this.jsonTemplateLoader.getTemplateStats();
+  }
+
+  /**
+   * Create custom template and save to JSON
+   */
+  async createCustomTemplate(template: PromptTemplate): Promise<boolean> {
+    try {
+      // Validate template
+      if (!template.id || !template.category || !template.template || !template.variables) {
+        throw new Error('Invalid template structure');
+      }
+
+      // Add to memory
+      this.templates.set(template.id, template);
+
+      // TODO: Implement saving to JSON file for persistent storage
+      // For now, just log the template creation
+      this.logger.log(`Custom template created: ${template.id}`);
+
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to create custom template: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Test template with sample data
+   */
+  async testTemplate(templateId: string, sampleData: Record<string, any>): Promise<{
+    success: boolean;
+    prompt?: string;
+    error?: string;
+    missingVariables?: string[];
+  }> {
+    try {
+      const template = this.templates.get(templateId);
+      if (!template) {
+        return { success: false, error: 'Template not found' };
+      }
+
+      // Check for missing required variables
+      const missingVariables = template.variables
+        .filter(v => v.required && !sampleData[v.name])
+        .map(v => v.name);
+
+      if (missingVariables.length > 0) {
+        return { success: false, missingVariables };
+      }
+
+      // Generate test prompt
+      const testContext: UserContext = {
+        userId: 'test-user',
+        profile: sampleData,
+        preferences: sampleData,
+        healthData: sampleData
+      };
+
+      const prompt = await this.generateOptimizedPrompt(template, testContext, sampleData);
+
+      return { success: true, prompt };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get template usage analytics
+   */
+  getTemplateUsageAnalytics(): {
+    mostUsed: string[];
+    leastUsed: string[];
+    averageExecutionTime: Record<string, number>;
+    costEffective: string[];
+  } {
+    // TODO: Implement analytics based on tracked usage data
+    return {
+      mostUsed: [],
+      leastUsed: [],
+      averageExecutionTime: {},
+      costEffective: []
+    };
   }
 }

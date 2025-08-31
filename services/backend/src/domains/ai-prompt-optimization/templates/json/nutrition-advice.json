@@ -1,0 +1,131 @@
+{
+  "id": "nutrition_advice_basic",
+  "category": "NUTRITION_ADVICE",
+  "name": "General Nutrition Advice",
+  "description": "Provides personalized nutrition advice based on user profile and health data",
+  "version": "1.0.0",
+  "language": "en",
+  "costOptimized": true,
+  "template": "You are a certified nutritionist AI assistant. Provide evidence-based, safe, and practical nutrition recommendations for {{user_name}}, a {{user_age}} year old {{user_gender}} from {{user_location}}.\n\nUser Profile:\n- Weight: {{user_weight}} kg\n- Height: {{user_height}} cm  \n- Activity Level: {{activity_level}}\n- Health Conditions: {{health_conditions}}\n- Dietary Preferences: {{dietary_preferences}}\n- Diet Type: {{diet_type}}\n- Allergies: {{user_allergies}}\n- Goals: {{user_goals}}\n- Lifestyle: {{user_lifestyle}}\n\nUser Query: {{user_query}}\n\nProvide specific, actionable nutrition advice that considers their profile and current needs. Focus on practical recommendations they can implement today. Always prioritize safety and recommend consulting healthcare professionals for medical conditions.",
+  "variables": [
+    {
+      "name": "user_name",
+      "type": "string",
+      "required": true,
+      "source": "user_profile",
+      "defaultValue": "there",
+      "description": "User's name for personalization"
+    },
+    {
+      "name": "user_age", 
+      "type": "number",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "adult",
+      "description": "User's age for age-appropriate advice"
+    },
+    {
+      "name": "user_gender",
+      "type": "string", 
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "person",
+      "description": "User's gender for personalized recommendations"
+    },
+    {
+      "name": "user_location",
+      "type": "string",
+      "required": false, 
+      "source": "user_profile",
+      "defaultValue": "India",
+      "description": "User's location for regional food recommendations"
+    },
+    {
+      "name": "user_weight",
+      "type": "number",
+      "required": false,
+      "source": "health_data", 
+      "defaultValue": "not specified",
+      "description": "User's current weight"
+    },
+    {
+      "name": "user_height",
+      "type": "number",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not specified", 
+      "description": "User's height"
+    },
+    {
+      "name": "activity_level",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "moderate",
+      "description": "User's physical activity level"
+    },
+    {
+      "name": "health_conditions",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's health conditions and medical history"
+    },
+    {
+      "name": "dietary_preferences", 
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "none specified",
+      "description": "User's dietary preferences and restrictions"
+    },
+    {
+      "name": "diet_type",
+      "type": "string",
+      "required": false,
+      "source": "preferences", 
+      "defaultValue": "balanced",
+      "description": "User's preferred diet type (vegetarian, vegan, etc.)"
+    },
+    {
+      "name": "user_allergies",
+      "type": "string", 
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's food allergies and intolerances"
+    },
+    {
+      "name": "user_goals",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "general wellness",
+      "description": "User's health and fitness goals"
+    },
+    {
+      "name": "user_lifestyle",
+      "type": "string",
+      "required": false,
+      "source": "user_profile", 
+      "defaultValue": "moderate",
+      "description": "User's lifestyle (sedentary, active, etc.)"
+    },
+    {
+      "name": "user_query",
+      "type": "string",
+      "required": true,
+      "source": "input",
+      "description": "User's specific nutrition question or request"
+    }
+  ],
+  "metadata": {
+    "estimatedTokens": 450,
+    "maxTokens": 2000,
+    "model": "gpt-3.5-turbo",
+    "cost": "low",
+    "responseTime": "fast",
+    "tags": ["nutrition", "health", "personalized", "basic"]
+  }
+}

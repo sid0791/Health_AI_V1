@@ -1,0 +1,147 @@
+{
+  "id": "meal_planning_personalized",
+  "category": "MEAL_PLANNING", 
+  "name": "Personalized Meal Planning",
+  "description": "Creates detailed meal plans based on user goals, preferences, and health data",
+  "version": "1.0.0",
+  "language": "en",
+  "costOptimized": true,
+  "template": "You are an expert meal planning nutritionist. Create a detailed, practical meal plan for {{user_name}}, a {{user_age}} year old {{user_gender}} from {{user_location}}.\n\nUser Profile:\n- Weight: {{user_weight}} kg\n- Height: {{user_height}} cm\n- Activity Level: {{activity_level}}\n- Health Conditions: {{health_conditions}}\n- Diet Type: {{diet_type}}\n- Dietary Preferences: {{dietary_preferences}}\n- Allergies: {{user_allergies}}\n- Goals: {{user_goals}}\n- Budget: {{budget_preference}}\n- Cooking Skills: {{cooking_skills}}\n- Time Available: {{time_available}}\n\nMeal Planning Request: {{user_query}}\n\nCreate a meal plan that:\n1. Aligns with their health goals and dietary preferences\n2. Considers their location for local ingredient availability\n3. Fits their budget and cooking skill level\n4. Provides nutritional balance and variety\n5. Includes portion sizes and preparation tips\n\nFormat the response with clear meal categories, ingredients, and cooking instructions.",
+  "variables": [
+    {
+      "name": "user_name",
+      "type": "string",
+      "required": true,
+      "source": "user_profile",
+      "defaultValue": "there",
+      "description": "User's name for personalization"
+    },
+    {
+      "name": "user_age",
+      "type": "number", 
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "adult",
+      "description": "User's age for age-appropriate portions"
+    },
+    {
+      "name": "user_gender",
+      "type": "string",
+      "required": false,
+      "source": "user_profile", 
+      "defaultValue": "person",
+      "description": "User's gender for caloric needs"
+    },
+    {
+      "name": "user_location",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "India",
+      "description": "User's location for local ingredient availability"
+    },
+    {
+      "name": "user_weight",
+      "type": "number",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not specified",
+      "description": "User's current weight for portion calculation"
+    },
+    {
+      "name": "user_height", 
+      "type": "number",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not specified",
+      "description": "User's height for caloric needs"
+    },
+    {
+      "name": "activity_level",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "moderate",
+      "description": "User's activity level for caloric requirements"
+    },
+    {
+      "name": "health_conditions",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's health conditions affecting diet"
+    },
+    {
+      "name": "diet_type",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "balanced",
+      "description": "User's diet type preference"
+    },
+    {
+      "name": "dietary_preferences",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "none specified",
+      "description": "User's specific dietary preferences"
+    },
+    {
+      "name": "user_allergies",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's food allergies to avoid"
+    },
+    {
+      "name": "user_goals",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "general wellness",
+      "description": "User's health and fitness goals"
+    },
+    {
+      "name": "budget_preference",
+      "type": "string",
+      "required": false,
+      "source": "preferences", 
+      "defaultValue": "moderate",
+      "description": "User's budget preference for meals"
+    },
+    {
+      "name": "cooking_skills",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "intermediate",
+      "description": "User's cooking skill level"
+    },
+    {
+      "name": "time_available",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "30-45 minutes",
+      "description": "Time available for meal preparation"
+    },
+    {
+      "name": "user_query",
+      "type": "string",
+      "required": true,
+      "source": "input",
+      "description": "User's specific meal planning request"
+    }
+  ],
+  "metadata": {
+    "estimatedTokens": 550,
+    "maxTokens": 3000,
+    "model": "gpt-3.5-turbo",
+    "cost": "medium",
+    "responseTime": "medium",
+    "tags": ["meal-planning", "nutrition", "personalized", "recipes"]
+  }
+}

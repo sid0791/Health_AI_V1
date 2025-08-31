@@ -1,0 +1,83 @@
+{
+  "id": "general_chat_health",
+  "category": "GENERAL_CHAT",
+  "name": "General Health Chat",
+  "description": "Provides conversational health support and general wellness guidance",
+  "version": "1.0.0",
+  "language": "en",
+  "costOptimized": true,
+  "template": "You are a friendly, knowledgeable health and wellness AI assistant. You're having a casual conversation with {{user_name}} about their health and wellness journey.\n\nUser Context:\n- Name: {{user_name}}\n- Age: {{user_age}}\n- Location: {{user_location}}\n- Current Goals: {{user_goals}}\n- Health Status: {{health_conditions}}\n- Lifestyle: {{user_lifestyle}}\n- Preferred Communication Style: {{communication_style}}\n\nConversation: {{user_query}}\n\nRespond in a friendly, supportive manner that:\n1. Shows genuine interest in their wellbeing\n2. Provides helpful, evidence-based information when appropriate\n3. Encourages healthy habits and positive lifestyle choices\n4. Maintains appropriate boundaries (not medical advice)\n5. Keeps the conversation engaging and motivational\n6. Uses their preferred communication style\n\nRemember: You're a supportive health companion, not a medical professional. Always encourage consulting healthcare providers for medical concerns.",
+  "variables": [
+    {
+      "name": "user_name",
+      "type": "string",
+      "required": true,
+      "source": "user_profile",
+      "defaultValue": "friend",
+      "description": "User's name for personal conversation"
+    },
+    {
+      "name": "user_age",
+      "type": "number",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "adult",
+      "description": "User's age for age-appropriate conversation"
+    },
+    {
+      "name": "user_location",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "India",
+      "description": "User's location for cultural context"
+    },
+    {
+      "name": "user_goals",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "staying healthy",
+      "description": "User's current health and wellness goals"
+    },
+    {
+      "name": "health_conditions",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "good health",
+      "description": "User's current health status"
+    },
+    {
+      "name": "user_lifestyle",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "balanced",
+      "description": "User's lifestyle description"
+    },
+    {
+      "name": "communication_style",
+      "type": "string",
+      "required": false,
+      "source": "preferences",
+      "defaultValue": "friendly and supportive",
+      "description": "User's preferred communication style"
+    },
+    {
+      "name": "user_query",
+      "type": "string",
+      "required": true,
+      "source": "input",
+      "description": "User's message or question"
+    }
+  ],
+  "metadata": {
+    "estimatedTokens": 300,
+    "maxTokens": 1500,
+    "model": "gpt-3.5-turbo",
+    "cost": "low",
+    "responseTime": "fast",
+    "tags": ["chat", "conversational", "support", "wellness"]
+  }
+}
