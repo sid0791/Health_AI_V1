@@ -466,4 +466,192 @@ export class PromptOptimizationController {
 
     return descriptions[category] || 'Health-related assistance';
   }
+
+  // Enhanced Cost Optimization and Analytics Endpoints
+
+  @Get('cost-metrics')
+  @ApiOperation({ summary: 'Get user cost metrics and usage analytics' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Cost metrics retrieved successfully',
+  })
+  async getCostMetrics(@Request() req: any) {
+    const userId = req.user?.id;
+    const metrics = await this.promptOptimizationService.getCostMetrics(userId);
+    const quotaStatus = await this.promptOptimizationService.getQuotaStatus(userId);
+
+    return {
+      success: true,
+      metrics,
+      quota: quotaStatus,
+      timestamp: new Date(),
+    };
+  }
+
+  @Get('quota-status')
+  @ApiOperation({ summary: 'Get user quota status' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Quota status retrieved successfully',
+  })
+  async getQuotaStatus(@Request() req: any) {
+    const userId = req.user?.id;
+    const quotaStatus = await this.promptOptimizationService.getQuotaStatus(userId);
+
+    return {
+      success: true,
+      quota: quotaStatus,
+      timestamp: new Date(),
+    };
+  }
+
+  @Post('execute-optimized')
+  @ApiOperation({ summary: 'Execute prompt with cost optimization (batching enabled)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Optimized prompt executed successfully',
+  })
+  async executeOptimizedPrompt(
+    @Request() req: any,
+    @Body() executePromptDto: ExecutePromptDto & { enableBatching?: boolean },
+  ) {
+    const userId = req.user?.id;
+
+    const result = await this.promptOptimizationService.executePrompt(
+      userId,
+      executePromptDto.category,
+      executePromptDto.userInput,
+      {
+        template: executePromptDto.template,
+        language: executePromptDto.language,
+        model: executePromptDto.model,
+        maxTokens: executePromptDto.maxTokens,
+        enableBatching: executePromptDto.enableBatching || true, // Enable by default
+      }
+    );
+
+    return {
+      success: result.success,
+      prompt: result.prompt,
+      metadata: result.metadata,
+      error: result.error,
+      timestamp: new Date(),
+    };
+  }
+
+  @Get('template-statistics')
+  @ApiOperation({ summary: 'Get template usage statistics' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Template statistics retrieved successfully',
+  })
+  async getTemplateStatistics() {
+    const stats = this.promptOptimizationService.getTemplateStatistics();
+    const usage = this.promptOptimizationService.getTemplateUsageAnalytics();
+
+    return {
+      success: true,
+      statistics: stats,
+      usage,
+      timestamp: new Date(),
+    };
+  }
+
+  @Post('reload-templates')
+  @ApiOperation({ summary: 'Reload templates from JSON files' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Templates reloaded successfully',
+  })
+  async reloadTemplates() {
+    try {
+      await this.promptOptimizationService.reloadTemplates();
+      const stats = this.promptOptimizationService.getTemplateStatistics();
+
+      return {
+        success: true,
+        message: 'Templates reloaded successfully',
+        statistics: stats,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date(),
+      };
+    }
+  }
+
+  @Post('test-template/:templateId')
+  @ApiOperation({ summary: 'Test template with sample data' })
+  @ApiParam({ name: 'templateId', type: 'string' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Template tested successfully',
+  })
+  async testTemplate(
+    @Param('templateId') templateId: string,
+    @Body() sampleData: Record<string, any>,
+  ) {
+    const result = await this.promptOptimizationService.testTemplate(templateId, sampleData);
+
+    return {
+      templateId,
+      testResult: result,
+      timestamp: new Date(),
+    };
+  }
+
+  @Post('batch-execute')
+  @ApiOperation({ summary: 'Execute multiple prompts in a cost-optimized batch' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Batch execution initiated',
+  })
+  async batchExecutePrompts(
+    @Request() req: any,
+    @Body() body: {
+      requests: Array<{
+        category: PromptCategory;
+        userInput: Record<string, any>;
+        priority?: 'high' | 'medium' | 'low';
+        template?: string;
+        language?: 'en' | 'hi' | 'hinglish';
+      }>;
+    },
+  ) {
+    const userId = req.user?.id;
+    const results = [];
+
+    for (const request of body.requests) {
+      const result = await this.promptOptimizationService.executePrompt(
+        userId,
+        request.category,
+        request.userInput,
+        {
+          template: request.template,
+          language: request.language,
+          enableBatching: true,
+        }
+      );
+
+      results.push({
+        category: request.category,
+        success: result.success,
+        batched: result.metadata?.batched || false,
+        batchId: result.metadata?.batchId,
+        error: result.error,
+      });
+    }
+
+    return {
+      success: true,
+      batchSize: body.requests.length,
+      results,
+      message: 'Batch requests processed',
+      timestamp: new Date(),
+    };
+  }
+}
 }

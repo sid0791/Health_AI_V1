@@ -1,0 +1,163 @@
+{
+  "id": "health_analysis_comprehensive",
+  "category": "HEALTH_ANALYSIS",
+  "name": "Comprehensive Health Analysis",
+  "description": "Provides comprehensive health insights based on user data and reports",
+  "version": "1.0.0", 
+  "language": "en",
+  "costOptimized": true,
+  "template": "You are a qualified health data analyst AI assistant. Provide comprehensive health insights for {{user_name}}, a {{user_age}} year old {{user_gender}} from {{user_location}}.\n\nUser Health Profile:\n- Weight: {{user_weight}} kg\n- Height: {{user_height}} cm\n- BMI: {{bmi}}\n- Activity Level: {{activity_level}}\n- Current Health Conditions: {{health_conditions}}\n- Medications: {{medications}}\n- Allergies: {{user_allergies}}\n- Family History: {{family_history}}\n- Recent Symptoms: {{symptoms}}\n- Vital Signs: {{vital_signs}}\n- Lab Results: {{lab_results}}\n- Sleep Patterns: {{sleep_patterns}}\n- Stress Levels: {{stress_levels}}\n\nAnalysis Request: {{user_query}}\n\nProvide a comprehensive health analysis that:\n1. Identifies patterns and trends in the health data\n2. Highlights areas of concern or improvement\n3. Suggests lifestyle modifications if applicable\n4. Recommends when to consult healthcare professionals\n5. Provides actionable health improvement suggestions\n\nIMPORTANT: This is informational only. Always recommend consulting healthcare professionals for medical diagnosis or treatment decisions.",
+  "variables": [
+    {
+      "name": "user_name",
+      "type": "string",
+      "required": true,
+      "source": "user_profile",
+      "defaultValue": "there",
+      "description": "User's name for personalization"
+    },
+    {
+      "name": "user_age",
+      "type": "number",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "adult",
+      "description": "User's age for age-specific analysis"
+    },
+    {
+      "name": "user_gender",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "person",
+      "description": "User's gender for gender-specific health insights"
+    },
+    {
+      "name": "user_location",
+      "type": "string",
+      "required": false,
+      "source": "user_profile", 
+      "defaultValue": "India",
+      "description": "User's location for regional health considerations"
+    },
+    {
+      "name": "user_weight",
+      "type": "number",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not provided",
+      "description": "User's current weight"
+    },
+    {
+      "name": "user_height",
+      "type": "number",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not provided",
+      "description": "User's height"
+    },
+    {
+      "name": "bmi",
+      "type": "number",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not calculated",
+      "description": "User's calculated BMI"
+    },
+    {
+      "name": "activity_level",
+      "type": "string",
+      "required": false,
+      "source": "user_profile",
+      "defaultValue": "moderate",
+      "description": "User's physical activity level"
+    },
+    {
+      "name": "health_conditions",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's current health conditions"
+    },
+    {
+      "name": "medications",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's current medications"
+    },
+    {
+      "name": "user_allergies",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's known allergies"
+    },
+    {
+      "name": "family_history",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not provided",
+      "description": "User's family medical history"
+    },
+    {
+      "name": "symptoms",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "none reported",
+      "description": "User's recent symptoms"
+    },
+    {
+      "name": "vital_signs",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not provided",
+      "description": "User's recent vital signs"
+    },
+    {
+      "name": "lab_results",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "not provided",
+      "description": "User's recent lab test results"
+    },
+    {
+      "name": "sleep_patterns",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "average",
+      "description": "User's sleep patterns and quality"
+    },
+    {
+      "name": "stress_levels",
+      "type": "string",
+      "required": false,
+      "source": "health_data",
+      "defaultValue": "moderate",
+      "description": "User's stress levels"
+    },
+    {
+      "name": "user_query",
+      "type": "string",
+      "required": true,
+      "source": "input",
+      "description": "User's specific health analysis request"
+    }
+  ],
+  "metadata": {
+    "estimatedTokens": 700,
+    "maxTokens": 3500,
+    "model": "gpt-4-turbo-preview",
+    "cost": "high",
+    "responseTime": "slow",
+    "tags": ["health-analysis", "comprehensive", "medical", "insights"]
+  }
+}
