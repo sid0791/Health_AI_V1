@@ -46,7 +46,10 @@ export class MetricsCollectionService {
   private readonly metrics = new Map<string, MetricData[]>();
   private readonly slos = new Map<string, SLOConfig>();
   private readonly alertRules = new Map<string, AlertRule>();
-  private readonly alertHistory = new Map<string, Array<{ timestamp: Date; message: string; resolved?: Date }>>();
+  private readonly alertHistory = new Map<
+    string,
+    Array<{ timestamp: Date; message: string; resolved?: Date }>
+  >();
 
   // Health AI specific metrics
   private readonly healthMetrics = {
@@ -54,19 +57,19 @@ export class MetricsCollectionService {
     active_users: 0,
     new_registrations: 0,
     user_sessions: 0,
-    
+
     // Health data metrics
     health_data_syncs: 0,
     health_reports_processed: 0,
     meal_plans_generated: 0,
     fitness_plans_created: 0,
-    
+
     // AI metrics
     ai_prompts_executed: 0,
     ai_tokens_consumed: 0,
     ai_cost_total: 0,
     ai_response_quality: 0,
-    
+
     // System metrics
     api_requests_total: 0,
     api_response_time: 0,
@@ -89,7 +92,7 @@ export class MetricsCollectionService {
     name: string,
     value: number,
     tags: Record<string, string> = {},
-    type: MetricData['type'] = 'gauge'
+    type: MetricData['type'] = 'gauge',
   ): void {
     const metric: MetricData = {
       name,
@@ -149,7 +152,7 @@ export class MetricsCollectionService {
     if (!metricHistory || metricHistory.length === 0) {
       return null;
     }
-    
+
     return metricHistory[metricHistory.length - 1].value;
   }
 
@@ -158,13 +161,13 @@ export class MetricsCollectionService {
    */
   getMetricHistory(name: string, timeWindow?: number): MetricData[] {
     const metricHistory = this.metrics.get(name) || [];
-    
+
     if (!timeWindow) {
       return metricHistory;
     }
 
     const cutoff = Date.now() - timeWindow * 1000;
-    return metricHistory.filter(metric => metric.timestamp >= cutoff);
+    return metricHistory.filter((metric) => metric.timestamp >= cutoff);
   }
 
   /**
@@ -172,7 +175,7 @@ export class MetricsCollectionService {
    */
   getAllCurrentMetrics(): Record<string, number> {
     const current: Record<string, number> = {};
-    
+
     for (const [name, history] of this.metrics.entries()) {
       if (history.length > 0) {
         current[name] = history[history.length - 1].value;
@@ -188,10 +191,10 @@ export class MetricsCollectionService {
   calculateAggregation(
     name: string,
     aggregation: 'avg' | 'sum' | 'min' | 'max' | 'count' | 'p50' | 'p95' | 'p99',
-    timeWindow: number = 3600 // 1 hour
+    timeWindow: number = 3600, // 1 hour
   ): number {
-    const values = this.getMetricHistory(name, timeWindow).map(m => m.value);
-    
+    const values = this.getMetricHistory(name, timeWindow).map((m) => m.value);
+
     if (values.length === 0) {
       return 0;
     }
@@ -342,7 +345,7 @@ export class MetricsCollectionService {
     }
 
     let current = 0;
-    let violations = 0;
+    const violations = 0;
 
     switch (slo.indicator) {
       case 'availability':
@@ -359,9 +362,9 @@ export class MetricsCollectionService {
         break;
     }
 
-    const status = current >= slo.target ? 'healthy' : 
-                  current >= slo.target * 0.9 ? 'warning' : 'critical';
-    
+    const status =
+      current >= slo.target ? 'healthy' : current >= slo.target * 0.9 ? 'warning' : 'critical';
+
     const errorBudget = Math.max(0, 100 - slo.target - (100 - current));
 
     return {
@@ -379,7 +382,7 @@ export class MetricsCollectionService {
    */
   getAllSLOStatuses(): SLOStatus[] {
     const statuses: SLOStatus[] = [];
-    
+
     for (const sloName of this.slos.keys()) {
       const status = this.checkSLOStatus(sloName);
       if (status) {
@@ -395,7 +398,7 @@ export class MetricsCollectionService {
    */
   evaluateAlerts(): Array<{ alert: AlertRule; triggered: boolean; message: string }> {
     const results: Array<{ alert: AlertRule; triggered: boolean; message: string }> = [];
-    
+
     for (const alert of this.alertRules.values()) {
       if (!alert.enabled) {
         continue;
@@ -410,7 +413,7 @@ export class MetricsCollectionService {
       }
 
       const triggered = this.evaluateCondition(alert.condition);
-      const message = triggered 
+      const message = triggered
         ? `Alert triggered: ${alert.name} - ${alert.description}`
         : `Alert resolved: ${alert.name}`;
 
@@ -469,7 +472,7 @@ export class MetricsCollectionService {
     };
 
     const sloStatus = this.getAllSLOStatuses();
-    
+
     const alerts = this.getRecentAlerts(24); // Last 24 hours
 
     return {
@@ -495,13 +498,17 @@ export class MetricsCollectionService {
    * Calculate availability percentage
    */
   private calculateAvailability(timeWindow: number): number {
-    const successfulRequests = this.calculateAggregation('api_requests_successful', 'sum', timeWindow);
+    const successfulRequests = this.calculateAggregation(
+      'api_requests_successful',
+      'sum',
+      timeWindow,
+    );
     const totalRequests = this.calculateAggregation('api_requests_total', 'sum', timeWindow);
-    
+
     if (totalRequests === 0) {
       return 100; // No requests means 100% availability
     }
-    
+
     return (successfulRequests / totalRequests) * 100;
   }
 
@@ -510,7 +517,9 @@ export class MetricsCollectionService {
    */
   private calculateLatencyCompliance(threshold: number, timeWindow: number): number {
     const responseTime = this.calculateAggregation('api_response_time', 'p95', timeWindow);
-    return responseTime <= threshold ? 100 : Math.max(0, 100 - ((responseTime - threshold) / threshold) * 100);
+    return responseTime <= threshold
+      ? 100
+      : Math.max(0, 100 - ((responseTime - threshold) / threshold) * 100);
   }
 
   /**
@@ -570,7 +579,9 @@ export class MetricsCollectionService {
   /**
    * Get recent alerts
    */
-  private getRecentAlerts(hours: number): Array<{ severity: string; message: string; timestamp: Date }> {
+  private getRecentAlerts(
+    hours: number,
+  ): Array<{ severity: string; message: string; timestamp: Date }> {
     const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
     const recentAlerts: Array<{ severity: string; message: string; timestamp: Date }> = [];
 
@@ -578,7 +589,7 @@ export class MetricsCollectionService {
       const alert = this.alertRules.get(alertId);
       if (!alert) continue;
 
-      const recentEvents = history.filter(event => event.timestamp >= cutoff);
+      const recentEvents = history.filter((event) => event.timestamp >= cutoff);
       for (const event of recentEvents) {
         recentAlerts.push({
           severity: alert.severity,
@@ -615,14 +626,14 @@ export class MetricsCollectionService {
     try {
       const memoryUsage = process.memoryUsage();
       const heapUsage = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
-      
+
       this.setGauge('memory_usage', heapUsage);
       this.setGauge('memory_heap_used', memoryUsage.heapUsed / 1024 / 1024); // MB
       this.setGauge('memory_heap_total', memoryUsage.heapTotal / 1024 / 1024); // MB
-      
+
       const cpuUsage = process.cpuUsage();
       this.setGauge('cpu_usage', (cpuUsage.user + cpuUsage.system) / 1000000); // Convert to seconds
-      
+
       this.setGauge('uptime', process.uptime());
     } catch (error) {
       this.logger.error(`Error collecting system metrics: ${error.message}`);
@@ -635,12 +646,12 @@ export class MetricsCollectionService {
   reset(): void {
     this.metrics.clear();
     this.alertHistory.clear();
-    
+
     // Reset health metrics
     for (const key of Object.keys(this.healthMetrics)) {
       this.healthMetrics[key] = 0;
     }
-    
+
     this.logger.log('Metrics collection service reset');
   }
 }

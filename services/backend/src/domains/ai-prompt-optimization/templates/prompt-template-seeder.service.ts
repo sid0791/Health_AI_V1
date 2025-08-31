@@ -4,9 +4,7 @@ import { PromptCategory, VariableType, PromptStatus } from '../entities/ai-promp
 
 @Injectable()
 export class PromptTemplateSeeder implements OnModuleInit {
-  constructor(
-    private readonly promptOptimizationService: AIPromptOptimizationService,
-  ) {}
+  constructor(private readonly promptOptimizationService: AIPromptOptimizationService) {}
 
   async onModuleInit() {
     await this.seedPromptTemplates();
@@ -37,63 +35,63 @@ Please provide specific, actionable nutrition advice that considers their profil
           {
             name: 'userName',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s first name',
+            description: "User's first name",
             required: true,
             fallback: 'there',
           },
           {
             name: 'userAge',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s age',
+            description: "User's age",
             required: false,
             fallback: 'adult',
           },
           {
             name: 'userWeight',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s current weight',
+            description: "User's current weight",
             required: false,
             fallback: 'not specified',
           },
           {
             name: 'userHeight',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s height',
+            description: "User's height",
             required: false,
             fallback: 'not specified',
           },
           {
             name: 'activityLevel',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s activity level',
+            description: "User's activity level",
             required: false,
             fallback: 'moderate',
           },
           {
             name: 'healthConditions',
             type: VariableType.HEALTH_DATA,
-            description: 'User\'s health conditions',
+            description: "User's health conditions",
             required: false,
             fallback: 'none reported',
           },
           {
             name: 'dietaryPreferences',
             type: VariableType.PREFERENCES,
-            description: 'User\'s dietary preferences and restrictions',
+            description: "User's dietary preferences and restrictions",
             required: false,
             fallback: 'none specified',
           },
           {
             name: 'userGoals',
             type: VariableType.GOALS,
-            description: 'User\'s health and fitness goals',
+            description: "User's health and fitness goals",
             required: false,
             fallback: 'general health improvement',
           },
           {
             name: 'userQuery',
             type: VariableType.CONTEXT,
-            description: 'User\'s specific question or context',
+            description: "User's specific question or context",
             required: true,
             fallback: 'general nutrition guidance',
           },
@@ -137,42 +135,42 @@ Focus on Indian cuisine options where possible, with healthy alternatives to com
           {
             name: 'userName',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s name',
+            description: "User's name",
             required: true,
             fallback: 'there',
           },
           {
             name: 'userAge',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s age',
+            description: "User's age",
             required: false,
             fallback: 'adult',
           },
           {
             name: 'userWeight',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s weight',
+            description: "User's weight",
             required: false,
             fallback: 'not specified',
           },
           {
             name: 'userHeight',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s height',
+            description: "User's height",
             required: false,
             fallback: 'not specified',
           },
           {
             name: 'activityLevel',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s activity level',
+            description: "User's activity level",
             required: false,
             fallback: 'moderate',
           },
           {
             name: 'healthConditions',
             type: VariableType.HEALTH_DATA,
-            description: 'User\'s health conditions',
+            description: "User's health conditions",
             required: false,
             fallback: 'none reported',
           },
@@ -186,7 +184,7 @@ Focus on Indian cuisine options where possible, with healthy alternatives to com
           {
             name: 'userGoals',
             type: VariableType.GOALS,
-            description: 'User\'s goals',
+            description: "User's goals",
             required: false,
             fallback: 'healthy eating',
           },
@@ -238,21 +236,21 @@ Keep it practical and achievable for their current fitness level.`,
           {
             name: 'userName',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s name',
+            description: "User's name",
             required: true,
             fallback: 'there',
           },
           {
             name: 'userAge',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s age',
+            description: "User's age",
             required: false,
             fallback: 'adult',
           },
           {
             name: 'userWeight',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s weight',
+            description: "User's weight",
             required: false,
             fallback: 'not specified',
           },
@@ -328,14 +326,14 @@ I'll provide helpful information tailored to your situation. Remember, this is f
           {
             name: 'userName',
             type: VariableType.USER_PROFILE,
-            description: 'User\'s name',
+            description: "User's name",
             required: true,
             fallback: 'there',
           },
           {
             name: 'userGoals',
             type: VariableType.GOALS,
-            description: 'User\'s goals',
+            description: "User's goals",
             required: false,
             fallback: 'general wellness',
           },
@@ -356,7 +354,7 @@ I'll provide helpful information tailored to your situation. Remember, this is f
           {
             name: 'userQuestion',
             type: VariableType.CONTEXT,
-            description: 'User\'s question',
+            description: "User's question",
             required: true,
             fallback: 'general health guidance',
           },
@@ -374,7 +372,9 @@ I'll provide helpful information tailored to your situation. Remember, this is f
     // Create each template
     for (const templateData of templates) {
       try {
-        const existing = await this.promptOptimizationService.getOptimalTemplate(templateData.category as PromptCategory);
+        const existing = await this.promptOptimizationService.getOptimalTemplate(
+          templateData.category as PromptCategory,
+        );
         if (!existing) {
           await this.promptOptimizationService.createTemplate(templateData);
           console.log(`Created prompt template: ${templateData.name}`);

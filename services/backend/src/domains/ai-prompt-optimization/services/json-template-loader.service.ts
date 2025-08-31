@@ -20,19 +20,19 @@ export class JsonTemplateLoaderService {
     try {
       const templateFiles = [
         'nutrition-advice.json',
-        'meal-planning.json', 
+        'meal-planning.json',
         'fitness-guidance.json',
         'health-analysis.json',
-        'general-chat.json'
+        'general-chat.json',
       ];
 
       let loadedCount = 0;
-      
+
       for (const file of templateFiles) {
         try {
           const filePath = join(this.templatesPath, file);
           const templateData = JSON.parse(readFileSync(filePath, 'utf8'));
-          
+
           // Validate template structure
           if (this.validateTemplate(templateData)) {
             this.templates.set(templateData.id, templateData as PromptTemplate);
@@ -57,7 +57,7 @@ export class JsonTemplateLoaderService {
    */
   private validateTemplate(template: any): boolean {
     const requiredFields = ['id', 'category', 'name', 'template', 'variables'];
-    return requiredFields.every(field => template.hasOwnProperty(field));
+    return requiredFields.every((field) => template.hasOwnProperty(field));
   }
 
   /**
@@ -71,7 +71,7 @@ export class JsonTemplateLoaderService {
    * Get templates by category
    */
   getTemplatesByCategory(category: PromptCategory): PromptTemplate[] {
-    return Array.from(this.templates.values()).filter(t => t.category === category);
+    return Array.from(this.templates.values()).filter((t) => t.category === category);
   }
 
   /**
@@ -102,7 +102,7 @@ export class JsonTemplateLoaderService {
    * Get templates optimized for cost
    */
   getCostOptimizedTemplates(): PromptTemplate[] {
-    return Array.from(this.templates.values()).filter(t => t.costOptimized);
+    return Array.from(this.templates.values()).filter((t) => t.costOptimized);
   }
 
   /**
@@ -115,22 +115,28 @@ export class JsonTemplateLoaderService {
     byLanguage: Record<string, number>;
   } {
     const templates = Array.from(this.templates.values());
-    
-    const byCategory = templates.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
 
-    const byLanguage = templates.reduce((acc, t) => {
-      acc[t.language] = (acc[t.language] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byCategory = templates.reduce(
+      (acc, t) => {
+        acc[t.category] = (acc[t.category] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const byLanguage = templates.reduce(
+      (acc, t) => {
+        acc[t.language] = (acc[t.language] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return {
       total: templates.length,
       byCategory,
-      costOptimized: templates.filter(t => t.costOptimized).length,
-      byLanguage
+      costOptimized: templates.filter((t) => t.costOptimized).length,
+      byLanguage,
     };
   }
 }

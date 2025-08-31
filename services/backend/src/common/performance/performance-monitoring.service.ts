@@ -44,12 +44,15 @@ export interface EndpointMetrics {
 @Injectable()
 export class PerformanceMonitoringService {
   private readonly logger = new Logger(PerformanceMonitoringService.name);
-  private readonly requestMetrics = new Map<string, {
-    responseTimes: number[];
-    errorCount: number;
-    requestCount: number;
-    lastHourRequests: Array<{ timestamp: number; responseTime: number; error: boolean }>;
-  }>();
+  private readonly requestMetrics = new Map<
+    string,
+    {
+      responseTimes: number[];
+      errorCount: number;
+      requestCount: number;
+      lastHourRequests: Array<{ timestamp: number; responseTime: number; error: boolean }>;
+    }
+  >();
 
   private readonly globalMetrics = {
     totalRequests: 0,
@@ -72,7 +75,7 @@ export class PerformanceMonitoringService {
     // Monitor HTTP requests
     this.performanceObserver = new PerformanceObserver((list) => {
       const entries = list.getEntries();
-      
+
       for (const entry of entries) {
         if (entry.entryType === 'measure' && entry.name.startsWith('http-')) {
           this.recordHttpMetric(entry.name, entry.duration);
@@ -94,18 +97,13 @@ export class PerformanceMonitoringService {
   /**
    * End performance measurement for a request
    */
-  endMeasurement(
-    identifier: string,
-    endpoint: string,
-    method: string,
-    statusCode: number
-  ): number {
+  endMeasurement(identifier: string, endpoint: string, method: string, statusCode: number): number {
     const endMark = `${identifier}-end`;
     const measureName = `http-${method}-${endpoint}`;
-    
+
     performance.mark(endMark);
     performance.measure(measureName, `${identifier}-start`, endMark);
-    
+
     const measure = performance.getEntriesByName(measureName).pop();
     const duration = measure?.duration || 0;
 
@@ -130,14 +128,9 @@ export class PerformanceMonitoringService {
   /**
    * Record request metrics
    */
-  recordRequest(
-    endpoint: string,
-    method: string,
-    responseTime: number,
-    isError: boolean
-  ): void {
+  recordRequest(endpoint: string, method: string, responseTime: number, isError: boolean): void {
     const key = `${method}:${endpoint}`;
-    
+
     if (!this.requestMetrics.has(key)) {
       this.requestMetrics.set(key, {
         responseTimes: [],
@@ -165,7 +158,7 @@ export class PerformanceMonitoringService {
 
     // Clean old data (keep only last hour)
     metrics.lastHourRequests = metrics.lastHourRequests.filter(
-      req => now - req.timestamp < 3600000 // 1 hour
+      (req) => now - req.timestamp < 3600000, // 1 hour
     );
 
     // Limit response times array size
@@ -176,7 +169,7 @@ export class PerformanceMonitoringService {
     // Update global metrics
     this.globalMetrics.totalRequests++;
     this.globalMetrics.responseTimes.push(responseTime);
-    
+
     if (isError) {
       this.globalMetrics.totalErrors++;
     }
@@ -193,13 +186,14 @@ export class PerformanceMonitoringService {
   getMetrics(): PerformanceMetrics {
     const responseTimes = this.globalMetrics.responseTimes;
     const sortedTimes = [...responseTimes].sort((a, b) => a - b);
-    
+
     const p50 = this.getPercentile(sortedTimes, 0.5);
     const p95 = this.getPercentile(sortedTimes, 0.95);
     const p99 = this.getPercentile(sortedTimes, 0.99);
-    const avg = responseTimes.length > 0 
-      ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length 
-      : 0;
+    const avg =
+      responseTimes.length > 0
+        ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length
+        : 0;
     const min = sortedTimes[0] || 0;
     const max = sortedTimes[sortedTimes.length - 1] || 0;
 
@@ -210,9 +204,10 @@ export class PerformanceMonitoringService {
     const requestsPerMinute = recentRequests;
 
     // Calculate error rate
-    const errorRate = this.globalMetrics.totalRequests > 0 
-      ? (this.globalMetrics.totalErrors / this.globalMetrics.totalRequests) * 100 
-      : 0;
+    const errorRate =
+      this.globalMetrics.totalRequests > 0
+        ? (this.globalMetrics.totalErrors / this.globalMetrics.totalRequests) * 100
+        : 0;
 
     // Get memory usage
     const memoryUsage = process.memoryUsage();
@@ -238,9 +233,9 @@ export class PerformanceMonitoringService {
         rate: Math.round(errorRate * 100) / 100,
       },
       memory: {
-        used: Math.round(usedMemory / 1024 / 1024 * 100) / 100, // MB
-        free: Math.round(freeMemory / 1024 / 1024 * 100) / 100, // MB
-        total: Math.round(totalMemory / 1024 / 1024 * 100) / 100, // MB
+        used: Math.round((usedMemory / 1024 / 1024) * 100) / 100, // MB
+        free: Math.round((freeMemory / 1024 / 1024) * 100) / 100, // MB
+        total: Math.round((totalMemory / 1024 / 1024) * 100) / 100, // MB
         usage: Math.round((usedMemory / totalMemory) * 100 * 100) / 100, // %
       },
       cpu: {
@@ -259,15 +254,16 @@ export class PerformanceMonitoringService {
     for (const [key, metrics] of this.requestMetrics.entries()) {
       const [method, endpoint] = key.split(':');
       const sortedTimes = [...metrics.responseTimes].sort((a, b) => a - b);
-      
-      const avgResponseTime = metrics.responseTimes.length > 0
-        ? metrics.responseTimes.reduce((sum, time) => sum + time, 0) / metrics.responseTimes.length
-        : 0;
-      
+
+      const avgResponseTime =
+        metrics.responseTimes.length > 0
+          ? metrics.responseTimes.reduce((sum, time) => sum + time, 0) /
+            metrics.responseTimes.length
+          : 0;
+
       const p95ResponseTime = this.getPercentile(sortedTimes, 0.95);
-      const errorRate = metrics.requestCount > 0 
-        ? (metrics.errorCount / metrics.requestCount) * 100 
-        : 0;
+      const errorRate =
+        metrics.requestCount > 0 ? (metrics.errorCount / metrics.requestCount) * 100 : 0;
 
       endpointMetrics.push({
         endpoint,
@@ -294,11 +290,23 @@ export class PerformanceMonitoringService {
     overall: boolean;
   } {
     const metrics = this.getMetrics();
-    
-    const p95Target = { met: metrics.responseTime.p95 < 2000, current: metrics.responseTime.p95, target: 2000 };
-    const errorRateTarget = { met: metrics.errors.rate < 1, current: metrics.errors.rate, target: 1 };
-    const throughputTarget = { met: metrics.throughput.requestsPerSecond > 10, current: metrics.throughput.requestsPerSecond, target: 10 };
-    
+
+    const p95Target = {
+      met: metrics.responseTime.p95 < 2000,
+      current: metrics.responseTime.p95,
+      target: 2000,
+    };
+    const errorRateTarget = {
+      met: metrics.errors.rate < 1,
+      current: metrics.errors.rate,
+      target: 1,
+    };
+    const throughputTarget = {
+      met: metrics.throughput.requestsPerSecond > 10,
+      current: metrics.throughput.requestsPerSecond,
+      target: 10,
+    };
+
     const overall = p95Target.met && errorRateTarget.met && throughputTarget.met;
 
     return {
@@ -314,7 +322,7 @@ export class PerformanceMonitoringService {
    */
   private getPercentile(sortedArray: number[], percentile: number): number {
     if (sortedArray.length === 0) return 0;
-    
+
     const index = Math.ceil(sortedArray.length * percentile) - 1;
     return sortedArray[Math.max(0, index)];
   }
@@ -324,11 +332,11 @@ export class PerformanceMonitoringService {
    */
   private countRecentRequests(since: number): number {
     let count = 0;
-    
+
     for (const metrics of this.requestMetrics.values()) {
-      count += metrics.lastHourRequests.filter(req => req.timestamp >= since).length;
+      count += metrics.lastHourRequests.filter((req) => req.timestamp >= since).length;
     }
-    
+
     return count;
   }
 
@@ -339,7 +347,7 @@ export class PerformanceMonitoringService {
     // This is a simplified implementation
     // In production, you might use a more sophisticated CPU monitoring library
     const usage = process.cpuUsage();
-    return Math.round((usage.user + usage.system) / 1000000 * 100) / 100;
+    return Math.round(((usage.user + usage.system) / 1000000) * 100) / 100;
   }
 
   /**
@@ -361,7 +369,7 @@ export class PerformanceMonitoringService {
     setInterval(() => {
       const memUsage = process.memoryUsage();
       const heapUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
-      
+
       if (heapUsagePercent > 90) {
         this.logger.warn(`High memory usage detected: ${heapUsagePercent.toFixed(2)}%`);
       }
@@ -377,7 +385,7 @@ export class PerformanceMonitoringService {
     this.globalMetrics.totalErrors = 0;
     this.globalMetrics.responseTimes = [];
     this.globalMetrics.startTime = Date.now();
-    
+
     this.logger.log('Performance metrics reset');
   }
 
@@ -395,7 +403,7 @@ export class PerformanceMonitoringService {
     const endpoints = this.getEndpointMetrics();
     const targets = this.checkPerformanceTargets();
     const uptime = Math.round((Date.now() - this.globalMetrics.startTime) / 1000);
-    
+
     const recommendations = this.generateRecommendations(summary, endpoints, targets);
 
     return {
@@ -413,38 +421,50 @@ export class PerformanceMonitoringService {
   private generateRecommendations(
     summary: PerformanceMetrics,
     endpoints: EndpointMetrics[],
-    targets: any
+    targets: any,
   ): string[] {
     const recommendations: string[] = [];
 
     // Response time recommendations
     if (!targets.p95Target.met) {
-      recommendations.push('P95 response time exceeds 2s target. Consider optimizing slow endpoints or adding caching.');
+      recommendations.push(
+        'P95 response time exceeds 2s target. Consider optimizing slow endpoints or adding caching.',
+      );
     }
 
     // Error rate recommendations
     if (!targets.errorRateTarget.met) {
-      recommendations.push('Error rate exceeds 1% target. Review error logs and improve error handling.');
+      recommendations.push(
+        'Error rate exceeds 1% target. Review error logs and improve error handling.',
+      );
     }
 
     // Memory recommendations
     if (summary.memory.usage > 80) {
-      recommendations.push('High memory usage detected. Consider optimizing memory-intensive operations or increasing available memory.');
+      recommendations.push(
+        'High memory usage detected. Consider optimizing memory-intensive operations or increasing available memory.',
+      );
     }
 
     // Endpoint-specific recommendations
-    const slowEndpoints = endpoints.filter(ep => ep.p95ResponseTime > 2000);
+    const slowEndpoints = endpoints.filter((ep) => ep.p95ResponseTime > 2000);
     if (slowEndpoints.length > 0) {
-      recommendations.push(`Slow endpoints detected: ${slowEndpoints.map(ep => `${ep.method} ${ep.endpoint}`).join(', ')}`);
+      recommendations.push(
+        `Slow endpoints detected: ${slowEndpoints.map((ep) => `${ep.method} ${ep.endpoint}`).join(', ')}`,
+      );
     }
 
-    const errorProneEndpoints = endpoints.filter(ep => ep.errorRate > 5);
+    const errorProneEndpoints = endpoints.filter((ep) => ep.errorRate > 5);
     if (errorProneEndpoints.length > 0) {
-      recommendations.push(`High error rate endpoints: ${errorProneEndpoints.map(ep => `${ep.method} ${ep.endpoint}`).join(', ')}`);
+      recommendations.push(
+        `High error rate endpoints: ${errorProneEndpoints.map((ep) => `${ep.method} ${ep.endpoint}`).join(', ')}`,
+      );
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('Performance targets are being met. Continue monitoring for optimal performance.');
+      recommendations.push(
+        'Performance targets are being met. Continue monitoring for optimal performance.',
+      );
     }
 
     return recommendations;

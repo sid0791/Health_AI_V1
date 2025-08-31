@@ -184,7 +184,7 @@ export class User {
   canConsumeTokens(tokenCount: number): boolean {
     const today = new Date().toDateString();
     const currentMonth = new Date().getMonth();
-    
+
     // Reset daily counter if it's a new day
     if (!this.lastTokenResetDate || this.lastTokenResetDate.toDateString() !== today) {
       this.resetDailyTokens();
@@ -195,8 +195,10 @@ export class User {
       this.resetMonthlyTokens();
     }
 
-    return (this.dailyTokensUsed + tokenCount <= this.dailyTokenLimit) &&
-           (this.monthlyTokensUsed + tokenCount <= this.monthlyTokenLimit);
+    return (
+      this.dailyTokensUsed + tokenCount <= this.dailyTokenLimit &&
+      this.monthlyTokensUsed + tokenCount <= this.monthlyTokenLimit
+    );
   }
 
   consumeTokens(tokenCount: number): boolean {

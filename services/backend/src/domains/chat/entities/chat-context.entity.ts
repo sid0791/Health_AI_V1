@@ -63,14 +63,14 @@ export class ChatContext {
     biomarkers?: Record<string, any>;
     measurements?: Record<string, any>;
     recommendations?: string[];
-    
+
     // For meal plans
     meals?: Array<{
       type: string;
       items: string[];
       nutrition: Record<string, number>;
     }>;
-    
+
     // For fitness plans
     workouts?: Array<{
       type: string;

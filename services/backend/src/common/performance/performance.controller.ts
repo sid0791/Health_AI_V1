@@ -1,20 +1,5 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Body,
-  Param,
-  UseGuards,
-  HttpStatus,
-} from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-} from '@nestjs/swagger';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import {
   HealthCheckService,
   HealthCheck,
@@ -25,7 +10,11 @@ import {
 import { JwtAuthGuard } from '../../domains/auth/guards/jwt-auth.guard';
 import { DatabaseHealthIndicator, QueryOptimizationService } from './database-optimization.service';
 import { CacheOptimizationService } from './cache-optimization.service';
-import { CircuitBreakerService, TimeoutService, GracefulDegradationService } from './resilience.service';
+import {
+  CircuitBreakerService,
+  TimeoutService,
+  GracefulDegradationService,
+} from './resilience.service';
 import { BackgroundJobService } from './background-jobs.service';
 import { PerformanceMonitoringService } from './performance-monitoring.service';
 
@@ -279,19 +268,25 @@ export class PerformanceController {
     status: HttpStatus.OK,
     description: 'Job added successfully',
   })
-  async addJob(@Body() jobData: {
-    type: string;
-    payload: any;
-    priority?: number;
-    delay?: number;
-    queueName?: string;
-  }) {
-    const jobId = await this.backgroundJobs.addJob({
-      type: jobData.type,
-      payload: jobData.payload,
-      priority: jobData.priority,
-      delay: jobData.delay,
-    }, jobData.queueName);
+  async addJob(
+    @Body()
+    jobData: {
+      type: string;
+      payload: any;
+      priority?: number;
+      delay?: number;
+      queueName?: string;
+    },
+  ) {
+    const jobId = await this.backgroundJobs.addJob(
+      {
+        type: jobData.type,
+        payload: jobData.payload,
+        priority: jobData.priority,
+        delay: jobData.delay,
+      },
+      jobData.queueName,
+    );
 
     return {
       success: true,
@@ -372,8 +367,8 @@ export class PerformanceController {
       success: true,
       targets,
       overall: targets.overall,
-      message: targets.overall 
-        ? 'All performance targets are being met' 
+      message: targets.overall
+        ? 'All performance targets are being met'
         : 'Some performance targets are not being met',
       timestamp: new Date(),
     };

@@ -35,13 +35,16 @@ class ChatRateLimitException extends HttpException {
 @Injectable()
 export class ChatRateLimitInterceptor implements NestInterceptor {
   private readonly logger = new Logger(ChatRateLimitInterceptor.name);
-  
+
   // Store user rate limit data: userId -> { timestamps: number[], burstCount: number, lastBurstReset: number }
-  private readonly userLimits = new Map<string, {
-    messageTimestamps: number[];
-    burstCount: number;
-    lastBurstReset: number;
-  }>();
+  private readonly userLimits = new Map<
+    string,
+    {
+      messageTimestamps: number[];
+      burstCount: number;
+      lastBurstReset: number;
+    }
+  >();
 
   private readonly defaultConfig: ChatRateLimitConfig = {
     messagesPerMinute: 10,
@@ -69,7 +72,7 @@ export class ChatRateLimitInterceptor implements NestInterceptor {
 
     const userId = user.id;
     const now = Date.now();
-    
+
     // Get or create rate limit data for user
     let userLimit = this.userLimits.get(userId);
     if (!userLimit) {
@@ -92,9 +95,11 @@ export class ChatRateLimitInterceptor implements NestInterceptor {
     }
 
     if (userLimit.burstCount >= config.burstLimit) {
-      const retryAfter = Math.ceil((config.burstWindowMs - (now - userLimit.lastBurstReset)) / 1000);
+      const retryAfter = Math.ceil(
+        (config.burstWindowMs - (now - userLimit.lastBurstReset)) / 1000,
+      );
       this.logger.warn(`Burst limit exceeded for user ${userId}`);
-      
+
       throw new ChatRateLimitException(
         `Too many messages in quick succession. Please wait ${retryAfter} seconds.`,
         retryAfter,
@@ -102,20 +107,20 @@ export class ChatRateLimitInterceptor implements NestInterceptor {
     }
 
     // Clean old timestamps
-    const oneHourAgo = now - (60 * 60 * 1000);
-    const oneMinuteAgo = now - (60 * 1000);
-    
+    const oneHourAgo = now - 60 * 60 * 1000;
+    const oneMinuteAgo = now - 60 * 1000;
+
     userLimit.messageTimestamps = userLimit.messageTimestamps.filter(
-      timestamp => timestamp > oneHourAgo
+      (timestamp) => timestamp > oneHourAgo,
     );
 
     // Check hourly limit
     if (userLimit.messageTimestamps.length >= config.messagesPerHour) {
       const oldestTimestamp = userLimit.messageTimestamps[0];
       const retryAfter = Math.ceil((60 * 60 * 1000 - (now - oldestTimestamp)) / 1000);
-      
+
       this.logger.warn(`Hourly limit exceeded for user ${userId}`);
-      
+
       throw new ChatRateLimitException(
         `Hourly message limit of ${config.messagesPerHour} reached. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`,
         retryAfter,
@@ -124,15 +129,15 @@ export class ChatRateLimitInterceptor implements NestInterceptor {
 
     // Check per-minute limit
     const recentMessages = userLimit.messageTimestamps.filter(
-      timestamp => timestamp > oneMinuteAgo
+      (timestamp) => timestamp > oneMinuteAgo,
     );
 
     if (recentMessages.length >= config.messagesPerMinute) {
       const oldestRecentTimestamp = recentMessages[0];
       const retryAfter = Math.ceil((60 * 1000 - (now - oldestRecentTimestamp)) / 1000);
-      
+
       this.logger.warn(`Per-minute limit exceeded for user ${userId}`);
-      
+
       throw new ChatRateLimitException(
         `Too many messages per minute. You can send ${config.messagesPerMinute} messages per minute. Please wait ${retryAfter} seconds.`,
         retryAfter,
@@ -143,14 +148,14 @@ export class ChatRateLimitInterceptor implements NestInterceptor {
     if (tokenStats.shouldFallbackToFree) {
       const freeTierConfig = this.getFreeTierConfig();
       const freeRecentMessages = userLimit.messageTimestamps.filter(
-        timestamp => timestamp > oneMinuteAgo
+        (timestamp) => timestamp > oneMinuteAgo,
       );
 
       if (freeRecentMessages.length >= freeTierConfig.messagesPerMinute) {
         const retryAfter = Math.ceil((60 * 1000 - (now - freeRecentMessages[0])) / 1000);
-        
+
         this.logger.warn(`Free tier limit exceeded for user ${userId}`);
-        
+
         throw new ChatRateLimitException(
           `You've reached your token limit and are using free tier with reduced message limits (${freeTierConfig.messagesPerMinute}/min). Please wait ${retryAfter} seconds or upgrade your plan.`,
           retryAfter,
@@ -196,20 +201,20 @@ export class ChatRateLimitInterceptor implements NestInterceptor {
   }
 
   private cleanup(): void {
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+
     for (const [userId, userLimit] of this.userLimits.entries()) {
       // Remove timestamps older than 1 hour
       userLimit.messageTimestamps = userLimit.messageTimestamps.filter(
-        timestamp => timestamp > oneHourAgo
+        (timestamp) => timestamp > oneHourAgo,
       );
-      
+
       // Remove users with no recent activity
       if (userLimit.messageTimestamps.length === 0) {
         this.userLimits.delete(userId);
       }
     }
-    
+
     this.logger.debug(`Cleaned up rate limit data. Active users: ${this.userLimits.size}`);
   }
 }

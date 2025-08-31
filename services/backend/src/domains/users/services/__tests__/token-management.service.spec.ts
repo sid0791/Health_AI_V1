@@ -5,7 +5,11 @@ import { ConfigService } from '@nestjs/config';
 
 import { TokenManagementService } from '../token-management.service';
 import { User } from '../../entities/user.entity';
-import { UserTokenUsage, TokenUsageType, TokenProvider } from '../../entities/user-token-usage.entity';
+import {
+  UserTokenUsage,
+  TokenUsageType,
+  TokenProvider,
+} from '../../entities/user-token-usage.entity';
 
 describe('TokenManagementService', () => {
   let service: TokenManagementService;
@@ -65,7 +69,9 @@ describe('TokenManagementService', () => {
 
     service = module.get<TokenManagementService>(TokenManagementService);
     userRepository = module.get<Repository<User>>(getRepositoryToken(User));
-    tokenUsageRepository = module.get<Repository<UserTokenUsage>>(getRepositoryToken(UserTokenUsage));
+    tokenUsageRepository = module.get<Repository<UserTokenUsage>>(
+      getRepositoryToken(UserTokenUsage),
+    );
   });
 
   describe('canConsumeTokens', () => {
@@ -91,7 +97,9 @@ describe('TokenManagementService', () => {
     it('should throw error if user not found', async () => {
       (userRepository.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.canConsumeTokens('invalid-user-id', 100)).rejects.toThrow('User not found: invalid-user-id');
+      await expect(service.canConsumeTokens('invalid-user-id', 100)).rejects.toThrow(
+        'User not found: invalid-user-id',
+      );
     });
   });
 

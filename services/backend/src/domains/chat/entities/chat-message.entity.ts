@@ -71,14 +71,14 @@ export class ChatMessage {
       cost: number;
       quotaUsed: number;
     };
-    
+
     // Language processing
     languageDetection?: {
       detected: 'en' | 'hi' | 'hinglish' | 'mixed';
       confidence: number;
       transliterations?: Record<string, string>;
     };
-    
+
     // Domain classification
     domainClassification?: {
       domain: string;
@@ -86,7 +86,7 @@ export class ChatMessage {
       allowedDomains: string[];
       isInScope: boolean;
     };
-    
+
     // RAG context
     ragContext?: {
       documentsRetrieved: number;
@@ -94,14 +94,14 @@ export class ChatMessage {
       relevanceScores: number[];
       contextWindow: number;
     };
-    
+
     // User interaction
     userContext?: {
       intent: string;
       entities: Record<string, any>;
       followUpQuestions?: string[];
     };
-    
+
     // Processing time and performance
     performance?: {
       processingTimeMs: number;
@@ -109,7 +109,7 @@ export class ChatMessage {
       retrievalTimeMs?: number;
       generationTimeMs?: number;
     };
-    
+
     // Safety and compliance
     safety?: {
       contentFiltered: boolean;
@@ -175,13 +175,16 @@ export class ChatMessage {
   }
 
   getPendingActions(): any[] {
-    return this.actionRequests?.filter(action => action.status === 'pending') || [];
+    return this.actionRequests?.filter((action) => action.status === 'pending') || [];
   }
 
   getRagCitations(): string[] {
-    return this.ragSources?.map(source => 
-      `[${source.title}](${source.url || '#'}) (Relevance: ${(source.relevanceScore * 100).toFixed(1)}%)`
-    ) || [];
+    return (
+      this.ragSources?.map(
+        (source) =>
+          `[${source.title}](${source.url || '#'}) (Relevance: ${(source.relevanceScore * 100).toFixed(1)}%)`,
+      ) || []
+    );
   }
 
   getDomainClassification(): string {

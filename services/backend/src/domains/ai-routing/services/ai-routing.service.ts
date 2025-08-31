@@ -106,7 +106,9 @@ export class AIRoutingService {
    * Route AI request to optimal provider/model with privacy-first approach
    */
   async routeRequest(request: AIRoutingRequest): Promise<AIRoutingResult> {
-    this.logger.debug(`Routing AI request: ${request.requestType} (privacy: ${request.privacyLevel || 'standard'})`);
+    this.logger.debug(
+      `Routing AI request: ${request.requestType} (privacy: ${request.privacyLevel || 'standard'})`,
+    );
 
     // Privacy-first routing for health data (August 2025 enhancement)
     if (request.containsPHI || request.privacyLevel === 'maximum' || request.onPremiseOnly) {
@@ -334,7 +336,7 @@ export class AIRoutingService {
           model: AIModel.GPT_5,
           endpoint: 'https://api.openai.com/v1/chat/completions',
           apiKeyConfig: 'OPENAI_API_KEY',
-          costPerToken: 0.000020, // $20 per 1M tokens (estimated)
+          costPerToken: 0.00002, // $20 per 1M tokens (estimated)
           accuracyScore: 100, // New gold standard - best reasoning and multimodal capabilities
           maxTokens: 200000, // Enhanced context window
           availability: 99,
@@ -467,7 +469,8 @@ export class AIRoutingService {
       models: [
         {
           model: AIModel.GEMINI_3_0,
-          endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0:generateContent',
+          endpoint:
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0:generateContent',
           apiKeyConfig: 'GOOGLE_API_KEY',
           costPerToken: 0.000017, // $17 per 1M tokens
           accuracyScore: 99, // Next-generation Gemini
@@ -480,7 +483,8 @@ export class AIRoutingService {
         },
         {
           model: AIModel.GEMINI_2_5_PRO,
-          endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
+          endpoint:
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
           apiKeyConfig: 'GOOGLE_API_KEY',
           costPerToken: 0.000014, // $14 per 1M tokens
           accuracyScore: 97, // Enhanced Pro model
@@ -493,7 +497,8 @@ export class AIRoutingService {
         },
         {
           model: AIModel.GEMINI_2_0_FLASH_V2,
-          endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-v2:generateContent',
+          endpoint:
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-v2:generateContent',
           apiKeyConfig: 'GOOGLE_API_KEY',
           costPerToken: 0.000012, // $12 per 1M tokens
           accuracyScore: 96, // Updated Flash model
@@ -859,13 +864,15 @@ export class AIRoutingService {
       }
 
       if (request.privacyLevel === 'high' && config.privacyScore < 60) {
-        this.logger.debug(`Skipping ${provider} - privacy score too low for high level (${config.privacyScore})`);
+        this.logger.debug(
+          `Skipping ${provider} - privacy score too low for high level (${config.privacyScore})`,
+        );
         continue;
       }
 
       // PHI compliance check
       if (request.containsPHI) {
-        const hasPhiCompliantModel = config.models.some(m => m.phiCompliant);
+        const hasPhiCompliantModel = config.models.some((m) => m.phiCompliant);
         if (!hasPhiCompliantModel) {
           this.logger.debug(`Skipping ${provider} - no PHI compliant models`);
           continue;
@@ -874,11 +881,13 @@ export class AIRoutingService {
 
       // Compliance requirements check
       if (request.complianceRequired?.length > 0) {
-        const hasRequiredCompliance = request.complianceRequired.every(
-          required => config.complianceFlags.includes(required)
+        const hasRequiredCompliance = request.complianceRequired.every((required) =>
+          config.complianceFlags.includes(required),
         );
         if (!hasRequiredCompliance) {
-          this.logger.debug(`Skipping ${provider} - missing required compliance: ${request.complianceRequired.join(', ')}`);
+          this.logger.debug(
+            `Skipping ${provider} - missing required compliance: ${request.complianceRequired.join(', ')}`,
+          );
           continue;
         }
       }
@@ -903,8 +912,9 @@ export class AIRoutingService {
         }
 
         // Determine if encryption is required based on privacy settings
-        const needsEncryption = request.requiresEncryption || 
-          request.containsPHI || 
+        const needsEncryption =
+          request.requiresEncryption ||
+          request.containsPHI ||
           (request.privacyLevel === 'high' && !modelConfig.privacyCompliant) ||
           modelConfig.encryptionRequired;
 
@@ -1152,15 +1162,15 @@ export class AIRoutingService {
       }
 
       if (request.containsPHI) {
-        const hasPhiCompliantModel = config.models.some(m => m.phiCompliant);
+        const hasPhiCompliantModel = config.models.some((m) => m.phiCompliant);
         if (!hasPhiCompliantModel) {
           continue;
         }
       }
 
       if (request.complianceRequired?.length > 0) {
-        const hasRequiredCompliance = request.complianceRequired.every(
-          required => config.complianceFlags.includes(required)
+        const hasRequiredCompliance = request.complianceRequired.every((required) =>
+          config.complianceFlags.includes(required),
         );
         if (!hasRequiredCompliance) {
           continue;
@@ -1185,8 +1195,9 @@ export class AIRoutingService {
           continue;
         }
 
-        const needsEncryption = request.requiresEncryption || 
-          request.containsPHI || 
+        const needsEncryption =
+          request.requiresEncryption ||
+          request.containsPHI ||
           (request.privacyLevel === 'high' && !modelConfig.privacyCompliant) ||
           modelConfig.encryptionRequired;
 
@@ -1267,24 +1278,26 @@ export class AIRoutingService {
     if (serviceLevel === AIServiceLevel.LEVEL_2) {
       // Enhanced Level 2 optimization: Implement proper 5% accuracy rule from PROMPT_README.md
       // Step 1: Find the maximum accuracy among all available models
-      const maxAccuracy = Math.max(...availableModels.map(m => m.accuracyScore));
+      const maxAccuracy = Math.max(...availableModels.map((m) => m.accuracyScore));
       const accuracyThreshold = maxAccuracy - 5; // 5% rule from PROMPT_README.md
-      
+
       // Step 2: Filter models that meet accuracy threshold (≥ Amax - 5%)
-      const qualifiedModels = availableModels.filter(m => m.accuracyScore >= accuracyThreshold);
-      
+      const qualifiedModels = availableModels.filter((m) => m.accuracyScore >= accuracyThreshold);
+
       if (qualifiedModels.length === 0) {
         // Fallback to all models if none meet threshold
-        this.logger.warn(`No models meet 5% accuracy threshold (${accuracyThreshold}%), using all models`);
+        this.logger.warn(
+          `No models meet 5% accuracy threshold (${accuracyThreshold}%), using all models`,
+        );
         qualifiedModels.push(...availableModels);
       }
 
       // Step 3: Among qualified models, prioritize free models first, then lowest cost
       qualifiedModels.sort((a, b) => {
-        // First priority: Free models (cost = 0) - best for cost optimization  
+        // First priority: Free models (cost = 0) - best for cost optimization
         if (a.costPerToken === 0 && b.costPerToken > 0) return -1;
         if (b.costPerToken === 0 && a.costPerToken > 0) return 1;
-        
+
         // Second priority: Cost optimization (lowest cost first)
         const costDiff = a.costPerToken - b.costPerToken;
         if (Math.abs(costDiff) > 0.000001) {
@@ -1296,7 +1309,7 @@ export class AIRoutingService {
       });
 
       const selectedModel = qualifiedModels[0];
-      
+
       // Enhanced reasoning with 5% rule explanation
       let reason = '';
       if (selectedModel.costPerToken === 0) {
@@ -1407,7 +1420,7 @@ export class AIRoutingService {
    * Route request with user token awareness and automatic fallback to free tier
    */
   async routeRequestWithUserTokens(
-    request: AIRoutingRequest & { forceFreeTier?: boolean }
+    request: AIRoutingRequest & { forceFreeTier?: boolean },
   ): Promise<AIRoutingResult & { usedFreeTier: boolean; userTokensConsumed: number }> {
     this.logger.debug(`Routing AI request with user token awareness: ${request.requestType}`);
 
@@ -1419,7 +1432,7 @@ export class AIRoutingService {
     // First, try normal routing
     try {
       const result = await this.routeRequest(request);
-      
+
       // Check if this is already a free tier provider
       if (this.isFreeTierProvider(result.provider)) {
         return {
@@ -1431,15 +1444,18 @@ export class AIRoutingService {
 
       // Return paid tier result with token consumption info
       const estimatedTokens = (request.contextTokens || 0) + (request.maxResponseTokens || 1000);
-      
+
       return {
         ...result,
         usedFreeTier: false,
         userTokensConsumed: estimatedTokens,
       };
     } catch (error) {
-      this.logger.warn(`Paid tier routing failed for user ${request.userId}, falling back to free tier:`, error.message);
-      
+      this.logger.warn(
+        `Paid tier routing failed for user ${request.userId}, falling back to free tier:`,
+        error.message,
+      );
+
       // Fallback to free tier
       return this.routeToFreeTier(request);
     }
@@ -1449,7 +1465,7 @@ export class AIRoutingService {
    * Route specifically to free tier providers
    */
   private async routeToFreeTier(
-    request: AIRoutingRequest
+    request: AIRoutingRequest,
   ): Promise<AIRoutingResult & { usedFreeTier: boolean; userTokensConsumed: number }> {
     this.logger.debug('Routing to free tier providers');
 
@@ -1551,12 +1567,17 @@ export class AIRoutingService {
    * Route specifically to privacy-compliant providers
    */
   private async routeToPrivacyCompliantProviders(
-    request: AIRoutingRequest
+    request: AIRoutingRequest,
   ): Promise<AIRoutingResult> {
     this.logger.debug('Routing to privacy-compliant providers for health data');
 
     // Privacy-first provider priority: Ollama (local) > DeepSeek > Anthropic > Mistral
-    const privacyProviders = [AIProvider.OLLAMA, AIProvider.DEEPSEEK, AIProvider.ANTHROPIC, AIProvider.MISTRAL];
+    const privacyProviders = [
+      AIProvider.OLLAMA,
+      AIProvider.DEEPSEEK,
+      AIProvider.ANTHROPIC,
+      AIProvider.MISTRAL,
+    ];
     const availableModels = [];
 
     for (const provider of privacyProviders) {
@@ -1631,7 +1652,9 @@ export class AIRoutingService {
       endpointUrl: selectedModel.endpoint,
       routingDecision: RoutingDecision.ACCURACY_REQUIREMENT,
       routingReason: `Privacy-compliant routing: ${selectedModel.provider} (privacy score: ${selectedModel.privacyScore}, ${selectedModel.dataRetention} retention, ${selectedModel.onPremise ? 'on-premise' : 'cloud'})`,
-      estimatedCostUsd: selectedModel.costPerToken * ((request.contextTokens || 1000) + (request.maxResponseTokens || 1000)),
+      estimatedCostUsd:
+        selectedModel.costPerToken *
+        ((request.contextTokens || 1000) + (request.maxResponseTokens || 1000)),
       quotaRemaining: selectedModel.quotaRemaining,
     });
 

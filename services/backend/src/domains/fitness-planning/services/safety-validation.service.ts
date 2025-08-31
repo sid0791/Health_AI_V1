@@ -661,7 +661,10 @@ export class SafetyValidationService {
     // Validate adjustment ranges are reasonable
     if (adaptation.adjustments) {
       // Check if weight/intensity increases are safe (max 10% increase per week)
-      if (adaptation.adjustments.intensityIncrease && adaptation.adjustments.intensityIncrease > 0.1) {
+      if (
+        adaptation.adjustments.intensityIncrease &&
+        adaptation.adjustments.intensityIncrease > 0.1
+      ) {
         return false;
       }
 
@@ -674,7 +677,10 @@ export class SafetyValidationService {
     // Additional safety checks based on user profile
     if (userProfile.experienceLevel === ExperienceLevel.BEGINNER) {
       // More conservative limits for beginners
-      if (adaptation.adjustments?.intensityIncrease && adaptation.adjustments.intensityIncrease > 0.05) {
+      if (
+        adaptation.adjustments?.intensityIncrease &&
+        adaptation.adjustments.intensityIncrease > 0.05
+      ) {
         return false;
       }
     }

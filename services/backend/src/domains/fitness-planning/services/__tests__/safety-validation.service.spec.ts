@@ -106,7 +106,9 @@ describe('SafetyValidationService', () => {
       const result = service.validateExerciseForUser(mockExercise, userWithInjuryHistory);
 
       expect(result.isValid).toBe(true);
-      expect(result.warnings).toContainEqual(expect.stringContaining('may aggravate previous injuries'));
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining('may aggravate previous injuries'),
+      );
     });
 
     it('should provide age-specific warnings for elderly users', () => {
@@ -236,32 +238,36 @@ describe('SafetyValidationService', () => {
     });
 
     it('should warn about high volume workouts', () => {
-      const highVolumeExercises = Array.from({ length: 4 }, (_, index) => ({
-        ...mockExercises[0],
-        id: `exercise${index}`,
-        exerciseName: `Generic Exercise ${index + 1}`, // Use neutral name to avoid muscle imbalance warnings
-        targetSets: 4, // 4 exercises × 4 sets = 16 sets (between warning threshold 15 and max 18)
-        // Include all required methods for FitnessPlanExercise
-        isCompleted: false,
-        isSkipped: false,
-        getCompletionPercentage: jest.fn().mockReturnValue(0),
-        markAsCompleted: jest.fn(),
-        markAsSkipped: jest.fn(),
-        updateProgress: jest.fn(),
-        resetProgress: jest.fn(),
-        validateConfiguration: jest.fn(),
-        getEstimatedDuration: jest.fn(),
-        getCaloriesBurned: jest.fn(),
-        getIntensityLevel: jest.fn(),
-        generateProgressionPlan: jest.fn(),
-        adaptToUserFeedback: jest.fn(),
-        getFormCues: jest.fn(),
-        getSafetyReminders: jest.fn(),
-        getModifications: jest.fn(),
-        getEquipmentRequired: jest.fn(),
-        getMuscleGroups: jest.fn(),
-        exportToWorkoutLog: jest.fn(),
-      } as unknown as FitnessPlanExercise));
+      const highVolumeExercises = Array.from(
+        { length: 4 },
+        (_, index) =>
+          ({
+            ...mockExercises[0],
+            id: `exercise${index}`,
+            exerciseName: `Generic Exercise ${index + 1}`, // Use neutral name to avoid muscle imbalance warnings
+            targetSets: 4, // 4 exercises × 4 sets = 16 sets (between warning threshold 15 and max 18)
+            // Include all required methods for FitnessPlanExercise
+            isCompleted: false,
+            isSkipped: false,
+            getCompletionPercentage: jest.fn().mockReturnValue(0),
+            markAsCompleted: jest.fn(),
+            markAsSkipped: jest.fn(),
+            updateProgress: jest.fn(),
+            resetProgress: jest.fn(),
+            validateConfiguration: jest.fn(),
+            getEstimatedDuration: jest.fn(),
+            getCaloriesBurned: jest.fn(),
+            getIntensityLevel: jest.fn(),
+            generateProgressionPlan: jest.fn(),
+            adaptToUserFeedback: jest.fn(),
+            getFormCues: jest.fn(),
+            getSafetyReminders: jest.fn(),
+            getModifications: jest.fn(),
+            getEquipmentRequired: jest.fn(),
+            getMuscleGroups: jest.fn(),
+            exportToWorkoutLog: jest.fn(),
+          }) as unknown as FitnessPlanExercise,
+      );
 
       const result = service.validateWorkout(mockWorkout, highVolumeExercises, mockUserProfile);
 
@@ -274,31 +280,35 @@ describe('SafetyValidationService', () => {
         experienceLevel: ExperienceLevel.BEGINNER,
       };
 
-      const excessiveVolumeExercises = Array.from({ length: 15 }, (_, index) => ({
-        ...mockExercises[0],
-        id: `exercise${index}`,
-        targetSets: 3,
-        // Include all required methods for FitnessPlanExercise
-        isCompleted: false,
-        isSkipped: false,
-        getCompletionPercentage: jest.fn().mockReturnValue(0),
-        markAsCompleted: jest.fn(),
-        markAsSkipped: jest.fn(),
-        updateProgress: jest.fn(),
-        resetProgress: jest.fn(),
-        validateConfiguration: jest.fn(),
-        getEstimatedDuration: jest.fn(),
-        getCaloriesBurned: jest.fn(),
-        getIntensityLevel: jest.fn(),
-        generateProgressionPlan: jest.fn(),
-        adaptToUserFeedback: jest.fn(),
-        getFormCues: jest.fn(),
-        getSafetyReminders: jest.fn(),
-        getModifications: jest.fn(),
-        getEquipmentRequired: jest.fn(),
-        getMuscleGroups: jest.fn(),
-        exportToWorkoutLog: jest.fn(),
-      } as unknown as FitnessPlanExercise));
+      const excessiveVolumeExercises = Array.from(
+        { length: 15 },
+        (_, index) =>
+          ({
+            ...mockExercises[0],
+            id: `exercise${index}`,
+            targetSets: 3,
+            // Include all required methods for FitnessPlanExercise
+            isCompleted: false,
+            isSkipped: false,
+            getCompletionPercentage: jest.fn().mockReturnValue(0),
+            markAsCompleted: jest.fn(),
+            markAsSkipped: jest.fn(),
+            updateProgress: jest.fn(),
+            resetProgress: jest.fn(),
+            validateConfiguration: jest.fn(),
+            getEstimatedDuration: jest.fn(),
+            getCaloriesBurned: jest.fn(),
+            getIntensityLevel: jest.fn(),
+            generateProgressionPlan: jest.fn(),
+            adaptToUserFeedback: jest.fn(),
+            getFormCues: jest.fn(),
+            getSafetyReminders: jest.fn(),
+            getModifications: jest.fn(),
+            getEquipmentRequired: jest.fn(),
+            getMuscleGroups: jest.fn(),
+            exportToWorkoutLog: jest.fn(),
+          }) as unknown as FitnessPlanExercise,
+      );
 
       const result = service.validateWorkout(mockWorkout, excessiveVolumeExercises, beginnerUser);
 
@@ -307,14 +317,19 @@ describe('SafetyValidationService', () => {
     });
 
     it('should warn about very high intensity', () => {
-      const highIntensityExercises = mockExercises.map((ex) => ({
-        ...ex,
-        intensityLevel: 10,
-      } as any));
+      const highIntensityExercises = mockExercises.map(
+        (ex) =>
+          ({
+            ...ex,
+            intensityLevel: 10,
+          }) as any,
+      );
 
       const result = service.validateWorkout(mockWorkout, highIntensityExercises, mockUserProfile);
 
-      expect(result.warnings).toContainEqual(expect.stringContaining('Very high workout intensity'));
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining('Very high workout intensity'),
+      );
     });
   });
 
@@ -367,7 +382,9 @@ describe('SafetyValidationService', () => {
 
       const result = service.validateFitnessPlan(longPlan, mockUserProfile);
 
-      expect(result.warnings).toContainEqual(expect.stringContaining('Plan duration exceeds 1 year'));
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining('Plan duration exceeds 1 year'),
+      );
     });
 
     it('should warn about very short plans', () => {
@@ -378,7 +395,9 @@ describe('SafetyValidationService', () => {
 
       const result = service.validateFitnessPlan(shortPlan, mockUserProfile);
 
-      expect(result.warnings).toContainEqual(expect.stringContaining('Plan duration is very short'));
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining('Plan duration is very short'),
+      );
     });
 
     it('should warn about aggressive progression rates', () => {
@@ -471,7 +490,9 @@ describe('SafetyValidationService', () => {
 
       expect(result.shouldProgress).toBe(true);
       expect(result.adjustments.volumeAdjustment).toBe(5);
-      expect(result.recommendations).toContainEqual(expect.stringContaining('Ready for progression'));
+      expect(result.recommendations).toContainEqual(
+        expect.stringContaining('Ready for progression'),
+      );
     });
 
     it('should recommend volume reduction for low adherence', () => {
@@ -481,7 +502,9 @@ describe('SafetyValidationService', () => {
       );
 
       expect(result.adjustments.volumeAdjustment).toBe(-10);
-      expect(result.recommendations).toContainEqual(expect.stringContaining('Consider reducing volume'));
+      expect(result.recommendations).toContainEqual(
+        expect.stringContaining('Consider reducing volume'),
+      );
     });
 
     it('should recommend deload for high fatigue', () => {
@@ -493,14 +516,18 @@ describe('SafetyValidationService', () => {
 
       expect(result.shouldDeload).toBe(true);
       expect(result.adjustments.volumeAdjustment).toBe(-15);
-      expect(result.recommendations).toContainEqual(expect.stringContaining('High fatigue detected'));
+      expect(result.recommendations).toContainEqual(
+        expect.stringContaining('High fatigue detected'),
+      );
     });
 
     it('should recommend deload on scheduled week', () => {
       const result = service.getProgressionRecommendations(mockCurrentPlan, 85);
 
       expect(result.shouldDeload).toBe(true);
-      expect(result.recommendations).toContainEqual(expect.stringContaining('Scheduled deload week'));
+      expect(result.recommendations).toContainEqual(
+        expect.stringContaining('Scheduled deload week'),
+      );
     });
 
     it('should recommend intensity reduction for high difficulty', () => {

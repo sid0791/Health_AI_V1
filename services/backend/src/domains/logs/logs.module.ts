@@ -13,16 +13,16 @@ import { LogsService } from './services/logs.service';
   imports: [
     // TypeORM entities
     TypeOrmModule.forFeature([LogEntry]),
-    
+
     // Schedule module for automated cleanup and batch processing
     ScheduleModule.forRoot(),
-    
+
     // Config module for configuration management
     ConfigModule,
   ],
-  
+
   providers: [LogsService],
-  
+
   exports: [
     // Export LogsService for use in other modules
     LogsService,

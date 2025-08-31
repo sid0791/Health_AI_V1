@@ -55,12 +55,18 @@ export class WeatherService {
   /**
    * Get current weather and AQI data for a location
    */
-  async getCurrentWeather(latitude: number, longitude: number, location?: string): Promise<WeatherData> {
+  async getCurrentWeather(
+    latitude: number,
+    longitude: number,
+    location?: string,
+  ): Promise<WeatherData> {
     try {
       // Fetch weather data
       const weatherUrl = `${this.openWeatherBaseUrl}/weather?lat=${latitude}&lon=${longitude}&appid=${this.openWeatherApiKey}&units=metric`;
-      const weatherResponse = await firstValueFrom(this.httpService.get<OpenWeatherResponse>(weatherUrl));
-      
+      const weatherResponse = await firstValueFrom(
+        this.httpService.get<OpenWeatherResponse>(weatherUrl),
+      );
+
       // Fetch air quality data
       const aqiUrl = `${this.openWeatherBaseUrl}/air_pollution?lat=${latitude}&lon=${longitude}&appid=${this.openWeatherApiKey}`;
       const aqiResponse = await firstValueFrom(this.httpService.get<AirQualityResponse>(aqiUrl));
@@ -79,21 +85,21 @@ export class WeatherService {
    */
   async getWeatherData(queryDto: GetWeatherDto): Promise<WeatherData[]> {
     const where: any = {};
-    
+
     if (queryDto.location) {
       where.location = queryDto.location;
     }
-    
+
     if (queryDto.latitude && queryDto.longitude) {
       // Find weather data within a small radius
       const lat = queryDto.latitude;
       const lon = queryDto.longitude;
       const radius = 0.01; // Approximately 1km
-      
+
       where.latitude = Between(lat - radius, lat + radius);
       where.longitude = Between(lon - radius, lon + radius);
     }
-    
+
     if (queryDto.startDate && queryDto.endDate) {
       where.recordedAt = Between(new Date(queryDto.startDate), new Date(queryDto.endDate));
     }
@@ -108,53 +114,74 @@ export class WeatherService {
   /**
    * Generate contextual nudges based on weather/AQI conditions
    */
-  async generateWeatherNudges(userId: string, latitude: number, longitude: number): Promise<WeatherNudge[]> {
+  async generateWeatherNudges(
+    userId: string,
+    latitude: number,
+    longitude: number,
+  ): Promise<WeatherNudge[]> {
     const weatherData = await this.getCurrentWeather(latitude, longitude);
     const nudges: WeatherNudge[] = [];
 
     // AQI-based nudges
-    if (weatherData.aqiLevel === AQILevel.UNHEALTHY || weatherData.aqiLevel === AQILevel.VERY_UNHEALTHY || weatherData.aqiLevel === AQILevel.HAZARDOUS) {
-      nudges.push(await this.createNudge(userId, weatherData, {
-        type: NudgeType.WORKOUT_INDOOR,
-        title: 'Poor Air Quality Alert',
-        message: `Air quality is ${weatherData.aqiLevel.replace('_', ' ')} (AQI: ${weatherData.aqiValue}). Consider indoor workouts today.`,
-        priority: 'high',
-      }));
+    if (
+      weatherData.aqiLevel === AQILevel.UNHEALTHY ||
+      weatherData.aqiLevel === AQILevel.VERY_UNHEALTHY ||
+      weatherData.aqiLevel === AQILevel.HAZARDOUS
+    ) {
+      nudges.push(
+        await this.createNudge(userId, weatherData, {
+          type: NudgeType.WORKOUT_INDOOR,
+          title: 'Poor Air Quality Alert',
+          message: `Air quality is ${weatherData.aqiLevel.replace('_', ' ')} (AQI: ${weatherData.aqiValue}). Consider indoor workouts today.`,
+          priority: 'high',
+        }),
+      );
 
-      nudges.push(await this.createNudge(userId, weatherData, {
-        type: NudgeType.MASK_REMINDER,
-        title: 'Air Quality Protection',
-        message: 'Consider wearing a mask when going outdoors due to poor air quality.',
-        priority: 'medium',
-      }));
+      nudges.push(
+        await this.createNudge(userId, weatherData, {
+          type: NudgeType.MASK_REMINDER,
+          title: 'Air Quality Protection',
+          message: 'Consider wearing a mask when going outdoors due to poor air quality.',
+          priority: 'medium',
+        }),
+      );
     }
 
     // Weather-based nudges
     if (weatherData.temperatureCelsius > 30) {
-      nudges.push(await this.createNudge(userId, weatherData, {
-        type: NudgeType.HYDRATION,
-        title: 'Hot Weather Alert',
-        message: `It's ${weatherData.temperatureCelsius}°C outside. Stay hydrated and avoid prolonged sun exposure.`,
-        priority: 'medium',
-      }));
+      nudges.push(
+        await this.createNudge(userId, weatherData, {
+          type: NudgeType.HYDRATION,
+          title: 'Hot Weather Alert',
+          message: `It's ${weatherData.temperatureCelsius}°C outside. Stay hydrated and avoid prolonged sun exposure.`,
+          priority: 'medium',
+        }),
+      );
     }
 
     if (weatherData.uvIndex >= 8) {
-      nudges.push(await this.createNudge(userId, weatherData, {
-        type: NudgeType.VITAMIN_D,
-        title: 'High UV Index',
-        message: `UV index is high (${weatherData.uvIndex}). Use sunscreen if going outdoors.`,
-        priority: 'medium',
-      }));
+      nudges.push(
+        await this.createNudge(userId, weatherData, {
+          type: NudgeType.VITAMIN_D,
+          title: 'High UV Index',
+          message: `UV index is high (${weatherData.uvIndex}). Use sunscreen if going outdoors.`,
+          priority: 'medium',
+        }),
+      );
     }
 
-    if (weatherData.condition === WeatherCondition.CLEAR && weatherData.aqiLevel === AQILevel.GOOD) {
-      nudges.push(await this.createNudge(userId, weatherData, {
-        type: NudgeType.WORKOUT_OUTDOOR,
-        title: 'Perfect Weather for Outdoor Activity',
-        message: 'Great air quality and clear weather! Perfect time for outdoor workouts.',
-        priority: 'low',
-      }));
+    if (
+      weatherData.condition === WeatherCondition.CLEAR &&
+      weatherData.aqiLevel === AQILevel.GOOD
+    ) {
+      nudges.push(
+        await this.createNudge(userId, weatherData, {
+          type: NudgeType.WORKOUT_OUTDOOR,
+          title: 'Perfect Weather for Outdoor Activity',
+          message: 'Great air quality and clear weather! Perfect time for outdoor workouts.',
+          priority: 'low',
+        }),
+      );
     }
 
     return nudges;
@@ -165,15 +192,15 @@ export class WeatherService {
    */
   async getNudges(userId: string, queryDto: WeatherNudgeQueryDto): Promise<WeatherNudge[]> {
     const where: any = { userId };
-    
+
     if (queryDto.nudgeType) {
       where.nudgeType = queryDto.nudgeType;
     }
-    
+
     if (queryDto.status) {
       where.status = queryDto.status;
     }
-    
+
     if (queryDto.startDate && queryDto.endDate) {
       where.createdAt = Between(new Date(queryDto.startDate), new Date(queryDto.endDate));
     }
@@ -200,7 +227,7 @@ export class WeatherService {
     }
 
     nudge.status = status;
-    
+
     switch (status) {
       case NudgeStatus.SENT:
         nudge.sentAt = new Date();
@@ -222,7 +249,7 @@ export class WeatherService {
   @Cron('0 */6 * * *') // Every 6 hours
   async updateWeatherDataForActiveLocations(): Promise<void> {
     this.logger.log('Starting scheduled weather data update');
-    
+
     // This would typically fetch active user locations and update weather data
     // For now, we'll just log the scheduling
     this.logger.log('Weather data update completed');
@@ -315,7 +342,7 @@ export class WeatherService {
     const pm10 = components.pm10 || 0;
     const no2 = components.no2 || 0;
     const o3 = components.o3 || 0;
-    
+
     // Basic weighted average for demonstration
     return Math.round((pm25 * 2 + pm10 + no2 * 0.5 + o3 * 0.3) / 4);
   }

@@ -24,15 +24,18 @@ export interface CircuitBreakerStats {
 @Injectable()
 export class CircuitBreakerService {
   private readonly logger = new Logger(CircuitBreakerService.name);
-  private readonly circuits = new Map<string, {
-    state: CircuitState;
-    failures: number;
-    successes: number;
-    requests: number;
-    lastFailureTime?: Date;
-    nextAttemptTime?: Date;
-    options: CircuitBreakerOptions;
-  }>();
+  private readonly circuits = new Map<
+    string,
+    {
+      state: CircuitState;
+      failures: number;
+      successes: number;
+      requests: number;
+      lastFailureTime?: Date;
+      nextAttemptTime?: Date;
+      options: CircuitBreakerOptions;
+    }
+  >();
 
   private readonly defaultOptions: CircuitBreakerOptions = {
     failureThreshold: 5,
@@ -47,7 +50,7 @@ export class CircuitBreakerService {
     circuitName: string,
     fn: () => Promise<T>,
     fallback?: () => Promise<T>,
-    options?: Partial<CircuitBreakerOptions>
+    options?: Partial<CircuitBreakerOptions>,
   ): Promise<T> {
     const circuit = this.getOrCreateCircuit(circuitName, options);
 
@@ -70,10 +73,10 @@ export class CircuitBreakerService {
 
     try {
       const result = await fn();
-      
+
       // Success
       circuit.successes++;
-      
+
       if (circuit.state === CircuitState.HALF_OPEN) {
         // If successful in half-open state, close the circuit
         circuit.state = CircuitState.CLOSED;
@@ -108,10 +111,7 @@ export class CircuitBreakerService {
   /**
    * Get or create circuit breaker
    */
-  private getOrCreateCircuit(
-    name: string,
-    options?: Partial<CircuitBreakerOptions>
-  ) {
+  private getOrCreateCircuit(name: string, options?: Partial<CircuitBreakerOptions>) {
     if (!this.circuits.has(name)) {
       this.circuits.set(name, {
         state: CircuitState.CLOSED,
@@ -149,7 +149,7 @@ export class CircuitBreakerService {
    */
   getAllStats(): Record<string, CircuitBreakerStats> {
     const allStats: Record<string, CircuitBreakerStats> = {};
-    
+
     for (const [name, circuit] of this.circuits.entries()) {
       allStats[name] = {
         state: circuit.state,
@@ -200,13 +200,13 @@ export class TimeoutService {
   async withTimeout<T>(
     fn: () => Promise<T>,
     timeoutMs: number,
-    timeoutMessage?: string
+    timeoutMessage?: string,
   ): Promise<T> {
     const timeout = new Promise<never>((_, reject) => {
       const timer = setTimeout(() => {
         reject(new Error(timeoutMessage || `Operation timed out after ${timeoutMs}ms`));
       }, timeoutMs);
-      
+
       // Clean up timer if promise resolves
       return timer;
     });
@@ -224,13 +224,13 @@ export class TimeoutService {
    */
   async withTimeoutAll<T>(
     functions: Array<() => Promise<T>>,
-    timeoutMs: number
+    timeoutMs: number,
   ): Promise<Array<{ success: boolean; result?: T; error?: string }>> {
     const results = await Promise.allSettled(
-      functions.map(fn => this.withTimeout(fn, timeoutMs))
+      functions.map((fn) => this.withTimeout(fn, timeoutMs)),
     );
 
-    return results.map(result => {
+    return results.map((result) => {
       if (result.status === 'fulfilled') {
         return { success: true, result: result.value };
       } else {
@@ -251,7 +251,7 @@ export class GracefulDegradationService {
   async executeWithDegradation<T>(
     primaryFn: () => Promise<T>,
     fallbackFns: Array<() => Promise<T>>,
-    serviceName: string
+    serviceName: string,
   ): Promise<T> {
     const currentLevel = this.degradationLevels.get(serviceName) || 0;
 
@@ -270,14 +270,16 @@ export class GracefulDegradationService {
     // Try fallback functions in order
     for (let i = 0; i < fallbackFns.length; i++) {
       const fallbackLevel = i + 1;
-      
+
       if (currentLevel <= fallbackLevel) {
         try {
           const result = await fallbackFns[i]();
           this.logger.log(`Using fallback level ${fallbackLevel} for ${serviceName}`);
           return result;
         } catch (error) {
-          this.logger.warn(`Fallback level ${fallbackLevel} failed for ${serviceName}: ${error.message}`);
+          this.logger.warn(
+            `Fallback level ${fallbackLevel} failed for ${serviceName}: ${error.message}`,
+          );
           this.recordFailure(serviceName);
         }
       }
@@ -291,7 +293,7 @@ export class GracefulDegradationService {
    */
   private recordSuccess(serviceName: string): void {
     const currentLevel = this.degradationLevels.get(serviceName) || 0;
-    
+
     if (currentLevel > 0) {
       // Gradually improve service level
       this.degradationLevels.set(serviceName, Math.max(0, currentLevel - 1));
@@ -305,7 +307,7 @@ export class GracefulDegradationService {
   private recordFailure(serviceName: string): void {
     const currentLevel = this.degradationLevels.get(serviceName) || 0;
     const newLevel = Math.min(5, currentLevel + 1); // Max degradation level of 5
-    
+
     this.degradationLevels.set(serviceName, newLevel);
     this.logger.warn(`Service ${serviceName} degradation level increased to ${newLevel}`);
   }
@@ -313,11 +315,14 @@ export class GracefulDegradationService {
   /**
    * Get degradation status
    */
-  getDegradationStatus(): Record<string, {
-    level: number;
-    status: string;
-    description: string;
-  }> {
+  getDegradationStatus(): Record<
+    string,
+    {
+      level: number;
+      status: string;
+      description: string;
+    }
+  > {
     const status: Record<string, any> = {};
 
     for (const [serviceName, level] of this.degradationLevels.entries()) {
@@ -336,13 +341,20 @@ export class GracefulDegradationService {
    */
   private getLevelStatus(level: number): string {
     switch (level) {
-      case 0: return 'HEALTHY';
-      case 1: return 'MINOR_DEGRADATION';
-      case 2: return 'MODERATE_DEGRADATION';
-      case 3: return 'MAJOR_DEGRADATION';
-      case 4: return 'SEVERE_DEGRADATION';
-      case 5: return 'CRITICAL_DEGRADATION';
-      default: return 'UNKNOWN';
+      case 0:
+        return 'HEALTHY';
+      case 1:
+        return 'MINOR_DEGRADATION';
+      case 2:
+        return 'MODERATE_DEGRADATION';
+      case 3:
+        return 'MAJOR_DEGRADATION';
+      case 4:
+        return 'SEVERE_DEGRADATION';
+      case 5:
+        return 'CRITICAL_DEGRADATION';
+      default:
+        return 'UNKNOWN';
     }
   }
 
@@ -351,13 +363,20 @@ export class GracefulDegradationService {
    */
   private getLevelDescription(level: number): string {
     switch (level) {
-      case 0: return 'Service operating normally';
-      case 1: return 'Minor issues, using simple fallbacks';
-      case 2: return 'Moderate issues, reduced functionality';
-      case 3: return 'Major issues, basic functionality only';
-      case 4: return 'Severe issues, minimal functionality';
-      case 5: return 'Critical issues, emergency mode';
-      default: return 'Unknown degradation state';
+      case 0:
+        return 'Service operating normally';
+      case 1:
+        return 'Minor issues, using simple fallbacks';
+      case 2:
+        return 'Moderate issues, reduced functionality';
+      case 3:
+        return 'Major issues, basic functionality only';
+      case 4:
+        return 'Severe issues, minimal functionality';
+      case 5:
+        return 'Critical issues, emergency mode';
+      default:
+        return 'Unknown degradation state';
     }
   }
 

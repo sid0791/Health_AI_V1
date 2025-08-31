@@ -782,10 +782,10 @@ export class FitnessPlanGeneratorService {
 
     if (adaptations) {
       if (adaptations.intensityIncrease) {
-        adjustedIntensity *= (1 + adaptations.intensityIncrease);
+        adjustedIntensity *= 1 + adaptations.intensityIncrease;
       }
       if (adaptations.volumeIncrease) {
-        adjustedVolume *= (1 + adaptations.volumeIncrease);
+        adjustedVolume *= 1 + adaptations.volumeIncrease;
       }
     }
 

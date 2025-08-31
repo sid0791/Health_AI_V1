@@ -6,10 +6,7 @@ import { WeatherNudge } from './entities/weather-nudge.entity';
 import { WeatherService } from './services/weather.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([WeatherData, WeatherNudge]),
-    HttpModule,
-  ],
+  imports: [TypeOrmModule.forFeature([WeatherData, WeatherNudge]), HttpModule],
   providers: [WeatherService],
   exports: [WeatherService, TypeOrmModule],
 })

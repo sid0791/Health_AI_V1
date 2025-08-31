@@ -32,7 +32,11 @@ import { User as UserEntity } from '../../users/entities/user.entity';
 import { ChatRateLimitInterceptor } from '../interceptors/chat-rate-limit.interceptor';
 import { TokenManagementService } from '../../users/services/token-management.service';
 
-import { DomainScopedChatService, ChatRequest, ChatResponse } from '../services/domain-scoped-chat.service';
+import {
+  DomainScopedChatService,
+  ChatRequest,
+  ChatResponse,
+} from '../services/domain-scoped-chat.service';
 import { ChatSessionService, CreateSessionOptions } from '../services/chat-session.service';
 import { ChatSessionType } from '../entities/chat-session.entity';
 
@@ -228,7 +232,7 @@ export class ChatController {
     try {
       const sessions = await this.chatSessionService.getUserSessions(
         user.id,
-        includeExpired || false
+        includeExpired || false,
       );
 
       return {
@@ -255,10 +259,7 @@ export class ChatController {
     status: 200,
     description: 'Session details retrieved successfully',
   })
-  async getSession(
-    @User() user: UserEntity,
-    @Param('sessionId') sessionId: string,
-  ): Promise<any> {
+  async getSession(@User() user: UserEntity, @Param('sessionId') sessionId: string): Promise<any> {
     try {
       const session = await this.chatSessionService.getSession(sessionId, user.id);
 
@@ -307,13 +308,13 @@ export class ChatController {
       const messages = await this.domainScopedChatService.getChatHistory(
         user.id,
         sessionId,
-        limit || 50
+        limit || 50,
       );
 
       return {
         success: true,
         sessionId,
-        messages: messages.map(message => ({
+        messages: messages.map((message) => ({
           id: message.id,
           type: message.type,
           content: message.content,
@@ -356,7 +357,7 @@ export class ChatController {
       const session = await this.chatSessionService.updateSessionPreferences(
         sessionId,
         user.id,
-        updateDto
+        updateDto,
       );
 
       return {
@@ -528,7 +529,7 @@ export class ChatController {
         user.id,
         messageId,
         actionIndexNum,
-        executeDto.confirmed
+        executeDto.confirmed,
       );
 
       return {
@@ -643,7 +644,7 @@ export class ChatController {
       this.logger.log(`Retrieving token usage for user ${user.id}`);
 
       const tokenStats = await this.tokenManagementService.getUserTokenStats(user.id);
-      
+
       return {
         success: true,
         tokenUsage: tokenStats,
@@ -663,15 +664,17 @@ export class ChatController {
     summary: 'Get user token usage history',
     description: 'Retrieve detailed token usage history for the authenticated user',
   })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of records to retrieve (default: 50)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of records to retrieve (default: 50)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Token usage history retrieved successfully',
   })
-  async getTokenUsageHistory(
-    @User() user: UserEntity,
-    @Query('limit') limit?: string,
-  ) {
+  async getTokenUsageHistory(@User() user: UserEntity, @Query('limit') limit?: string) {
     try {
       this.logger.log(`Retrieving token usage history for user ${user.id}`);
 
@@ -682,7 +685,7 @@ export class ChatController {
         undefined,
         limitNumber,
       );
-      
+
       return {
         success: true,
         history,
@@ -701,15 +704,21 @@ export class ChatController {
     const recommendations = [];
 
     if (tokenStats.dailyUsed / tokenStats.dailyLimit > 0.8) {
-      recommendations.push('You\'ve used over 80% of your daily token limit. Consider upgrading your plan for unlimited usage.');
+      recommendations.push(
+        "You've used over 80% of your daily token limit. Consider upgrading your plan for unlimited usage.",
+      );
     }
 
     if (tokenStats.shouldFallbackToFree) {
-      recommendations.push('You\'ve reached your token limit and are now using free AI models. Responses may be slower but still helpful.');
+      recommendations.push(
+        "You've reached your token limit and are now using free AI models. Responses may be slower but still helpful.",
+      );
     }
 
     if (tokenStats.userTier === 'free' && tokenStats.dailyUsed > 5000) {
-      recommendations.push('You\'re a power user! Consider upgrading to Premium for faster responses and higher limits.');
+      recommendations.push(
+        "You're a power user! Consider upgrading to Premium for faster responses and higher limits.",
+      );
     }
 
     if (recommendations.length === 0) {

@@ -64,7 +64,7 @@ export class UserTokenUsage {
   @Column({ name: 'total_tokens', default: 0 })
   totalTokens: number;
 
-  @Column('decimal', { 
+  @Column('decimal', {
     name: 'cost_usd',
     precision: 10,
     scale: 6,
@@ -121,7 +121,7 @@ export class UserTokenUsage {
     metadata?: Record<string, any>;
   }): UserTokenUsage {
     const usage = new UserTokenUsage();
-    
+
     usage.userId = params.userId;
     usage.usageType = params.usageType;
     usage.provider = params.provider;
@@ -132,13 +132,13 @@ export class UserTokenUsage {
     usage.requestId = params.requestId;
     usage.modelName = params.modelName;
     usage.isFreeTier = params.isFreeTier || false;
-    
+
     if (params.metadata) {
       usage.setMetadata(params.metadata);
     }
-    
+
     usage.calculateTokens();
-    
+
     return usage;
   }
 }

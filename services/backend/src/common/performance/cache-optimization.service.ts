@@ -40,9 +40,7 @@ export class CacheOptimizationService {
     temporary: 60, // 1 minute
   };
 
-  constructor(
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-  ) {}
+  constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {}
 
   /**
    * Get cached data with performance tracking
@@ -74,19 +72,15 @@ export class CacheOptimizationService {
   /**
    * Set cached data with smart TTL
    */
-  async set<T>(
-    key: string,
-    value: T,
-    options?: CacheOptions
-  ): Promise<void> {
+  async set<T>(key: string, value: T, options?: CacheOptions): Promise<void> {
     try {
       const ttl = options?.ttl || this.getSmartTTL(key);
-      
+
       // Compress large objects if enabled
       const finalValue = options?.compress ? this.compressValue(value) : value;
-      
+
       await this.cacheManager.set(key, finalValue, ttl * 1000); // Convert to milliseconds
-      
+
       this.logger.debug(`Cache SET for key: ${key} (TTL: ${ttl}s)`);
     } catch (error) {
       this.logger.error(`Cache SET error for key ${key}: ${error.message}`);
@@ -96,13 +90,9 @@ export class CacheOptimizationService {
   /**
    * Get or set cached data (cache-aside pattern)
    */
-  async getOrSet<T>(
-    key: string,
-    factory: () => Promise<T>,
-    options?: CacheOptions
-  ): Promise<T> {
+  async getOrSet<T>(key: string, factory: () => Promise<T>, options?: CacheOptions): Promise<T> {
     const cached = await this.get<T>(key);
-    
+
     if (cached !== undefined) {
       return cached;
     }
@@ -114,7 +104,7 @@ export class CacheOptimizationService {
 
     // Cache the new value
     await this.set(key, newValue, options);
-    
+
     this.logger.debug(`Generated and cached key: ${key} (${generationTime}ms)`);
     return newValue;
   }
@@ -149,7 +139,7 @@ export class CacheOptimizationService {
    */
   async warmUpCache(): Promise<void> {
     this.logger.log('Starting cache warm-up...');
-    
+
     try {
       // Warm up common static data
       const warmUpTasks = [
@@ -169,13 +159,10 @@ export class CacheOptimizationService {
    * Get cache statistics
    */
   getCacheStats(): CacheStats {
-    const hitRate = this.stats.operations > 0 
-      ? (this.stats.hits / this.stats.operations) * 100 
-      : 0;
-    
-    const avgResponseTime = this.stats.operations > 0 
-      ? this.stats.totalResponseTime / this.stats.operations 
-      : 0;
+    const hitRate = this.stats.operations > 0 ? (this.stats.hits / this.stats.operations) * 100 : 0;
+
+    const avgResponseTime =
+      this.stats.operations > 0 ? this.stats.totalResponseTime / this.stats.operations : 0;
 
     return {
       hits: this.stats.hits,
@@ -228,7 +215,7 @@ export class CacheOptimizationService {
         return ttl;
       }
     }
-    
+
     return this.cacheTTLs.temporary; // Default TTL
   }
 
@@ -327,17 +314,23 @@ export class CacheOptimizationService {
     let performance = 'Good';
 
     if (stats.hitRate < 50) {
-      recommendations.push('Cache hit rate is low. Consider increasing TTL for frequently accessed data.');
+      recommendations.push(
+        'Cache hit rate is low. Consider increasing TTL for frequently accessed data.',
+      );
       performance = 'Needs Improvement';
     }
 
     if (stats.avgResponseTime > 10) {
-      recommendations.push('Cache response time is high. Consider optimizing cache infrastructure.');
+      recommendations.push(
+        'Cache response time is high. Consider optimizing cache infrastructure.',
+      );
       performance = 'Needs Improvement';
     }
 
     if (stats.hitRate > 80) {
-      recommendations.push('Excellent cache performance. Consider expanding caching to more data types.');
+      recommendations.push(
+        'Excellent cache performance. Consider expanding caching to more data types.',
+      );
       performance = 'Excellent';
     }
 

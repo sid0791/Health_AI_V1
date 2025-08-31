@@ -53,24 +53,30 @@ export interface CostDashboard {
 @Injectable()
 export class CostControlsService {
   private readonly logger = new Logger(CostControlsService.name);
-  private readonly costHistory = new Map<string, Array<{
-    timestamp: Date;
-    provider: string;
-    model: string;
-    cost: number;
-    tokens: number;
-    requests: number;
-    userId?: string;
-  }>>();
-  
+  private readonly costHistory = new Map<
+    string,
+    Array<{
+      timestamp: Date;
+      provider: string;
+      model: string;
+      cost: number;
+      tokens: number;
+      requests: number;
+      userId?: string;
+    }>
+  >();
+
   private readonly budgets = new Map<string, CostBudget>();
   private readonly alerts = new Map<string, CostAlert>();
-  private readonly providerPolicies = new Map<string, {
-    level1Models: string[];
-    level2Models: string[];
-    costPerToken: Record<string, number>;
-    dailyLimits: Record<string, number>;
-  }>();
+  private readonly providerPolicies = new Map<
+    string,
+    {
+      level1Models: string[];
+      level2Models: string[];
+      costPerToken: Record<string, number>;
+      dailyLimits: Record<string, number>;
+    }
+  >();
 
   // Cost tracking
   private dailyCost = 0;
@@ -92,7 +98,7 @@ export class CostControlsService {
     tokens: number,
     cost: number,
     requests: number = 1,
-    userId?: string
+    userId?: string,
   ): void {
     const usage = {
       timestamp: new Date(),
@@ -109,7 +115,7 @@ export class CostControlsService {
     if (!this.costHistory.has(key)) {
       this.costHistory.set(key, []);
     }
-    
+
     const history = this.costHistory.get(key)!;
     history.push(usage);
 
@@ -124,7 +130,9 @@ export class CostControlsService {
     // Check for cost alerts
     this.checkCostAlerts(provider, model, cost, tokens);
 
-    this.logger.log(`AI usage recorded: ${provider}/${model} - $${cost.toFixed(4)} (${tokens} tokens)`);
+    this.logger.log(
+      `AI usage recorded: ${provider}/${model} - $${cost.toFixed(4)} (${tokens} tokens)`,
+    );
   }
 
   /**
@@ -133,7 +141,7 @@ export class CostControlsService {
   getOptimalProvider(
     requestType: 'level1' | 'level2',
     estimatedTokens: number,
-    userBudget?: number
+    userBudget?: number,
   ): {
     provider: string;
     model: string;
@@ -150,14 +158,19 @@ export class CostControlsService {
 
     for (const [provider, policy] of providers) {
       const models = requestType === 'level1' ? policy.level1Models : policy.level2Models;
-      
+
       for (const model of models) {
         const costPerToken = policy.costPerToken[model] || 0.00002;
         const estimatedCost = estimatedTokens * costPerToken;
-        
+
         // Calculate suitability score (lower cost = higher suitability)
-        const suitability = this.calculateSuitabilityScore(provider, model, estimatedCost, userBudget);
-        
+        const suitability = this.calculateSuitabilityScore(
+          provider,
+          model,
+          estimatedCost,
+          userBudget,
+        );
+
         candidateModels.push({
           provider,
           model,
@@ -180,7 +193,11 @@ export class CostControlsService {
     }
 
     const optimal = candidateModels[0];
-    const reasoning = this.generateOptimizationReasoning(optimal, candidateModels.slice(1, 3), requestType);
+    const reasoning = this.generateOptimizationReasoning(
+      optimal,
+      candidateModels.slice(1, 3),
+      requestType,
+    );
 
     return {
       provider: optimal.provider,
@@ -200,7 +217,7 @@ export class CostControlsService {
       monthly: this.monthlyCost,
     };
 
-    const budgetStatus = Array.from(this.budgets.values()).map(budget => ({
+    const budgetStatus = Array.from(this.budgets.values()).map((budget) => ({
       ...budget,
       spent: this.getCostForPeriod(budget.period),
       remaining: Math.max(0, budget.limit - this.getCostForPeriod(budget.period)),
@@ -209,7 +226,7 @@ export class CostControlsService {
     const providerBreakdown = this.getProviderBreakdown();
     const costTrends = this.getCostTrends();
     const alerts = Array.from(this.alerts.values())
-      .filter(alert => !alert.resolved)
+      .filter((alert) => !alert.resolved)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
     const recommendations = this.generateCostRecommendations();
@@ -231,7 +248,7 @@ export class CostControlsService {
     name: string,
     period: 'daily' | 'weekly' | 'monthly',
     limit: number,
-    alertThreshold: number = 80
+    alertThreshold: number = 80,
   ): void {
     this.budgets.set(name, {
       name,
@@ -293,7 +310,7 @@ export class CostControlsService {
         'gpt-3.5-turbo': 0.00002,
         'gpt-3.5-turbo-16k': 0.00003,
         'gpt-4': 0.00006,
-        'gpt-4-turbo-preview': 0.00010,
+        'gpt-4-turbo-preview': 0.0001,
         'gpt-4-32k': 0.00012,
       },
       dailyLimits: {
@@ -308,8 +325,8 @@ export class CostControlsService {
       level2Models: ['claude-3-sonnet', 'claude-3-opus'],
       costPerToken: {
         'claude-3-haiku': 0.000025,
-        'claude-3-sonnet': 0.000030,
-        'claude-3-opus': 0.000150,
+        'claude-3-sonnet': 0.00003,
+        'claude-3-opus': 0.00015,
       },
       dailyLimits: {
         'claude-3-haiku': 500000,
@@ -343,9 +360,12 @@ export class CostControlsService {
     }, 60000); // Check every minute
 
     // Check budgets every 15 minutes
-    setInterval(() => {
-      this.checkBudgetAlerts();
-    }, 15 * 60 * 1000);
+    setInterval(
+      () => {
+        this.checkBudgetAlerts();
+      },
+      15 * 60 * 1000,
+    );
 
     this.logger.log('Cost monitoring started');
   }
@@ -376,12 +396,17 @@ export class CostControlsService {
   private checkCostAlerts(provider: string, model: string, cost: number, tokens: number): void {
     // Check for cost spikes
     const recentCosts = this.getRecentCosts(provider, model, 3600000); // Last hour
-    const hourlyAvg = recentCosts.reduce((sum, c) => sum + c.cost, 0) / Math.max(1, recentCosts.length);
-    
+    const hourlyAvg =
+      recentCosts.reduce((sum, c) => sum + c.cost, 0) / Math.max(1, recentCosts.length);
+
     if (cost > hourlyAvg * 3 && cost > 1) {
-      this.createAlert('spike_detected', 'high', 
+      this.createAlert(
+        'spike_detected',
+        'high',
         `Cost spike detected for ${provider}/${model}: $${cost.toFixed(4)} (3x hourly average)`,
-        hourlyAvg, cost);
+        hourlyAvg,
+        cost,
+      );
     }
 
     // Check daily limits
@@ -389,11 +414,15 @@ export class CostControlsService {
     if (policy && policy.dailyLimits[model]) {
       const dailyTokens = this.getDailyTokenUsage(provider, model);
       const limit = policy.dailyLimits[model];
-      
+
       if (dailyTokens > limit * 0.9) {
-        this.createAlert('quota_warning', 'medium',
+        this.createAlert(
+          'quota_warning',
+          'medium',
           `Approaching daily token limit for ${provider}/${model}: ${dailyTokens}/${limit}`,
-          limit, dailyTokens);
+          limit,
+          dailyTokens,
+        );
       }
     }
   }
@@ -409,13 +438,21 @@ export class CostControlsService {
       const percentage = (spent / budget.limit) * 100;
 
       if (percentage >= budget.alertThreshold && percentage < 100) {
-        this.createAlert('budget_exceeded', 'medium',
+        this.createAlert(
+          'budget_exceeded',
+          'medium',
           `${budget.name} budget ${percentage.toFixed(1)}% used: $${spent.toFixed(2)}/$${budget.limit}`,
-          budget.limit, spent);
+          budget.limit,
+          spent,
+        );
       } else if (percentage >= 100) {
-        this.createAlert('budget_exceeded', 'high',
+        this.createAlert(
+          'budget_exceeded',
+          'high',
           `${budget.name} budget exceeded: $${spent.toFixed(2)}/$${budget.limit}`,
-          budget.limit, spent);
+          budget.limit,
+          spent,
+        );
       }
     }
   }
@@ -428,10 +465,10 @@ export class CostControlsService {
     severity: CostAlert['severity'],
     message: string,
     threshold: number,
-    currentValue: number
+    currentValue: number,
   ): void {
     const alertId = `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     this.alerts.set(alertId, {
       id: alertId,
       type,
@@ -451,9 +488,12 @@ export class CostControlsService {
    */
   private getCostForPeriod(period: 'daily' | 'weekly' | 'monthly'): number {
     switch (period) {
-      case 'daily': return this.dailyCost;
-      case 'weekly': return this.weeklyCost;
-      case 'monthly': return this.monthlyCost;
+      case 'daily':
+        return this.dailyCost;
+      case 'weekly':
+        return this.weeklyCost;
+      case 'monthly':
+        return this.monthlyCost;
     }
   }
 
@@ -462,8 +502,8 @@ export class CostControlsService {
 
     for (const [key, history] of this.costHistory.entries()) {
       const [provider, model] = key.split(':');
-      const recentHistory = history.filter(h => 
-        h.timestamp.getTime() > Date.now() - 24 * 60 * 60 * 1000 // Last 24 hours
+      const recentHistory = history.filter(
+        (h) => h.timestamp.getTime() > Date.now() - 24 * 60 * 60 * 1000, // Last 24 hours
       );
 
       if (recentHistory.length === 0) continue;
@@ -486,7 +526,12 @@ export class CostControlsService {
     return Object.values(breakdown).sort((a, b) => b.cost - a.cost);
   }
 
-  private getCostTrends(): Array<{ date: string; cost: number; requests: number; efficiency: number }> {
+  private getCostTrends(): Array<{
+    date: string;
+    cost: number;
+    requests: number;
+    efficiency: number;
+  }> {
     // Simplified trends calculation - in production would use proper time series data
     const trends = [];
     for (let i = 6; i >= 0; i--) {
@@ -505,7 +550,7 @@ export class CostControlsService {
     provider: string,
     model: string,
     estimatedCost: number,
-    userBudget?: number
+    userBudget?: number,
   ): number {
     let score = 100;
 
@@ -527,11 +572,11 @@ export class CostControlsService {
   private generateOptimizationReasoning(
     optimal: any,
     alternatives: any[],
-    requestType: string
+    requestType: string,
   ): string {
     let reasoning = `Selected ${optimal.provider}/${optimal.model} for ${requestType} request. `;
     reasoning += `Estimated cost: $${optimal.cost.toFixed(4)}. `;
-    
+
     if (alternatives.length > 0) {
       const savings = alternatives[0].cost - optimal.cost;
       if (savings > 0) {
@@ -544,20 +589,24 @@ export class CostControlsService {
 
   private generateCostRecommendations(): string[] {
     const recommendations: string[] = [];
-    
+
     // Analyze recent usage patterns
     const efficiency = this.getCostEfficiencyMetrics();
-    
+
     if (efficiency.tokenEfficiency > 0.1) {
       recommendations.push('Consider switching to more cost-effective models for level 1 requests');
     }
-    
+
     if (this.dailyCost > 30) {
-      recommendations.push('Daily costs are high - review AI usage patterns and implement request batching');
+      recommendations.push(
+        'Daily costs are high - review AI usage patterns and implement request batching',
+      );
     }
-    
+
     if (efficiency.optimizationOpportunities.length > 0) {
-      recommendations.push(...efficiency.optimizationOpportunities.slice(0, 3).map(op => op.description));
+      recommendations.push(
+        ...efficiency.optimizationOpportunities.slice(0, 3).map((op) => op.description),
+      );
     }
 
     return recommendations;
@@ -567,7 +616,7 @@ export class CostControlsService {
   private getModelUsageLevel(provider: string, model: string): 'level1' | 'level2' {
     const policy = this.providerPolicies.get(provider);
     if (!policy) return 'level1';
-    
+
     return policy.level1Models.includes(model) ? 'level1' : 'level2';
   }
 
@@ -575,7 +624,7 @@ export class CostControlsService {
     const key = `${provider}:${model}`;
     const history = this.costHistory.get(key) || [];
     const cutoff = Date.now() - timeWindow;
-    return history.filter(h => h.timestamp.getTime() > cutoff);
+    return history.filter((h) => h.timestamp.getTime() > cutoff);
   }
 
   private getDailyTokenUsage(provider: string, model: string): number {
@@ -583,7 +632,7 @@ export class CostControlsService {
     const key = `${provider}:${model}`;
     const history = this.costHistory.get(key) || [];
     return history
-      .filter(h => h.timestamp.toDateString() === today)
+      .filter((h) => h.timestamp.toDateString() === today)
       .reduce((sum, h) => sum + h.tokens, 0);
   }
 
@@ -606,7 +655,7 @@ export class CostControlsService {
   private getActiveUsersCount(): number {
     const uniqueUsers = new Set<string>();
     for (const history of this.costHistory.values()) {
-      history.forEach(h => {
+      history.forEach((h) => {
         if (h.userId) uniqueUsers.add(h.userId);
       });
     }

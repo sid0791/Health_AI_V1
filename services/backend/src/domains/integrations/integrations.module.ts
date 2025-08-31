@@ -4,15 +4,7 @@ import { WeatherModule } from './weather/weather.module';
 import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
-  imports: [
-    HealthDataModule,
-    WeatherModule,
-    NotificationsModule,
-  ],
-  exports: [
-    HealthDataModule,
-    WeatherModule,
-    NotificationsModule,
-  ],
+  imports: [HealthDataModule, WeatherModule, NotificationsModule],
+  exports: [HealthDataModule, WeatherModule, NotificationsModule],
 })
 export class IntegrationsModule {}

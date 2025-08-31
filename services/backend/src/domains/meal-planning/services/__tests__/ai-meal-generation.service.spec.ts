@@ -128,7 +128,7 @@ describe('AIMealGenerationService', () => {
           },
         },
         {
-          provide: HealthInterpretationService, 
+          provide: HealthInterpretationService,
           useValue: {
             interpretHealthData: jest.fn(),
             generateRecommendations: jest.fn(),
