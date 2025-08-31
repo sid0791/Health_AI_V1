@@ -1459,7 +1459,12 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
           const existing = ingredientMap.get(key);
           existing.quantity += ingredient.quantity;
         } else {
-          ingredientMap.set(key, { ...ingredient });
+          // Ensure cost is always set to a reasonable value
+          const costPerUnit = ingredient.cost || this.estimateIngredientCost(ingredient.name);
+          ingredientMap.set(key, { 
+            ...ingredient, 
+            cost: costPerUnit 
+          });
         }
       }
     }
@@ -1493,6 +1498,54 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
       return 'high';
     }
     return 'medium';
+  }
+
+  private estimateIngredientCost(ingredientName: string): number {
+    // Simple cost estimation based on ingredient type - would be enhanced with real pricing data
+    const costMap = {
+      // Vegetables (per 100g) - INR
+      onion: 3,
+      tomato: 4,
+      potato: 2,
+      carrot: 5,
+      spinach: 6,
+      beans: 8,
+      // Grains (per 100g)
+      rice: 4,
+      wheat: 3,
+      quinoa: 25,
+      oats: 12,
+      // Proteins (per 100g)
+      chicken: 20,
+      fish: 30,
+      eggs: 6,
+      paneer: 40,
+      dal: 8,
+      lentils: 10,
+      // Dairy (per 100ml/100g)
+      milk: 6,
+      yogurt: 8,
+      cheese: 50,
+      butter: 60,
+      // Spices (per 10g)
+      turmeric: 5,
+      cumin: 8,
+      coriander: 6,
+      'garam masala': 15,
+      chili: 10,
+    };
+
+    const name = ingredientName.toLowerCase();
+    
+    // Find matching ingredient in cost map
+    for (const [ingredient, cost] of Object.entries(costMap)) {
+      if (name.includes(ingredient)) {
+        return cost;
+      }
+    }
+    
+    // Default cost for unknown ingredients
+    return 10;
   }
 
   private calculateComplianceScore(averages: any, targets: any): number {
@@ -1553,6 +1606,64 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
     _nutrition: any,
   ): Promise<CelebrityStyleRecipe> {
     // Apply cooking transformations using the cooking transformation service
+    // If recipe is incomplete, provide a default structure
+    if (!recipe || !recipe.name) {
+      return {
+        name: 'Default Recipe',
+        description: 'A delicious and healthy meal',
+        cookingMethod: 'pan-fry',
+        ingredients: [
+          {
+            name: 'rice',
+            quantity: 100,
+            unit: 'g',
+            substitutes: ['quinoa'],
+            cost: 4,
+          },
+          {
+            name: 'dal',
+            quantity: 50,
+            unit: 'g',
+            substitutes: ['lentils'],
+            cost: 8,
+          },
+        ],
+        instructions: ['Prepare ingredients', 'Cook according to recipe'],
+        nutritionPer100g: {
+          calories: 150,
+          protein: 8,
+          carbs: 25,
+          fat: 2,
+          fiber: 3,
+          sugar: 1,
+        },
+        portionNutrition: {
+          calories: 225,
+          protein: 12,
+          carbs: 38,
+          fat: 3,
+          fiber: 5,
+          sugar: 2,
+          glycemicIndex: 55,
+          glycemicLoad: 15,
+        },
+        metadata: {
+          servings: 1,
+          prepTime: 20,
+          cookTime: 15,
+          difficulty: 2, // easy level
+          course: 'main',
+          cuisine: 'indian',
+          tags: ['healthy', 'vegetarian'],
+          costPerServing: 25,
+          seasonality: ['all'],
+          healthyTwist: 'Low oil cooking method',
+          celebrityChefInspiration: 'Inspired by traditional home cooking',
+          equipmentNeeded: ['pan', 'knife'],
+        },
+      };
+    }
+    
     return recipe;
   }
 
