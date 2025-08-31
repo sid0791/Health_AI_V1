@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
 
 import { HealthDataEntry, HealthDataProvider, HealthDataType, SyncStatus } from '../entities/health-data-entry.entity';
 import { HealthDataConnection, ConnectionStatus } from '../entities/health-data-connection.entity';
@@ -245,12 +244,16 @@ export class HealthDataService {
           // Create log entry for successful sync
           await this.logsService.createLogEntry(connection.userId, {
             logType: this.mapDataTypeToLogType(dataType),
-            logSource: this.mapProviderToLogSource(connection.provider),
-            title: `${dataType} data synced from ${connection.provider}`,
-            value: record.value,
-            unit: record.unit,
-            metadata: record,
-            loggedAt: record.timestamp || new Date(),
+            source: this.mapProviderToLogSource(connection.provider),
+            message: `${dataType} data synced from ${connection.provider}`,
+            data: { 
+              value: record.value, 
+              unit: record.unit,
+              provider: connection.provider, 
+              dataType,
+              record: record,
+              timestamp: record.timestamp || new Date()
+            },
           });
         } catch (error) {
           result.recordsError++;
@@ -369,7 +372,7 @@ export class HealthDataService {
   private mapProviderToLogSource(provider: HealthDataProvider): LogSource {
     switch (provider) {
       case HealthDataProvider.APPLE_HEALTHKIT:
-        return LogSource.HEALTHKIT;
+        return LogSource.HEALTH_KIT;
       case HealthDataProvider.GOOGLE_FIT:
         return LogSource.GOOGLE_FIT;
       case HealthDataProvider.FITBIT:
@@ -380,32 +383,32 @@ export class HealthDataService {
   }
 
   // Provider-specific implementations (simplified for demo)
-  private async exchangeFitbitAuthCode(authCode: string, config: ProviderConfig): Promise<any> {
+  private async exchangeFitbitAuthCode(_authCode: string, _config: ProviderConfig): Promise<any> {
     // Implement Fitbit OAuth flow
     return { accessToken: 'demo-token', refreshToken: 'demo-refresh', expiresAt: new Date(Date.now() + 3600000) };
   }
 
-  private async exchangeGoogleFitAuthCode(authCode: string, config: ProviderConfig): Promise<any> {
+  private async exchangeGoogleFitAuthCode(_authCode: string, _config: ProviderConfig): Promise<any> {
     // Implement Google Fit OAuth flow
     return { accessToken: 'demo-token', refreshToken: 'demo-refresh', expiresAt: new Date(Date.now() + 3600000) };
   }
 
-  private async fetchFitbitData(connection: HealthDataConnection, dataType: HealthDataType, startDate: Date, endDate: Date): Promise<any[]> {
+  private async fetchFitbitData(_connection: HealthDataConnection, _dataType: HealthDataType, _startDate: Date, _endDate: Date): Promise<any[]> {
     // Implement Fitbit API calls
     return [];
   }
 
-  private async fetchGoogleFitData(connection: HealthDataConnection, dataType: HealthDataType, startDate: Date, endDate: Date): Promise<any[]> {
+  private async fetchGoogleFitData(_connection: HealthDataConnection, _dataType: HealthDataType, _startDate: Date, _endDate: Date): Promise<any[]> {
     // Implement Google Fit API calls
     return [];
   }
 
-  private async processFitbitWebhook(payload: any): Promise<void> {
+  private async processFitbitWebhook(_payload: any): Promise<void> {
     // Process Fitbit webhook notifications
     this.logger.log('Processing Fitbit webhook data');
   }
 
-  private async processGoogleFitWebhook(payload: any): Promise<void> {
+  private async processGoogleFitWebhook(_payload: any): Promise<void> {
     // Process Google Fit webhook notifications
     this.logger.log('Processing Google Fit webhook data');
   }
