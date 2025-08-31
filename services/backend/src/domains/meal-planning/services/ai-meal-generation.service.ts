@@ -15,6 +15,13 @@ import { Recipe } from '../../recipes/entities/recipe.entity';
 import { MealPlan, MealPlanType } from '../entities/meal-plan.entity';
 import { MealPlanEntry, MealType } from '../entities/meal-plan-entry.entity';
 
+// Phase 11 Integration: Health Reports
+import { HealthReportsService } from '../../health-reports/services/health-reports.service';
+import { HealthInterpretationService, HealthInterpretation } from '../../health-reports/services/health-interpretation.service';
+import { StructuredEntityService } from '../../health-reports/services/structured-entity.service';
+import { HealthReport, HealthReportType } from '../../health-reports/entities/health-report.entity';
+import { StructuredEntity } from '../../health-reports/entities/structured-entity.entity';
+
 export interface PersonalizedMealPlanRequest {
   userId: string;
   userProfile: {
@@ -63,6 +70,79 @@ export interface PersonalizedMealPlanRequest {
       intolerances: string[];
     };
   };
+  // Phase 11 Integration: Health data context
+  healthContext?: UserHealthContext;
+}
+
+// Phase 11 Integration: Health Context Interface
+export interface UserHealthContext {
+  hasHealthReports: boolean;
+  latestHealthReport?: HealthReport;
+  healthInterpretation?: HealthInterpretation;
+  biomarkers: {
+    bloodSugar?: {
+      value: number;
+      status: 'normal' | 'elevated' | 'high' | 'very_high';
+      hba1c?: number;
+      isDiabetic: boolean;
+    };
+    cholesterol?: {
+      total: number;
+      ldl: number;
+      hdl: number;
+      triglycerides: number;
+      status: 'optimal' | 'borderline' | 'high' | 'very_high';
+    };
+    liverFunction?: {
+      alt: number;
+      ast: number;
+      status: 'normal' | 'elevated' | 'high';
+    };
+    kidneyFunction?: {
+      creatinine: number;
+      bun: number;
+      status: 'normal' | 'mild_impairment' | 'moderate_impairment' | 'severe_impairment';
+    };
+    thyroid?: {
+      tsh: number;
+      t3?: number;
+      t4?: number;
+      status: 'normal' | 'hypothyroid' | 'hyperthyroid';
+    };
+    vitamins?: {
+      vitaminD?: { value: number; status: 'deficient' | 'insufficient' | 'sufficient' };
+      vitaminB12?: { value: number; status: 'deficient' | 'low' | 'normal' };
+      folate?: { value: number; status: 'deficient' | 'low' | 'normal' };
+      iron?: { value: number; status: 'deficient' | 'low' | 'normal' | 'high' };
+    };
+  };
+  healthConditions: {
+    diabetes: boolean;
+    prediabetes: boolean;
+    highCholesterol: boolean;
+    hypertension: boolean;
+    fattyLiver: boolean;
+    thyroidIssues: boolean;
+    kidneyIssues: boolean;
+    anemia: boolean;
+  };
+  dietaryRecommendations: {
+    lowGlycemicIndex: boolean;
+    lowSodium: boolean;
+    lowSaturatedFat: boolean;
+    highFiber: boolean;
+    increaseIron: boolean;
+    increaseB12: boolean;
+    increaseVitaminD: boolean;
+    limitProtein: boolean;
+    heartHealthy: boolean;
+    liverFriendly: boolean;
+  };
+  redFlags: Array<{
+    severity: 'low' | 'medium' | 'high' | 'urgent';
+    message: string;
+    recommendation: string;
+  }>;
 }
 
 export interface CelebrityStyleRecipe {
@@ -201,6 +281,10 @@ export class AIMealGenerationService {
     private readonly cookingTransformationService: CookingTransformationService,
     private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    // Phase 11 Integration: Health Reports Services
+    private readonly healthReportsService: HealthReportsService,
+    private readonly healthInterpretationService: HealthInterpretationService,
+    private readonly structuredEntityService: StructuredEntityService,
   ) {}
 
   /**
@@ -216,6 +300,10 @@ export class AIMealGenerationService {
     try {
       // 1. Validate user input and get user context
       const userContext = await this.buildUserContext(request);
+
+      // Phase 11 Integration: Get health context from health reports
+      const healthContext = await this.buildHealthContext(request.userId);
+      request.healthContext = healthContext;
 
       // 2. Generate meal plan using AI (Level 2 routing for cost optimization)
       const aiPlanResult = await this.generateAIMealPlan(request);
@@ -405,6 +493,363 @@ export class AIMealGenerationService {
         request.contextData?.location,
       ),
     };
+  }
+
+  /**
+   * Phase 11 Integration: Build health context from user's health reports
+   */
+  private async buildHealthContext(userId: string): Promise<UserHealthContext> {
+    this.logger.debug(`Building health context for user: ${userId}`);
+
+    try {
+      // Get user's health reports
+      const healthReports = await this.healthReportsService.findByUserId(userId);
+      
+      if (!healthReports || healthReports.length === 0) {
+        this.logger.debug(`No health reports found for user: ${userId}`);
+        return {
+          hasHealthReports: false,
+          biomarkers: {},
+          healthConditions: {
+            diabetes: false,
+            prediabetes: false,
+            highCholesterol: false,
+            hypertension: false,
+            fattyLiver: false,
+            thyroidIssues: false,
+            kidneyIssues: false,
+            anemia: false,
+          },
+          dietaryRecommendations: {
+            lowGlycemicIndex: false,
+            lowSodium: false,
+            lowSaturatedFat: false,
+            highFiber: false,
+            increaseIron: false,
+            increaseB12: false,
+            increaseVitaminD: false,
+            limitProtein: false,
+            heartHealthy: false,
+            liverFriendly: false,
+          },
+          redFlags: [],
+        };
+      }
+
+      // Get the latest processed health report
+      const latestReport = healthReports
+        .filter(report => report.isProcessed())
+        .sort((a, b) => new Date(b.testDate).getTime() - new Date(a.testDate).getTime())[0];
+
+      if (!latestReport) {
+        this.logger.debug(`No processed health reports found for user: ${userId}`);
+        return {
+          hasHealthReports: true,
+          biomarkers: {},
+          healthConditions: {
+            diabetes: false,
+            prediabetes: false,
+            highCholesterol: false,
+            hypertension: false,
+            fattyLiver: false,
+            thyroidIssues: false,
+            kidneyIssues: false,
+            anemia: false,
+          },
+          dietaryRecommendations: {
+            lowGlycemicIndex: false,
+            lowSodium: false,
+            lowSaturatedFat: false,
+            highFiber: false,
+            increaseIron: false,
+            increaseB12: false,
+            increaseVitaminD: false,
+            limitProtein: false,
+            heartHealthy: false,
+            liverFriendly: false,
+          },
+          redFlags: [],
+        };
+      }
+
+      // Get health interpretation
+      const interpretation = await this.healthReportsService.getInterpretation(latestReport.id);
+
+      // Get structured entities (biomarkers)
+      const biomarkerData = await this.extractBiomarkerData(latestReport.id);
+
+      // Build health context
+      const healthContext: UserHealthContext = {
+        hasHealthReports: true,
+        latestHealthReport: latestReport,
+        healthInterpretation: interpretation,
+        biomarkers: biomarkerData,
+        healthConditions: this.identifyHealthConditions(biomarkerData, interpretation),
+        dietaryRecommendations: this.generateDietaryRecommendations(biomarkerData, interpretation),
+        redFlags: interpretation?.redFlags || [],
+      };
+
+      this.logger.debug(`Health context built successfully for user: ${userId}`);
+      return healthContext;
+
+    } catch (error) {
+      this.logger.error(`Failed to build health context for user ${userId}: ${error.message}`);
+      // Return safe default context on error
+      return {
+        hasHealthReports: false,
+        biomarkers: {},
+        healthConditions: {
+          diabetes: false,
+          prediabetes: false,
+          highCholesterol: false,
+          hypertension: false,
+          fattyLiver: false,
+          thyroidIssues: false,
+          kidneyIssues: false,
+          anemia: false,
+        },
+        dietaryRecommendations: {
+          lowGlycemicIndex: false,
+          lowSodium: false,
+          lowSaturatedFat: false,
+          highFiber: false,
+          increaseIron: false,
+          increaseB12: false,
+          increaseVitaminD: false,
+          limitProtein: false,
+          heartHealthy: false,
+          liverFriendly: false,
+        },
+        redFlags: [],
+      };
+    }
+  }
+
+  /**
+   * Extract biomarker data from structured entities
+   */
+  private async extractBiomarkerData(healthReportId: string): Promise<any> {
+    const entities = await this.structuredEntityService.findByHealthReportId(healthReportId);
+    
+    const biomarkers: any = {};
+
+    for (const entity of entities) {
+      const entityName = entity.entityName.toLowerCase();
+      const value = entity.getNumericValue();
+
+      // Blood Sugar / Diabetes markers
+      if (entityName.includes('glucose') || entityName.includes('sugar')) {
+        if (!biomarkers.bloodSugar) biomarkers.bloodSugar = {};
+        biomarkers.bloodSugar.value = value;
+        biomarkers.bloodSugar.status = this.classifyBloodSugar(value);
+      }
+      
+      if (entityName.includes('hba1c') || entityName.includes('hemoglobin a1c')) {
+        if (!biomarkers.bloodSugar) biomarkers.bloodSugar = {};
+        biomarkers.bloodSugar.hba1c = value;
+        biomarkers.bloodSugar.isDiabetic = value >= 6.5;
+      }
+
+      // Cholesterol markers
+      if (entityName.includes('cholesterol')) {
+        if (!biomarkers.cholesterol) biomarkers.cholesterol = {};
+        if (entityName.includes('total')) {
+          biomarkers.cholesterol.total = value;
+        } else if (entityName.includes('ldl')) {
+          biomarkers.cholesterol.ldl = value;
+        } else if (entityName.includes('hdl')) {
+          biomarkers.cholesterol.hdl = value;
+        }
+      }
+
+      if (entityName.includes('triglyceride')) {
+        if (!biomarkers.cholesterol) biomarkers.cholesterol = {};
+        biomarkers.cholesterol.triglycerides = value;
+      }
+
+      // Liver function
+      if (entityName.includes('alt') || entityName.includes('alanine')) {
+        if (!biomarkers.liverFunction) biomarkers.liverFunction = {};
+        biomarkers.liverFunction.alt = value;
+      }
+
+      if (entityName.includes('ast') || entityName.includes('aspartate')) {
+        if (!biomarkers.liverFunction) biomarkers.liverFunction = {};
+        biomarkers.liverFunction.ast = value;
+      }
+
+      // Kidney function
+      if (entityName.includes('creatinine')) {
+        if (!biomarkers.kidneyFunction) biomarkers.kidneyFunction = {};
+        biomarkers.kidneyFunction.creatinine = value;
+      }
+
+      if (entityName.includes('bun') || entityName.includes('urea')) {
+        if (!biomarkers.kidneyFunction) biomarkers.kidneyFunction = {};
+        biomarkers.kidneyFunction.bun = value;
+      }
+
+      // Thyroid
+      if (entityName.includes('tsh')) {
+        if (!biomarkers.thyroid) biomarkers.thyroid = {};
+        biomarkers.thyroid.tsh = value;
+      }
+
+      if (entityName.includes('t3')) {
+        if (!biomarkers.thyroid) biomarkers.thyroid = {};
+        biomarkers.thyroid.t3 = value;
+      }
+
+      if (entityName.includes('t4')) {
+        if (!biomarkers.thyroid) biomarkers.thyroid = {};
+        biomarkers.thyroid.t4 = value;
+      }
+
+      // Vitamins
+      if (entityName.includes('vitamin d') || entityName.includes('25-oh')) {
+        if (!biomarkers.vitamins) biomarkers.vitamins = {};
+        biomarkers.vitamins.vitaminD = {
+          value,
+          status: this.classifyVitaminD(value),
+        };
+      }
+
+      if (entityName.includes('vitamin b12') || entityName.includes('b12')) {
+        if (!biomarkers.vitamins) biomarkers.vitamins = {};
+        biomarkers.vitamins.vitaminB12 = {
+          value,
+          status: this.classifyVitaminB12(value),
+        };
+      }
+
+      if (entityName.includes('folate') || entityName.includes('folic acid')) {
+        if (!biomarkers.vitamins) biomarkers.vitamins = {};
+        biomarkers.vitamins.folate = {
+          value,
+          status: this.classifyFolate(value),
+        };
+      }
+
+      if (entityName.includes('iron') || entityName.includes('ferritin')) {
+        if (!biomarkers.vitamins) biomarkers.vitamins = {};
+        biomarkers.vitamins.iron = {
+          value,
+          status: this.classifyIron(value),
+        };
+      }
+    }
+
+    // Add status classifications
+    if (biomarkers.cholesterol) {
+      biomarkers.cholesterol.status = this.classifyCholesterol(biomarkers.cholesterol);
+    }
+
+    if (biomarkers.liverFunction) {
+      biomarkers.liverFunction.status = this.classifyLiverFunction(biomarkers.liverFunction);
+    }
+
+    if (biomarkers.kidneyFunction) {
+      biomarkers.kidneyFunction.status = this.classifyKidneyFunction(biomarkers.kidneyFunction);
+    }
+
+    if (biomarkers.thyroid) {
+      biomarkers.thyroid.status = this.classifyThyroid(biomarkers.thyroid);
+    }
+
+    return biomarkers;
+  }
+
+  /**
+   * Identify health conditions based on biomarker data
+   */
+  private identifyHealthConditions(biomarkers: any, interpretation?: HealthInterpretation): any {
+    return {
+      diabetes: biomarkers.bloodSugar?.isDiabetic || biomarkers.bloodSugar?.hba1c >= 6.5 || false,
+      prediabetes: (biomarkers.bloodSugar?.hba1c >= 5.7 && biomarkers.bloodSugar?.hba1c < 6.5) || false,
+      highCholesterol: biomarkers.cholesterol?.status === 'high' || biomarkers.cholesterol?.status === 'very_high' || false,
+      hypertension: interpretation?.conditions?.includes('hypertension') || false,
+      fattyLiver: biomarkers.liverFunction?.status === 'elevated' || biomarkers.liverFunction?.status === 'high' || false,
+      thyroidIssues: biomarkers.thyroid?.status !== 'normal' || false,
+      kidneyIssues: biomarkers.kidneyFunction?.status !== 'normal' || false,
+      anemia: biomarkers.vitamins?.iron?.status === 'deficient' || false,
+    };
+  }
+
+  /**
+   * Generate dietary recommendations based on health data
+   */
+  private generateDietaryRecommendations(biomarkers: any, interpretation?: HealthInterpretation): any {
+    return {
+      lowGlycemicIndex: biomarkers.bloodSugar?.isDiabetic || biomarkers.bloodSugar?.status !== 'normal' || false,
+      lowSodium: interpretation?.conditions?.includes('hypertension') || false,
+      lowSaturatedFat: biomarkers.cholesterol?.status === 'high' || biomarkers.cholesterol?.status === 'very_high' || false,
+      highFiber: biomarkers.bloodSugar?.isDiabetic || biomarkers.cholesterol?.status === 'high' || false,
+      increaseIron: biomarkers.vitamins?.iron?.status === 'deficient' || false,
+      increaseB12: biomarkers.vitamins?.vitaminB12?.status === 'deficient' || biomarkers.vitamins?.vitaminB12?.status === 'low' || false,
+      increaseVitaminD: biomarkers.vitamins?.vitaminD?.status === 'deficient' || biomarkers.vitamins?.vitaminD?.status === 'insufficient' || false,
+      limitProtein: biomarkers.kidneyFunction?.status === 'moderate_impairment' || biomarkers.kidneyFunction?.status === 'severe_impairment' || false,
+      heartHealthy: biomarkers.cholesterol?.status === 'high' || biomarkers.cholesterol?.status === 'very_high' || false,
+      liverFriendly: biomarkers.liverFunction?.status === 'elevated' || biomarkers.liverFunction?.status === 'high' || false,
+    };
+  }
+
+  // Helper classification methods
+  private classifyBloodSugar(value: number): string {
+    if (value < 100) return 'normal';
+    if (value < 126) return 'elevated';
+    if (value < 200) return 'high';
+    return 'very_high';
+  }
+
+  private classifyVitaminD(value: number): string {
+    if (value < 20) return 'deficient';
+    if (value < 30) return 'insufficient';
+    return 'sufficient';
+  }
+
+  private classifyVitaminB12(value: number): string {
+    if (value < 200) return 'deficient';
+    if (value < 300) return 'low';
+    return 'normal';
+  }
+
+  private classifyFolate(value: number): string {
+    if (value < 3) return 'deficient';
+    if (value < 5) return 'low';
+    return 'normal';
+  }
+
+  private classifyIron(value: number): string {
+    if (value < 50) return 'deficient';
+    if (value < 100) return 'low';
+    if (value > 400) return 'high';
+    return 'normal';
+  }
+
+  private classifyCholesterol(cholesterol: any): string {
+    if (cholesterol.total > 240 || cholesterol.ldl > 160) return 'very_high';
+    if (cholesterol.total > 200 || cholesterol.ldl > 130) return 'high';
+    if (cholesterol.total > 180 || cholesterol.ldl > 100) return 'borderline';
+    return 'optimal';
+  }
+
+  private classifyLiverFunction(liver: any): string {
+    if (liver.alt > 60 || liver.ast > 60) return 'high';
+    if (liver.alt > 40 || liver.ast > 40) return 'elevated';
+    return 'normal';
+  }
+
+  private classifyKidneyFunction(kidney: any): string {
+    if (kidney.creatinine > 2.0) return 'severe_impairment';
+    if (kidney.creatinine > 1.5) return 'moderate_impairment';
+    if (kidney.creatinine > 1.2) return 'mild_impairment';
+    return 'normal';
+  }
+
+  private classifyThyroid(thyroid: any): string {
+    if (thyroid.tsh > 4.5) return 'hypothyroid';
+    if (thyroid.tsh < 0.5) return 'hyperthyroid';
+    return 'normal';
   }
 
   private async generateAIMealPlan(
@@ -655,6 +1100,71 @@ export class AIMealGenerationService {
 
   // Additional helper methods for AI interaction, parsing, etc.
   private buildMealPlanPrompt(request: PersonalizedMealPlanRequest): string {
+    // Build health context section
+    let healthSection = '';
+    if (request.healthContext?.hasHealthReports) {
+      const healthContext = request.healthContext;
+      
+      healthSection = `
+Health Context (Phase 11 Integration):
+- Has Health Reports: ${healthContext.hasHealthReports}
+- Latest Report Date: ${healthContext.latestHealthReport?.testDate || 'N/A'}`;
+
+      // Add biomarker information
+      if (healthContext.biomarkers.bloodSugar) {
+        healthSection += `
+- Blood Sugar: ${healthContext.biomarkers.bloodSugar.value || 'N/A'} mg/dL (${healthContext.biomarkers.bloodSugar.status})`;
+        if (healthContext.biomarkers.bloodSugar.hba1c) {
+          healthSection += `
+- HbA1c: ${healthContext.biomarkers.bloodSugar.hba1c}% (Diabetic: ${healthContext.biomarkers.bloodSugar.isDiabetic})`;
+        }
+      }
+
+      if (healthContext.biomarkers.cholesterol) {
+        healthSection += `
+- Cholesterol: Total ${healthContext.biomarkers.cholesterol.total || 'N/A'}, LDL ${healthContext.biomarkers.cholesterol.ldl || 'N/A'}, HDL ${healthContext.biomarkers.cholesterol.hdl || 'N/A'} (${healthContext.biomarkers.cholesterol.status})`;
+      }
+
+      if (healthContext.biomarkers.vitamins) {
+        healthSection += `
+- Vitamin D: ${healthContext.biomarkers.vitamins.vitaminD?.value || 'N/A'} ng/mL (${healthContext.biomarkers.vitamins.vitaminD?.status || 'N/A'})
+- Vitamin B12: ${healthContext.biomarkers.vitamins.vitaminB12?.value || 'N/A'} pg/mL (${healthContext.biomarkers.vitamins.vitaminB12?.status || 'N/A'})
+- Iron/Ferritin: ${healthContext.biomarkers.vitamins.iron?.value || 'N/A'} ng/mL (${healthContext.biomarkers.vitamins.iron?.status || 'N/A'})`;
+      }
+
+      // Add health conditions
+      const conditions = Object.entries(healthContext.healthConditions)
+        .filter(([_, value]) => value)
+        .map(([key, _]) => key);
+      
+      if (conditions.length > 0) {
+        healthSection += `
+- Identified Health Conditions: ${conditions.join(', ')}`;
+      }
+
+      // Add dietary recommendations
+      const recommendations = Object.entries(healthContext.dietaryRecommendations)
+        .filter(([_, value]) => value)
+        .map(([key, _]) => key);
+      
+      if (recommendations.length > 0) {
+        healthSection += `
+- Dietary Recommendations: ${recommendations.join(', ')}`;
+      }
+
+      // Add red flags if any
+      if (healthContext.redFlags && healthContext.redFlags.length > 0) {
+        const urgentFlags = healthContext.redFlags.filter(flag => flag.severity === 'urgent' || flag.severity === 'high');
+        if (urgentFlags.length > 0) {
+          healthSection += `
+- IMPORTANT HEALTH FLAGS: ${urgentFlags.map(flag => flag.message).join('; ')}`;
+        }
+      }
+    } else {
+      healthSection = `
+Health Context: No health reports available - use general healthy meal planning principles`;
+    }
+
     return `Generate a personalized 7-day meal plan with the following requirements:
 
 User Profile:
@@ -667,6 +1177,7 @@ User Profile:
 - Budget Range: ₹${request.userProfile.budgetRange.min}-${request.userProfile.budgetRange.max} per day
 - Cooking Skill: ${request.userProfile.cookingSkillLevel}/5
 - Available Cooking Time: ${request.userProfile.availableCookingTime} minutes per meal
+${healthSection}
 
 Plan Requirements:
 - Type: ${request.planPreferences.planType}
@@ -675,7 +1186,10 @@ Plan Requirements:
 - Macros: ${request.planPreferences.macroTargets.proteinPercent}% protein, ${request.planPreferences.macroTargets.carbPercent}% carbs, ${request.planPreferences.macroTargets.fatPercent}% fat
 - Include weekend treats: ${request.planPreferences.weekendTreats}
 
-Instructions:
+CRITICAL HEALTH-AWARE INSTRUCTIONS:
+${this.buildHealthAwareInstructions(request.healthContext)}
+
+General Instructions:
 1. Create innovative, celebrity chef-style recipes that are healthy twists on popular dishes
 2. Ensure each recipe includes accurate ingredient quantities and nutrition
 3. Consider seasonal availability and local Indian ingredients
@@ -686,6 +1200,78 @@ Instructions:
 8. Suggest meal timing and portion sizes
 
 Return the meal plan as a structured JSON with detailed recipes for each day and meal.`;
+  }
+
+  /**
+   * Build health-specific dietary instructions based on health context
+   */
+  private buildHealthAwareInstructions(healthContext?: UserHealthContext): string {
+    if (!healthContext?.hasHealthReports) {
+      return 'Follow general healthy meal planning principles with balanced nutrition.';
+    }
+
+    const instructions: string[] = [];
+
+    // Diabetes/Blood sugar management
+    if (healthContext.healthConditions.diabetes || healthContext.healthConditions.prediabetes) {
+      instructions.push('PRIORITIZE LOW GLYCEMIC INDEX foods (GI < 55) and manage glycemic load per meal');
+      instructions.push('Include high-fiber foods and complex carbohydrates');
+      instructions.push('Avoid simple sugars and refined carbohydrates');
+    }
+
+    // Cholesterol management
+    if (healthContext.healthConditions.highCholesterol) {
+      instructions.push('FOCUS ON HEART-HEALTHY foods: omega-3 rich fish, nuts, olive oil');
+      instructions.push('Limit saturated fats and avoid trans fats');
+      instructions.push('Include soluble fiber foods like oats, beans, and fruits');
+    }
+
+    // Hypertension
+    if (healthContext.healthConditions.hypertension) {
+      instructions.push('REDUCE SODIUM content significantly - use herbs and spices for flavor');
+      instructions.push('Include potassium-rich foods like bananas, spinach, and sweet potatoes');
+    }
+
+    // Liver health
+    if (healthContext.healthConditions.fattyLiver) {
+      instructions.push('LIVER-FRIENDLY meals: avoid fried foods, limit fats, include antioxidant-rich foods');
+      instructions.push('Include turmeric, green tea, and leafy greens');
+    }
+
+    // Kidney health
+    if (healthContext.healthConditions.kidneyIssues) {
+      instructions.push('KIDNEY-PROTECTIVE diet: moderate protein intake, limit phosphorus and potassium');
+      instructions.push('Avoid processed foods and excessive salt');
+    }
+
+    // Vitamin deficiencies
+    if (healthContext.dietaryRecommendations.increaseVitaminD) {
+      instructions.push('INCLUDE VITAMIN D RICH foods: fatty fish, fortified foods, mushrooms');
+    }
+
+    if (healthContext.dietaryRecommendations.increaseB12) {
+      instructions.push('INCLUDE VITAMIN B12 SOURCES: fish, eggs, dairy, nutritional yeast');
+    }
+
+    if (healthContext.dietaryRecommendations.increaseIron) {
+      instructions.push('INCLUDE IRON-RICH foods: leafy greens, lentils, lean meats with vitamin C foods');
+    }
+
+    // Thyroid
+    if (healthContext.healthConditions.thyroidIssues) {
+      instructions.push('THYROID-SUPPORTIVE foods: iodine-rich foods, selenium sources, avoid excessive soy');
+    }
+
+    // General recommendations
+    if (healthContext.dietaryRecommendations.lowGlycemicIndex) {
+      instructions.push('EMPHASIZE low-GI alternatives: quinoa over white rice, sweet potato over regular potato');
+    }
+
+    if (instructions.length === 0) {
+      return 'Follow general healthy meal planning principles with balanced nutrition based on available health data.';
+    }
+
+    return instructions.join('\n');
   }
 
   private buildRecipeGenerationPrompt(

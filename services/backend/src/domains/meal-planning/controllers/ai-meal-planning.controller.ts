@@ -43,12 +43,20 @@ export class AIMealPlanningController {
     
     Features:
     - Personalized based on user profile, health conditions, and preferences
+    - **Phase 11 Integration**: Uses health report interpretations for medical-grade personalization
     - Celebrity chef-inspired healthy recipes with innovative twists
     - Accurate nutrition calculations using Phase 3 engines
-    - GI/GL awareness for blood sugar management
+    - GI/GL awareness for blood sugar management (diabetes-friendly)
     - Budget optimization and ingredient availability
     - Shopping list generation with substitutions
     - Cultural appropriateness for Indian cuisine preferences
+    
+    **Health-Aware Planning**:
+    - Automatically considers biomarker data from health reports
+    - Adjusts for diabetes, cholesterol, liver function, kidney health
+    - Addresses vitamin deficiencies (D, B12, Iron, Folate)
+    - Provides thyroid-supportive and heart-healthy options
+    - Includes red flag warnings from health interpretations
     
     The system uses Level 2 AI routing for cost optimization while maintaining
     accuracy within 5% of top providers.

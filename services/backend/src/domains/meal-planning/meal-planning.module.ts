@@ -15,6 +15,7 @@ import { AIRoutingModule } from '../ai-routing/ai-routing.module';
 import { NutritionModule } from '../nutrition/nutrition.module';
 import { RecipeModule } from '../recipes/recipe.module';
 import { UsersModule } from '../users/users.module';
+import { HealthReportsModule } from '../health-reports/health-reports.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { UsersModule } from '../users/users.module';
     NutritionModule,
     RecipeModule,
     UsersModule,
+    HealthReportsModule, // Add health reports integration
   ],
   controllers: [MealPlanController, MealPlanEntryController, AIMealPlanningController],
   providers: [MealPlanService, MealPlanEntryService, AIMealGenerationService],
