@@ -88,6 +88,13 @@ export class AIRoutingService {
   async routeRequest(request: AIRoutingRequest): Promise<AIRoutingResult> {
     this.logger.debug(`Routing AI request: ${request.requestType}`);
 
+    // Check cache first
+    const cacheKey = this.generateCacheKey(request);
+    const cachedResult = await this.checkCache(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
+    }
+
     const requestId = this.generateRequestId();
     const serviceLevel = this.determineServiceLevel(request.requestType);
 
@@ -107,15 +114,8 @@ export class AIRoutingService {
     });
 
     try {
-      // Get available models for service level
-      const availableModels = await this.getAvailableModels(serviceLevel, request);
-
-      if (availableModels.length === 0) {
-        throw new Error('No available models for request');
-      }
-
-      // Select optimal model
-      const selectedModel = await this.selectOptimalModel(availableModels, request, serviceLevel);
+      // Use step-down logic for optimal selection
+      const selectedModel = await this.selectModelWithQuotaStepDown(serviceLevel, request);
 
       // Update decision record
       decision.provider = selectedModel.provider;
@@ -144,6 +144,9 @@ export class AIRoutingService {
         fallbackOptions: selectedModel.fallbackOptions,
         decisionId: decision.id,
       };
+
+      // Cache the result
+      await this.cacheResult(cacheKey, result);
 
       this.logger.debug(`Routed to ${selectedModel.provider}/${selectedModel.model}`);
       return result;
@@ -460,18 +463,21 @@ export class AIRoutingService {
     let sortedModels;
 
     if (serviceLevel === AIServiceLevel.LEVEL_1) {
-      // Level 1: Prioritize accuracy, then cost
+      // Level 1: Prioritize accuracy, then cost (sort by accuracy desc, then cost asc)
       sortedModels = availableModels.sort((a, b) => {
-        const scoreA = a.accuracyScore * 0.7 + (100 - a.costPerToken * 100000) * 0.3;
-        const scoreB = b.accuracyScore * 0.7 + (100 - b.costPerToken * 100000) * 0.3;
-        return scoreB - scoreA;
+        if (a.accuracyScore !== b.accuracyScore) {
+          return b.accuracyScore - a.accuracyScore; // Higher accuracy first
+        }
+        return a.costPerToken - b.costPerToken; // Lower cost second
       });
     } else {
-      // Level 2: Prioritize cost, then accuracy
+      // Level 2: Prioritize cost, then accuracy (sort by cost asc, then accuracy desc)
       sortedModels = availableModels.sort((a, b) => {
-        const scoreA = (100 - a.costPerToken * 100000) * 0.7 + a.accuracyScore * 0.3;
-        const scoreB = (100 - b.costPerToken * 100000) * 0.7 + b.accuracyScore * 0.3;
-        return scoreB - scoreA;
+        const costDiff = a.costPerToken - b.costPerToken;
+        if (Math.abs(costDiff) > 0.000001) { // If cost difference is significant
+          return costDiff; // Lower cost first
+        }
+        return b.accuracyScore - a.accuracyScore; // Higher accuracy second
       });
     }
 
@@ -543,13 +549,11 @@ export class AIRoutingService {
    * Reset daily quotas (should be called daily via cron job)
    */
   resetDailyQuotas(): void {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayKey = yesterday.toISOString().split('T')[0];
-
-    // Remove old entries
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Remove all entries that are not from today
     for (const key of this.dailyQuotaUsage.keys()) {
-      if (key.startsWith(yesterdayKey)) {
+      if (!key.startsWith(today)) {
         this.dailyQuotaUsage.delete(key);
       }
     }
@@ -577,7 +581,10 @@ export class AIRoutingService {
         
         if (availableModels.length > 0) {
           const selectedModel = await this.selectOptimalModel(availableModels, request, serviceLevel);
-          selectedModel.routingReason += ` (quota level: ${percentage}%)`;
+          
+          if (percentage < 100) {
+            selectedModel.routingReason += ` (quota level: ${percentage}%)`;
+          }
           return selectedModel;
         }
       }
@@ -589,13 +596,13 @@ export class AIRoutingService {
       }
     }
     
-    // Regular Level 2 processing
+    // Regular Level 2 processing with enhanced cost optimization
     const availableModels = await this.getAvailableModels(serviceLevel, request);
     if (availableModels.length === 0) {
       throw new Error('No available models for request');
     }
     
-    return this.selectOptimalModel(availableModels, request, serviceLevel);
+    return this.selectOptimalModelEnhanced(availableModels, request, serviceLevel);
   }
 
   /**
@@ -693,17 +700,16 @@ export class AIRoutingService {
     serviceLevel: AIServiceLevel,
   ): Promise<any> {
     if (serviceLevel === AIServiceLevel.LEVEL_2) {
-      // For Level 2: find cheapest within 5% accuracy of top model
-      const topAccuracy = Math.max(...availableModels.map(m => m.accuracyScore));
-      const minAcceptableAccuracy = topAccuracy - 5;
+      // For Level 2: Sort by cost first, then accuracy
+      availableModels.sort((a, b) => {
+        const costDiff = a.costPerToken - b.costPerToken;
+        if (Math.abs(costDiff) > 0.000001) { // If cost difference is significant
+          return costDiff; // Lower cost first
+        }
+        return b.accuracyScore - a.accuracyScore; // Higher accuracy second
+      });
       
-      const eligibleModels = availableModels.filter(m => m.accuracyScore >= minAcceptableAccuracy);
-      
-      if (eligibleModels.length > 0) {
-        // Sort by cost (cheapest first)
-        eligibleModels.sort((a, b) => a.costPerToken - b.costPerToken);
-        return this.buildModelResult(eligibleModels[0], eligibleModels, request, serviceLevel, 'Cost-optimized within 5% accuracy window');
-      }
+      return this.buildModelResult(availableModels[0], availableModels, request, serviceLevel, 'Cost-optimized model selection');
     }
     
     // Fallback to original logic
@@ -730,7 +736,7 @@ export class AIRoutingService {
       routingReason = 'Level 1 request routed for highest accuracy';
     } else {
       routingDecision = RoutingDecision.COST_OPTIMIZATION;
-      routingReason = 'Level 2 request routed for cost optimization';
+      routingReason = reason || 'Level 2 request routed for cost optimization';
     }
 
     const alternatives = availableModels.slice(1, 4).map((model, index) => ({

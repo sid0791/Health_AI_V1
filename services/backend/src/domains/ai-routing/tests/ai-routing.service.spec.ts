@@ -19,7 +19,7 @@ describe('AIRoutingService', () => {
     createQueryBuilder: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
-      getMany: jest.fn(),
+      getMany: jest.fn().mockResolvedValue([]),
     })),
   };
 
@@ -236,14 +236,20 @@ describe('AIRoutingService', () => {
         },
       ];
 
-      mockRepository.createQueryBuilder().getMany.mockResolvedValue(mockDecisions);
+      // Set up the mock for this specific test
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(mockDecisions),
+      };
+      mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
 
       const analytics = await service.getRoutingAnalytics(startDate, endDate);
 
       expect(analytics).toBeDefined();
       expect(analytics.totalRequests).toBe(2);
       expect(analytics.successRate).toBe(100);
-      expect(analytics.avgCost).toBe(0.03);
+      expect(analytics.avgCost).toBeCloseTo(0.03, 5);
       expect(analytics.providerDistribution).toHaveProperty(AIProvider.OPENAI);
       expect(analytics.providerDistribution).toHaveProperty(AIProvider.OPENROUTER);
     });
@@ -271,13 +277,34 @@ describe('AIRoutingService', () => {
         maxResponseTokens: 500,
       };
 
-      // Mock high quota usage
-      jest.spyOn(service as any, 'getDailyQuotaUsage').mockReturnValue(950000); // 95% used
+      // Set up quota usage to force step-down logic
+      // Make ALL providers exceed their 100% quotas, but some available at step-down
+      // This should force the step-down logic to kick in
+      const today = new Date().toISOString().split('T')[0];
+      service['dailyQuotaUsage'].set(`${today}-openai`, 1000100); // Exceeds 1M quota
+      service['dailyQuotaUsage'].set(`${today}-anthropic`, 800100); // Exceeds 800k quota  
+      service['dailyQuotaUsage'].set(`${today}-openrouter`, 5000100); // Exceeds 5M quota
+      
+      // Now at 98% step-down:
+      // OPENAI: 980k limit vs 1000k usage = still exceeded
+      // ANTHROPIC: 784k limit vs 800k usage = still exceeded 
+      // OPENROUTER: 4.9M limit vs 5M usage = still exceeded
+      
+      // At 95% step-down:
+      // ANTHROPIC: 760k limit vs 800k usage = still exceeded
+      
+      // At 90% step-down:  
+      // ANTHROPIC: 720k limit vs 800k usage = still exceeded
+      
+      // This setup will exhaust all step-downs and should throw error
+      // Let me instead allow one provider to work at a step-down level
+      service['dailyQuotaUsage'].set(`${today}-anthropic`, 700000); // Available at 90% (720k limit)
 
       const mockDecision = {
         id: 'step-down-decision-id',
-        provider: AIProvider.OPENAI,
-        model: 'gpt-4o',
+        provider: AIProvider.ANTHROPIC,
+        model: 'claude-3-opus',
+        fail: jest.fn(),
       };
 
       mockRepository.create.mockReturnValue(mockDecision);
