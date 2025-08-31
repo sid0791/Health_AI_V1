@@ -329,7 +329,7 @@ describe('AIMealGenerationService', () => {
           source: 'calculated',
         },
       } as any);
-      glycemicIndexService.calculateGlycemicLoad.mockResolvedValue({
+      glycemicIndexService.calculateGlycemicLoad.mockReturnValue({
         gl: 15,
         gi: 42,
         availableCarbs: 30,

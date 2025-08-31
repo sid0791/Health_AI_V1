@@ -17,10 +17,12 @@ import { MealPlanEntry, MealType } from '../entities/meal-plan-entry.entity';
 
 // Phase 11 Integration: Health Reports
 import { HealthReportsService } from '../../health-reports/services/health-reports.service';
-import { HealthInterpretationService, HealthInterpretation } from '../../health-reports/services/health-interpretation.service';
+import {
+  HealthInterpretationService,
+  HealthInterpretation,
+} from '../../health-reports/services/health-interpretation.service';
 import { StructuredEntityService } from '../../health-reports/services/structured-entity.service';
-import { HealthReport, HealthReportType } from '../../health-reports/entities/health-report.entity';
-import { StructuredEntity } from '../../health-reports/entities/structured-entity.entity';
+import { HealthReport } from '../../health-reports/entities/health-report.entity';
 
 export interface PersonalizedMealPlanRequest {
   userId: string;
@@ -299,7 +301,7 @@ export class AIMealGenerationService {
 
     try {
       // 1. Validate user input and get user context
-      const userContext = await this.buildUserContext(request);
+      await this.buildUserContext(request);
 
       // Phase 11 Integration: Get health context from health reports
       const healthContext = await this.buildHealthContext(request.userId);
@@ -504,7 +506,7 @@ export class AIMealGenerationService {
     try {
       // Get user's health reports
       const healthReports = await this.healthReportsService.findByUserId(userId);
-      
+
       if (!healthReports || healthReports.length === 0) {
         this.logger.debug(`No health reports found for user: ${userId}`);
         return {
@@ -538,7 +540,7 @@ export class AIMealGenerationService {
 
       // Get the latest processed health report
       const latestReport = healthReports
-        .filter(report => report.isProcessed())
+        .filter((report) => report.isProcessed())
         .sort((a, b) => new Date(b.testDate).getTime() - new Date(a.testDate).getTime())[0];
 
       if (!latestReport) {
@@ -586,12 +588,11 @@ export class AIMealGenerationService {
         biomarkers: biomarkerData,
         healthConditions: this.identifyHealthConditions(biomarkerData, interpretation),
         dietaryRecommendations: this.generateDietaryRecommendations(biomarkerData, interpretation),
-        redFlags: interpretation?.redFlags || [],
+        redFlags: this.transformRedFlags(interpretation?.redFlags || []),
       };
 
       this.logger.debug(`Health context built successfully for user: ${userId}`);
       return healthContext;
-
     } catch (error) {
       this.logger.error(`Failed to build health context for user ${userId}: ${error.message}`);
       // Return safe default context on error
@@ -630,12 +631,12 @@ export class AIMealGenerationService {
    */
   private async extractBiomarkerData(healthReportId: string): Promise<any> {
     const entities = await this.structuredEntityService.findByHealthReportId(healthReportId);
-    
+
     const biomarkers: any = {};
 
     for (const entity of entities) {
       const entityName = entity.entityName.toLowerCase();
-      const value = entity.getNumericValue();
+      const value = entity.valueNumeric;
 
       // Blood Sugar / Diabetes markers
       if (entityName.includes('glucose') || entityName.includes('sugar')) {
@@ -643,7 +644,7 @@ export class AIMealGenerationService {
         biomarkers.bloodSugar.value = value;
         biomarkers.bloodSugar.status = this.classifyBloodSugar(value);
       }
-      
+
       if (entityName.includes('hba1c') || entityName.includes('hemoglobin a1c')) {
         if (!biomarkers.bloodSugar) biomarkers.bloodSugar = {};
         biomarkers.bloodSugar.hba1c = value;
@@ -765,10 +766,17 @@ export class AIMealGenerationService {
   private identifyHealthConditions(biomarkers: any, interpretation?: HealthInterpretation): any {
     return {
       diabetes: biomarkers.bloodSugar?.isDiabetic || biomarkers.bloodSugar?.hba1c >= 6.5 || false,
-      prediabetes: (biomarkers.bloodSugar?.hba1c >= 5.7 && biomarkers.bloodSugar?.hba1c < 6.5) || false,
-      highCholesterol: biomarkers.cholesterol?.status === 'high' || biomarkers.cholesterol?.status === 'very_high' || false,
-      hypertension: interpretation?.conditions?.includes('hypertension') || false,
-      fattyLiver: biomarkers.liverFunction?.status === 'elevated' || biomarkers.liverFunction?.status === 'high' || false,
+      prediabetes:
+        (biomarkers.bloodSugar?.hba1c >= 5.7 && biomarkers.bloodSugar?.hba1c < 6.5) || false,
+      highCholesterol:
+        biomarkers.cholesterol?.status === 'high' ||
+        biomarkers.cholesterol?.status === 'very_high' ||
+        false,
+      hypertension: this.detectHypertension(biomarkers, interpretation) || false,
+      fattyLiver:
+        biomarkers.liverFunction?.status === 'elevated' ||
+        biomarkers.liverFunction?.status === 'high' ||
+        false,
       thyroidIssues: biomarkers.thyroid?.status !== 'normal' || false,
       kidneyIssues: biomarkers.kidneyFunction?.status !== 'normal' || false,
       anemia: biomarkers.vitamins?.iron?.status === 'deficient' || false,
@@ -778,18 +786,41 @@ export class AIMealGenerationService {
   /**
    * Generate dietary recommendations based on health data
    */
-  private generateDietaryRecommendations(biomarkers: any, interpretation?: HealthInterpretation): any {
+  private generateDietaryRecommendations(
+    biomarkers: any,
+    interpretation?: HealthInterpretation,
+  ): any {
     return {
-      lowGlycemicIndex: biomarkers.bloodSugar?.isDiabetic || biomarkers.bloodSugar?.status !== 'normal' || false,
-      lowSodium: interpretation?.conditions?.includes('hypertension') || false,
-      lowSaturatedFat: biomarkers.cholesterol?.status === 'high' || biomarkers.cholesterol?.status === 'very_high' || false,
-      highFiber: biomarkers.bloodSugar?.isDiabetic || biomarkers.cholesterol?.status === 'high' || false,
+      lowGlycemicIndex:
+        biomarkers.bloodSugar?.isDiabetic || biomarkers.bloodSugar?.status !== 'normal' || false,
+      lowSodium: this.detectHypertension(biomarkers, interpretation) || false,
+      lowSaturatedFat:
+        biomarkers.cholesterol?.status === 'high' ||
+        biomarkers.cholesterol?.status === 'very_high' ||
+        false,
+      highFiber:
+        biomarkers.bloodSugar?.isDiabetic || biomarkers.cholesterol?.status === 'high' || false,
       increaseIron: biomarkers.vitamins?.iron?.status === 'deficient' || false,
-      increaseB12: biomarkers.vitamins?.vitaminB12?.status === 'deficient' || biomarkers.vitamins?.vitaminB12?.status === 'low' || false,
-      increaseVitaminD: biomarkers.vitamins?.vitaminD?.status === 'deficient' || biomarkers.vitamins?.vitaminD?.status === 'insufficient' || false,
-      limitProtein: biomarkers.kidneyFunction?.status === 'moderate_impairment' || biomarkers.kidneyFunction?.status === 'severe_impairment' || false,
-      heartHealthy: biomarkers.cholesterol?.status === 'high' || biomarkers.cholesterol?.status === 'very_high' || false,
-      liverFriendly: biomarkers.liverFunction?.status === 'elevated' || biomarkers.liverFunction?.status === 'high' || false,
+      increaseB12:
+        biomarkers.vitamins?.vitaminB12?.status === 'deficient' ||
+        biomarkers.vitamins?.vitaminB12?.status === 'low' ||
+        false,
+      increaseVitaminD:
+        biomarkers.vitamins?.vitaminD?.status === 'deficient' ||
+        biomarkers.vitamins?.vitaminD?.status === 'insufficient' ||
+        false,
+      limitProtein:
+        biomarkers.kidneyFunction?.status === 'moderate_impairment' ||
+        biomarkers.kidneyFunction?.status === 'severe_impairment' ||
+        false,
+      heartHealthy:
+        biomarkers.cholesterol?.status === 'high' ||
+        biomarkers.cholesterol?.status === 'very_high' ||
+        false,
+      liverFriendly:
+        biomarkers.liverFunction?.status === 'elevated' ||
+        biomarkers.liverFunction?.status === 'high' ||
+        false,
     };
   }
 
@@ -817,6 +848,69 @@ export class AIMealGenerationService {
     if (value < 3) return 'deficient';
     if (value < 5) return 'low';
     return 'normal';
+  }
+
+  /**
+   * Transform RedFlag array from HealthInterpretation to UserHealthContext format
+   */
+  private transformRedFlags(
+    redFlags: Array<{
+      severity: 'urgent' | 'high' | 'moderate';
+      finding: string;
+      clinicalReason: string;
+      recommendedAction: string;
+      timeframe: 'immediate' | 'within_24h' | 'within_week';
+      specialistConsultation: string | null;
+    }>,
+  ): Array<{
+    severity: 'low' | 'medium' | 'high' | 'urgent';
+    message: string;
+    recommendation: string;
+  }> {
+    return redFlags.map((flag) => ({
+      severity:
+        flag.severity === 'moderate'
+          ? 'medium'
+          : flag.severity === 'high'
+            ? 'high'
+            : flag.severity === 'urgent'
+              ? 'urgent'
+              : 'medium',
+      message: `${flag.finding}: ${flag.clinicalReason}`,
+      recommendation: `${flag.recommendedAction}${flag.specialistConsultation ? ` Consider consultation with ${flag.specialistConsultation}.` : ''}`,
+    }));
+  }
+
+  /**
+   * Detect hypertension from biomarkers and interpretation
+   */
+  private detectHypertension(biomarkers: any, interpretation?: HealthInterpretation): boolean {
+    // Check blood pressure values if available
+    if (biomarkers.bloodPressure) {
+      const systolic = biomarkers.bloodPressure.systolic || 0;
+      const diastolic = biomarkers.bloodPressure.diastolic || 0;
+      return systolic >= 140 || diastolic >= 90;
+    }
+
+    // Check if interpretation mentions hypertension in findings
+    if (interpretation?.overallAssessment?.keyFindings) {
+      return interpretation.overallAssessment.keyFindings.some(
+        (finding) =>
+          finding.toLowerCase().includes('hypertension') ||
+          finding.toLowerCase().includes('high blood pressure'),
+      );
+    }
+
+    // Check if any recommendations mention blood pressure management
+    if (interpretation?.recommendations) {
+      return interpretation.recommendations.some(
+        (rec) =>
+          rec.recommendation.toLowerCase().includes('blood pressure') ||
+          rec.recommendation.toLowerCase().includes('hypertension'),
+      );
+    }
+
+    return false;
   }
 
   private classifyIron(value: number): string {
@@ -852,9 +946,7 @@ export class AIMealGenerationService {
     return 'normal';
   }
 
-  private async generateAIMealPlan(
-    request: PersonalizedMealPlanRequest,
-  ): Promise<any> {
+  private async generateAIMealPlan(request: PersonalizedMealPlanRequest): Promise<any> {
     // Build comprehensive prompt for meal plan generation
     const prompt = this.buildMealPlanPrompt(request);
 
@@ -1104,7 +1196,7 @@ export class AIMealGenerationService {
     let healthSection = '';
     if (request.healthContext?.hasHealthReports) {
       const healthContext = request.healthContext;
-      
+
       healthSection = `
 Health Context (Phase 11 Integration):
 - Has Health Reports: ${healthContext.hasHealthReports}
@@ -1134,9 +1226,9 @@ Health Context (Phase 11 Integration):
 
       // Add health conditions
       const conditions = Object.entries(healthContext.healthConditions)
-        .filter(([_, value]) => value)
-        .map(([key, _]) => key);
-      
+        .filter(([, value]) => value)
+        .map(([key]) => key);
+
       if (conditions.length > 0) {
         healthSection += `
 - Identified Health Conditions: ${conditions.join(', ')}`;
@@ -1144,9 +1236,9 @@ Health Context (Phase 11 Integration):
 
       // Add dietary recommendations
       const recommendations = Object.entries(healthContext.dietaryRecommendations)
-        .filter(([_, value]) => value)
-        .map(([key, _]) => key);
-      
+        .filter(([, value]) => value)
+        .map(([key]) => key);
+
       if (recommendations.length > 0) {
         healthSection += `
 - Dietary Recommendations: ${recommendations.join(', ')}`;
@@ -1154,10 +1246,12 @@ Health Context (Phase 11 Integration):
 
       // Add red flags if any
       if (healthContext.redFlags && healthContext.redFlags.length > 0) {
-        const urgentFlags = healthContext.redFlags.filter(flag => flag.severity === 'urgent' || flag.severity === 'high');
+        const urgentFlags = healthContext.redFlags.filter(
+          (flag) => flag.severity === 'urgent' || flag.severity === 'high',
+        );
         if (urgentFlags.length > 0) {
           healthSection += `
-- IMPORTANT HEALTH FLAGS: ${urgentFlags.map(flag => flag.message).join('; ')}`;
+- IMPORTANT HEALTH FLAGS: ${urgentFlags.map((flag) => flag.message).join('; ')}`;
         }
       }
     } else {
@@ -1214,7 +1308,9 @@ Return the meal plan as a structured JSON with detailed recipes for each day and
 
     // Diabetes/Blood sugar management
     if (healthContext.healthConditions.diabetes || healthContext.healthConditions.prediabetes) {
-      instructions.push('PRIORITIZE LOW GLYCEMIC INDEX foods (GI < 55) and manage glycemic load per meal');
+      instructions.push(
+        'PRIORITIZE LOW GLYCEMIC INDEX foods (GI < 55) and manage glycemic load per meal',
+      );
       instructions.push('Include high-fiber foods and complex carbohydrates');
       instructions.push('Avoid simple sugars and refined carbohydrates');
     }
@@ -1234,13 +1330,17 @@ Return the meal plan as a structured JSON with detailed recipes for each day and
 
     // Liver health
     if (healthContext.healthConditions.fattyLiver) {
-      instructions.push('LIVER-FRIENDLY meals: avoid fried foods, limit fats, include antioxidant-rich foods');
+      instructions.push(
+        'LIVER-FRIENDLY meals: avoid fried foods, limit fats, include antioxidant-rich foods',
+      );
       instructions.push('Include turmeric, green tea, and leafy greens');
     }
 
     // Kidney health
     if (healthContext.healthConditions.kidneyIssues) {
-      instructions.push('KIDNEY-PROTECTIVE diet: moderate protein intake, limit phosphorus and potassium');
+      instructions.push(
+        'KIDNEY-PROTECTIVE diet: moderate protein intake, limit phosphorus and potassium',
+      );
       instructions.push('Avoid processed foods and excessive salt');
     }
 
@@ -1254,17 +1354,23 @@ Return the meal plan as a structured JSON with detailed recipes for each day and
     }
 
     if (healthContext.dietaryRecommendations.increaseIron) {
-      instructions.push('INCLUDE IRON-RICH foods: leafy greens, lentils, lean meats with vitamin C foods');
+      instructions.push(
+        'INCLUDE IRON-RICH foods: leafy greens, lentils, lean meats with vitamin C foods',
+      );
     }
 
     // Thyroid
     if (healthContext.healthConditions.thyroidIssues) {
-      instructions.push('THYROID-SUPPORTIVE foods: iodine-rich foods, selenium sources, avoid excessive soy');
+      instructions.push(
+        'THYROID-SUPPORTIVE foods: iodine-rich foods, selenium sources, avoid excessive soy',
+      );
     }
 
     // General recommendations
     if (healthContext.dietaryRecommendations.lowGlycemicIndex) {
-      instructions.push('EMPHASIZE low-GI alternatives: quinoa over white rice, sweet potato over regular potato');
+      instructions.push(
+        'EMPHASIZE low-GI alternatives: quinoa over white rice, sweet potato over regular potato',
+      );
     }
 
     if (instructions.length === 0) {
@@ -1303,7 +1409,8 @@ Requirements:
 Return a detailed recipe with ingredients, instructions, nutrition facts, and metadata.`;
   }
 
-  private async callAIProvider(routingResult: any, prompt: string): Promise<any> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async callAIProvider(routingResult: any, _prompt: string): Promise<any> {
     // This would make the actual API call to the selected AI provider
     // For now, return a mock response
     return {
@@ -1434,14 +1541,16 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
     return JSON.parse(content);
   }
 
-  private async calculateRecipeNutrition(recipe: any): Promise<any> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async calculateRecipeNutrition(_recipe: any): Promise<any> {
     // Use nutrition service to calculate accurate nutrition
     return {};
   }
 
   private async applyCookingTransformations(
     recipe: any,
-    nutrition: any,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _nutrition: any,
   ): Promise<CelebrityStyleRecipe> {
     // Apply cooking transformations using the cooking transformation service
     return recipe;
@@ -1475,12 +1584,14 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
     return { season: 'summer', month: month + 1 };
   }
 
-  private async getLocalIngredientAvailability(location?: string): Promise<string[]> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async getLocalIngredientAvailability(_location?: string): Promise<string[]> {
     // Would fetch from a database of local ingredient availability
     return ['rice', 'dal', 'onion', 'tomato', 'potato', 'spinach'];
   }
 
-  private async checkIngredientAvailability(ingredients: any[], location: string): Promise<any[]> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async checkIngredientAvailability(ingredients: any[], _location: string): Promise<any[]> {
     // Check ingredient availability and pricing for the location
     return ingredients.map((ingredient) => ({
       ...ingredient,
@@ -1490,8 +1601,10 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
   }
 
   private async generateSubstitutions(
-    availabilityData: any[],
-    budgetConstraints: any,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _availabilityData: any[],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _budgetConstraints: any,
   ): Promise<any[]> {
     // Generate substitution suggestions for cost optimization
     return [];
