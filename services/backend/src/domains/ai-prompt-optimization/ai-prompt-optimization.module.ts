@@ -5,6 +5,7 @@ import { PromptOptimizationService } from './services/prompt-optimization.servic
 import { JsonTemplateLoaderService } from './services/json-template-loader.service';
 import { CostOptimizationService } from './services/cost-optimization.service';
 import { PromptOptimizationController } from './controllers/prompt-optimization.controller';
+import { AIPromptOptimizationController } from './controllers/ai-prompt-optimization.controller';
 
 @Module({
   imports: [
@@ -15,7 +16,10 @@ import { PromptOptimizationController } from './controllers/prompt-optimization.
     JsonTemplateLoaderService,
     CostOptimizationService
   ],
-  controllers: [PromptOptimizationController],
+  controllers: [
+    PromptOptimizationController,
+    AIPromptOptimizationController
+  ],
   exports: [
     PromptOptimizationService,
     JsonTemplateLoaderService,

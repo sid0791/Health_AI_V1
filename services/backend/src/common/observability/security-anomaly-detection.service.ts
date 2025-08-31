@@ -3,7 +3,13 @@ import { ConfigService } from '@nestjs/config';
 
 export interface SecurityEvent {
   id: string;
-  type: 'auth_failure' | 'brute_force' | 'suspicious_ip' | 'data_access' | 'privilege_escalation' | 'unusual_activity';
+  type:
+    | 'auth_failure'
+    | 'brute_force'
+    | 'suspicious_ip'
+    | 'data_access'
+    | 'privilege_escalation'
+    | 'unusual_activity';
   severity: 'low' | 'medium' | 'high' | 'critical';
   timestamp: Date;
   userId?: string;
@@ -39,7 +45,10 @@ export class SecurityAnomalyDetectionService {
   private readonly logger = new Logger(SecurityAnomalyDetectionService.name);
   private readonly securityEvents = new Map<string, SecurityEvent>();
   private readonly ipActivityMap = new Map<string, Array<{ timestamp: number; event: string }>>();
-  private readonly userActivityMap = new Map<string, Array<{ timestamp: number; endpoint: string; success: boolean }>>();
+  private readonly userActivityMap = new Map<
+    string,
+    Array<{ timestamp: number; endpoint: string; success: boolean }>
+  >();
   private readonly anomalyPatterns = new Map<string, AnomalyPattern>();
 
   // Thresholds for anomaly detection
@@ -68,10 +77,10 @@ export class SecurityAnomalyDetectionService {
     metadata: Record<string, any> = {},
     userId?: string,
     userAgent?: string,
-    endpoint?: string
+    endpoint?: string,
   ): string {
     const eventId = this.generateEventId();
-    
+
     const event: SecurityEvent = {
       id: eventId,
       type,
@@ -95,7 +104,7 @@ export class SecurityAnomalyDetectionService {
     this.checkForAnomalies(event);
 
     this.logger.log(`Security event recorded: ${type} from ${ipAddress} (severity: ${severity})`);
-    
+
     // Clean up old events
     this.cleanupOldEvents();
 
@@ -109,7 +118,7 @@ export class SecurityAnomalyDetectionService {
     ipAddress: string,
     userId?: string,
     userAgent?: string,
-    reason: string = 'Invalid credentials'
+    reason: string = 'Invalid credentials',
   ): string {
     return this.recordSecurityEvent(
       'auth_failure',
@@ -119,7 +128,7 @@ export class SecurityAnomalyDetectionService {
       { reason, attempts: this.getRecentAuthFailures(ipAddress) + 1 },
       userId,
       userAgent,
-      '/auth/login'
+      '/auth/login',
     );
   }
 
@@ -131,21 +140,21 @@ export class SecurityAnomalyDetectionService {
     endpoint: string,
     ipAddress: string,
     userAgent?: string,
-    dataType?: string
+    dataType?: string,
   ): string {
     return this.recordSecurityEvent(
       'data_access',
       'high',
       ipAddress,
       `Suspicious data access to ${endpoint}`,
-      { 
+      {
         dataType,
         userAccessPattern: this.getUserAccessPattern(userId),
-        timeOfDay: new Date().getHours()
+        timeOfDay: new Date().getHours(),
       },
       userId,
       userAgent,
-      endpoint
+      endpoint,
     );
   }
 
@@ -156,7 +165,7 @@ export class SecurityAnomalyDetectionService {
     ipAddress: string,
     target: string,
     attemptCount: number,
-    userAgent?: string
+    userAgent?: string,
   ): string {
     return this.recordSecurityEvent(
       'brute_force',
@@ -165,7 +174,7 @@ export class SecurityAnomalyDetectionService {
       `Brute force attack detected against ${target}`,
       { target, attemptCount, blocked: true },
       undefined,
-      userAgent
+      userAgent,
     );
   }
 
@@ -177,7 +186,7 @@ export class SecurityAnomalyDetectionService {
     endpoint: string,
     ipAddress: string,
     attemptedAction: string,
-    userAgent?: string
+    userAgent?: string,
   ): string {
     return this.recordSecurityEvent(
       'privilege_escalation',
@@ -187,7 +196,7 @@ export class SecurityAnomalyDetectionService {
       { attemptedAction, currentRole: 'user', targetRole: 'admin' },
       userId,
       userAgent,
-      endpoint
+      endpoint,
     );
   }
 
@@ -196,22 +205,31 @@ export class SecurityAnomalyDetectionService {
    */
   getSecurityMetrics(): SecurityMetrics {
     const events = Array.from(this.securityEvents.values());
-    
-    const eventsByType = events.reduce((acc, event) => {
-      acc[event.type] = (acc[event.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
 
-    const eventsBySeverity = events.reduce((acc, event) => {
-      acc[event.severity] = (acc[event.severity] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const eventsByType = events.reduce(
+      (acc, event) => {
+        acc[event.type] = (acc[event.type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const eventsBySeverity = events.reduce(
+      (acc, event) => {
+        acc[event.severity] = (acc[event.severity] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Get top source IPs
-    const ipCounts = events.reduce((acc, event) => {
-      acc[event.ipAddress] = (acc[event.ipAddress] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const ipCounts = events.reduce(
+      (acc, event) => {
+        acc[event.ipAddress] = (acc[event.ipAddress] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     const topSources = Object.entries(ipCounts)
       .map(([ip, count]) => ({
@@ -225,13 +243,15 @@ export class SecurityAnomalyDetectionService {
     // Recent events (last 24 hours)
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const recentEvents = events
-      .filter(event => event.timestamp >= yesterday)
+      .filter((event) => event.timestamp >= yesterday)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, 50);
 
     // Calculate false positive rate
-    const totalResolved = events.filter(e => e.status === 'resolved' || e.status === 'false_positive').length;
-    const falsePositives = events.filter(e => e.status === 'false_positive').length;
+    const totalResolved = events.filter(
+      (e) => e.status === 'resolved' || e.status === 'false_positive',
+    ).length;
+    const falsePositives = events.filter((e) => e.status === 'false_positive').length;
     const falsePositiveRate = totalResolved > 0 ? (falsePositives / totalResolved) * 100 : 0;
 
     return {
@@ -240,7 +260,7 @@ export class SecurityAnomalyDetectionService {
       eventsBySeverity,
       topSources,
       recentEvents,
-      anomaliesDetected: events.filter(e => e.type === 'unusual_activity').length,
+      anomaliesDetected: events.filter((e) => e.type === 'unusual_activity').length,
       falsePositiveRate: Math.round(falsePositiveRate * 100) / 100,
     };
   }
@@ -261,24 +281,23 @@ export class SecurityAnomalyDetectionService {
 
     // Apply filters
     if (criteria.type) {
-      events = events.filter(e => e.type === criteria.type);
+      events = events.filter((e) => e.type === criteria.type);
     }
     if (criteria.severity) {
-      events = events.filter(e => e.severity === criteria.severity);
+      events = events.filter((e) => e.severity === criteria.severity);
     }
     if (criteria.ipAddress) {
-      events = events.filter(e => e.ipAddress === criteria.ipAddress);
+      events = events.filter((e) => e.ipAddress === criteria.ipAddress);
     }
     if (criteria.userId) {
-      events = events.filter(e => e.userId === criteria.userId);
+      events = events.filter((e) => e.userId === criteria.userId);
     }
     if (criteria.status) {
-      events = events.filter(e => e.status === criteria.status);
+      events = events.filter((e) => e.status === criteria.status);
     }
     if (criteria.timeRange) {
-      events = events.filter(e => 
-        e.timestamp >= criteria.timeRange!.start && 
-        e.timestamp <= criteria.timeRange!.end
+      events = events.filter(
+        (e) => e.timestamp >= criteria.timeRange!.start && e.timestamp <= criteria.timeRange!.end,
       );
     }
 
@@ -324,25 +343,29 @@ export class SecurityAnomalyDetectionService {
   } {
     const events = Array.from(this.securityEvents.values());
     const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentEvents = events.filter(e => e.timestamp >= last24Hours);
+    const recentEvents = events.filter((e) => e.timestamp >= last24Hours);
 
     const summary = {
       totalEvents: recentEvents.length,
-      criticalEvents: recentEvents.filter(e => e.severity === 'critical').length,
-      blockedIPs: new Set(events.filter(e => e.type === 'brute_force').map(e => e.ipAddress)).size,
-      suspiciousUsers: new Set(events.filter(e => e.userId).map(e => e.userId)).size,
+      criticalEvents: recentEvents.filter((e) => e.severity === 'critical').length,
+      blockedIPs: new Set(events.filter((e) => e.type === 'brute_force').map((e) => e.ipAddress))
+        .size,
+      suspiciousUsers: new Set(events.filter((e) => e.userId).map((e) => e.userId)).size,
     };
 
     const recentThreats = recentEvents
-      .filter(e => e.severity === 'high' || e.severity === 'critical')
+      .filter((e) => e.severity === 'high' || e.severity === 'critical')
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, 10);
 
     // Top threat types
-    const threatCounts = recentEvents.reduce((acc, event) => {
-      acc[event.type] = (acc[event.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const threatCounts = recentEvents.reduce(
+      (acc, event) => {
+        acc[event.type] = (acc[event.type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     const topThreats = Object.entries(threatCounts)
       .map(([type, count]) => ({
@@ -363,17 +386,22 @@ export class SecurityAnomalyDetectionService {
     for (let i = 0; i < 24; i++) {
       const hourStart = new Date(Date.now() - (24 - i) * 60 * 60 * 1000);
       const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000);
-      
-      const hourEvents = recentEvents.filter(e => 
-        e.timestamp >= hourStart && e.timestamp < hourEnd
+
+      const hourEvents = recentEvents.filter(
+        (e) => e.timestamp >= hourStart && e.timestamp < hourEnd,
       );
 
-      const criticalCount = hourEvents.filter(e => e.severity === 'critical').length;
-      const highCount = hourEvents.filter(e => e.severity === 'high').length;
-      
-      const severity = criticalCount > 0 ? 'critical' : 
-                      highCount > 0 ? 'high' : 
-                      hourEvents.length > 10 ? 'medium' : 'low';
+      const criticalCount = hourEvents.filter((e) => e.severity === 'critical').length;
+      const highCount = hourEvents.filter((e) => e.severity === 'high').length;
+
+      const severity =
+        criticalCount > 0
+          ? 'critical'
+          : highCount > 0
+            ? 'high'
+            : hourEvents.length > 10
+              ? 'medium'
+              : 'low';
 
       timelineData.push({
         hour: i,
@@ -454,7 +482,7 @@ export class SecurityAnomalyDetectionService {
     const cutoff = now - 24 * 60 * 60 * 1000;
     this.ipActivityMap.set(
       event.ipAddress,
-      ipActivity.filter(activity => activity.timestamp > cutoff)
+      ipActivity.filter((activity) => activity.timestamp > cutoff),
     );
 
     // Update user activity
@@ -472,7 +500,7 @@ export class SecurityAnomalyDetectionService {
       // Clean old activity
       this.userActivityMap.set(
         event.userId,
-        userActivity.filter(activity => activity.timestamp > cutoff)
+        userActivity.filter((activity) => activity.timestamp > cutoff),
       );
     }
   }
@@ -498,12 +526,12 @@ export class SecurityAnomalyDetectionService {
           'medium',
           event.ipAddress,
           `Unusual activity pattern detected for user ${event.userId}`,
-          { 
+          {
             uniqueEndpoints: userActivity.uniqueEndpoints,
             requestRate: userActivity.requestRate,
-            failureRate: userActivity.failureRate
+            failureRate: userActivity.failureRate,
           },
-          event.userId
+          event.userId,
         );
       }
     }
@@ -511,16 +539,16 @@ export class SecurityAnomalyDetectionService {
     // Check for high request rate from IP
     const ipActivity = this.ipActivityMap.get(event.ipAddress) || [];
     const recentRequests = ipActivity.filter(
-      activity => activity.timestamp > Date.now() - 3600000 // Last hour
+      (activity) => activity.timestamp > Date.now() - 3600000, // Last hour
     );
-    
+
     if (recentRequests.length > this.thresholds.requests_per_ip) {
       this.recordSecurityEvent(
         'suspicious_ip',
         'medium',
         event.ipAddress,
         `High request rate detected from IP ${event.ipAddress}`,
-        { requestCount: recentRequests.length, hourlyRate: recentRequests.length }
+        { requestCount: recentRequests.length, hourlyRate: recentRequests.length },
       );
     }
   }
@@ -530,9 +558,12 @@ export class SecurityAnomalyDetectionService {
    */
   private startAnomalyDetection(): void {
     // Run anomaly detection every 5 minutes
-    setInterval(() => {
-      this.runAnomalyDetection();
-    }, 5 * 60 * 1000);
+    setInterval(
+      () => {
+        this.runAnomalyDetection();
+      },
+      5 * 60 * 1000,
+    );
 
     this.logger.log('Started anomaly detection background process');
   }
@@ -568,11 +599,12 @@ export class SecurityAnomalyDetectionService {
   private getRecentAuthFailures(ipAddress: string): number {
     const events = Array.from(this.securityEvents.values());
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-    
-    return events.filter(event =>
-      event.type === 'auth_failure' &&
-      event.ipAddress === ipAddress &&
-      event.timestamp >= fifteenMinutesAgo
+
+    return events.filter(
+      (event) =>
+        event.type === 'auth_failure' &&
+        event.ipAddress === ipAddress &&
+        event.timestamp >= fifteenMinutesAgo,
     ).length;
   }
 
@@ -585,13 +617,11 @@ export class SecurityAnomalyDetectionService {
     failureRate: number;
   } {
     const userActivity = this.userActivityMap.get(userId) || [];
-    const lastHour = userActivity.filter(
-      activity => activity.timestamp > Date.now() - 3600000
-    );
+    const lastHour = userActivity.filter((activity) => activity.timestamp > Date.now() - 3600000);
 
-    const uniqueEndpoints = new Set(lastHour.map(a => a.endpoint)).size;
+    const uniqueEndpoints = new Set(lastHour.map((a) => a.endpoint)).size;
     const requestRate = lastHour.length;
-    const failures = lastHour.filter(a => !a.success).length;
+    const failures = lastHour.filter((a) => !a.success).length;
     const failureRate = lastHour.length > 0 ? (failures / lastHour.length) * 100 : 0;
 
     return { uniqueEndpoints, requestRate, failureRate };
@@ -601,9 +631,9 @@ export class SecurityAnomalyDetectionService {
    * Get IP severity based on events
    */
   private getIPSeverity(ip: string, events: SecurityEvent[]): string {
-    const ipEvents = events.filter(e => e.ipAddress === ip);
-    const criticalCount = ipEvents.filter(e => e.severity === 'critical').length;
-    const highCount = ipEvents.filter(e => e.severity === 'high').length;
+    const ipEvents = events.filter((e) => e.ipAddress === ip);
+    const criticalCount = ipEvents.filter((e) => e.severity === 'critical').length;
+    const highCount = ipEvents.filter((e) => e.severity === 'high').length;
 
     if (criticalCount > 0) return 'critical';
     if (highCount > 2) return 'high';
@@ -619,14 +649,15 @@ export class SecurityAnomalyDetectionService {
     const sixHoursAgo = now - 6 * 60 * 60 * 1000;
     const twelveHoursAgo = now - 12 * 60 * 60 * 1000;
 
-    const recent = recentEvents.filter(e => 
-      e.type === type && e.timestamp.getTime() > sixHoursAgo
+    const recent = recentEvents.filter(
+      (e) => e.type === type && e.timestamp.getTime() > sixHoursAgo,
     ).length;
-    
-    const previous = recentEvents.filter(e => 
-      e.type === type && 
-      e.timestamp.getTime() > twelveHoursAgo && 
-      e.timestamp.getTime() <= sixHoursAgo
+
+    const previous = recentEvents.filter(
+      (e) =>
+        e.type === type &&
+        e.timestamp.getTime() > twelveHoursAgo &&
+        e.timestamp.getTime() <= sixHoursAgo,
     ).length;
 
     if (recent > previous * 1.5) return 'increasing';
@@ -646,7 +677,7 @@ export class SecurityAnomalyDetectionService {
    */
   private cleanupOldEvents(): void {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    
+
     for (const [eventId, event] of this.securityEvents.entries()) {
       if (event.timestamp < thirtyDaysAgo) {
         this.securityEvents.delete(eventId);
@@ -662,5 +693,26 @@ export class SecurityAnomalyDetectionService {
     this.ipActivityMap.clear();
     this.userActivityMap.clear();
     this.logger.log('Security anomaly detection service reset');
+  }
+
+  /**
+   * Get user access pattern for analysis
+   */
+  private getUserAccessPattern(userId: string): any {
+    const userActivity = this.userActivityMap.get(userId) || [];
+    const recentActivity = userActivity.filter(
+      (activity) => Date.now() - activity.timestamp < 24 * 60 * 60 * 1000, // Last 24 hours
+    );
+
+    return {
+      requestCount: recentActivity.length,
+      averageInterval:
+        recentActivity.length > 1
+          ? (recentActivity[recentActivity.length - 1].timestamp - recentActivity[0].timestamp) /
+            recentActivity.length
+          : 0,
+      uniqueEndpoints: new Set(recentActivity.map((a) => a.endpoint)).size,
+      lastActivity: recentActivity[recentActivity.length - 1]?.timestamp || 0,
+    };
   }
 }

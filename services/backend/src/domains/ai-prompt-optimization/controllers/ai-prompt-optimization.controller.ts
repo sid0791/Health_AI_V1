@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User as CurrentUser } from '../../auth/decorators/user.decorator';
 import { User } from '../../users/entities/user.entity';
 import { AIPromptOptimizationService } from '../services/ai-prompt-optimization.service';
+import { CostOptimizationService } from '../services/cost-optimization.service';
 import { PromptCategory } from '../entities/ai-prompt-template.entity';
 
 @Controller('ai-prompt-optimization')
@@ -20,6 +21,7 @@ import { PromptCategory } from '../entities/ai-prompt-template.entity';
 export class AIPromptOptimizationController {
   constructor(
     private readonly promptOptimizationService: AIPromptOptimizationService,
+    private readonly costOptimizationService: CostOptimizationService,
   ) {}
 
   @Post('execute')
@@ -266,5 +268,53 @@ export class AIPromptOptimizationController {
     const successMultiplier = summary.successRate;
     
     return Math.min(100, Math.round(efficiencyBase * successMultiplier * 10));
+  }
+
+  @Get('enhanced-cost-optimization')
+  async getEnhancedCostOptimization(
+    @CurrentUser() user: User,
+  ): Promise<any> {
+    // Get enhanced optimization metrics targeting >80% savings
+    const enhancedMetrics = this.costOptimizationService.getEnhancedOptimizationMetrics();
+    const userMetrics = this.costOptimizationService.getCostMetrics(user.id);
+    
+    return {
+      optimization: {
+        current: `${enhancedMetrics.currentOptimizationRate}%`,
+        target: `${enhancedMetrics.targetOptimizationRate}%`,
+        status: enhancedMetrics.currentOptimizationRate >= 80 ? 'TARGET_ACHIEVED' : 'OPTIMIZING',
+        improvement: enhancedMetrics.currentOptimizationRate - 60, // Improvement from baseline 60%
+      },
+      metrics: {
+        cacheHitRate: `${enhancedMetrics.cacheHitRate}%`,
+        deduplicationRate: `${enhancedMetrics.deduplicationRate}%`,
+        batchingEfficiency: `${enhancedMetrics.batchingEfficiency}%`,
+        totalCostSaved: `$${enhancedMetrics.totalCostSaved.toFixed(4)}`,
+      },
+      userStats: {
+        totalRequests: userMetrics.totalRequests,
+        totalCost: `$${userMetrics.totalCost.toFixed(4)}`,
+        dailyCost: `$${userMetrics.dailyCost.toFixed(4)}`,
+        monthlyCost: `$${userMetrics.monthlyCost.toFixed(4)}`,
+        projectedMonthlyCost: `$${userMetrics.projectedMonthlyCost.toFixed(4)}`,
+        averageCostPerRequest: `$${userMetrics.averageCostPerRequest.toFixed(6)}`,
+      },
+      strategies: {
+        freeModelPrioritization: 'ENABLED - Free models prioritized when accuracy within 5%',
+        intelligentCaching: 'ENABLED - 1 hour cache for similar requests',
+        requestDeduplication: 'ENABLED - 80% similarity threshold',
+        batchProcessing: 'ENHANCED - 15 request batches, 20s timeout',
+        accuracyOptimization: 'ENABLED - 5% rule from PROMPT_README.md implemented',
+      },
+      recommendations: enhancedMetrics.recommendations,
+      summary: {
+        achievement: enhancedMetrics.currentOptimizationRate >= 80 ? 
+          '🎉 Target achieved! Cost optimization >80% reached' : 
+          `⚡ ${(80 - enhancedMetrics.currentOptimizationRate).toFixed(1)}% more optimization needed to reach 80% target`,
+        nextSteps: enhancedMetrics.currentOptimizationRate >= 80 ? 
+          ['Monitor and maintain current optimization level', 'Explore additional free model providers'] :
+          enhancedMetrics.recommendations.slice(0, 3),
+      }
+    };
   }
 }

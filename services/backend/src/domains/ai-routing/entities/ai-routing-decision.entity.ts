@@ -21,6 +21,7 @@ export enum AIProvider {
   TOGETHER = 'together',
   HUGGINGFACE = 'huggingface',
   GROQ = 'groq',
+  OLLAMA = 'ollama',
   SELF_HOSTED = 'self_hosted',
 }
 
@@ -43,10 +44,18 @@ export enum AIModel {
   // Open Source Models
   LLAMA_3_1_70B = 'llama-3.1-70b',
   LLAMA_3_1_8B = 'llama-3.1-8b',
+  LLAMA_3_1_70B_INSTRUCT = 'llama-3.1-70b-instruct',
+  LLAMA_3_1_8B_INSTANT = 'llama-3.1-8b-instant',
   MIXTRAL_8X22B = 'mixtral-8x22b',
   MIXTRAL_8X7B = 'mixtral-8x7b',
   QWEN_2_72B = 'qwen-2-72b',
   MISTRAL_7B = 'mistral-7b',
+  DEEPSEEK_CODER_V2 = 'deepseek-coder-v2',
+  
+  // Local/Ollama Models
+  OLLAMA_LLAMA3_8B = 'llama3.1:8b',
+  OLLAMA_CODELLAMA_13B = 'codellama:13b',
+  OLLAMA_MISTRAL_7B = 'mistral:7b',
 }
 
 export enum RequestType {
