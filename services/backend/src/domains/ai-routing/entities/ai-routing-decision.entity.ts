@@ -26,20 +26,27 @@ export enum AIProvider {
 }
 
 export enum AIModel {
-  // OpenAI Models
-  GPT_4_TURBO = 'gpt-4-turbo',
-  GPT_4O = 'gpt-4o',
+  // OpenAI Models (Latest)
+  GPT_4O = 'gpt-4o', // Latest multimodal model - best overall performance
+  O1_PREVIEW = 'o1-preview', // Reasoning model - excellent for complex health analysis
+  O1_MINI = 'o1-mini', // Faster reasoning model
+  GPT_4_TURBO = 'gpt-4-turbo', // Previous generation but still strong
+  GPT_4O_MINI = 'gpt-4o-mini', // Cost-effective alternative
   GPT_4 = 'gpt-4',
   GPT_3_5_TURBO = 'gpt-3.5-turbo',
 
-  // Anthropic Models
+  // Anthropic Models (Latest)
+  CLAUDE_3_5_SONNET = 'claude-3.5-sonnet', // Often outperforms GPT-4 in benchmarks
+  CLAUDE_3_5_HAIKU = 'claude-3.5-haiku', // Fast and cost-effective
   CLAUDE_3_OPUS = 'claude-3-opus',
   CLAUDE_3_SONNET = 'claude-3-sonnet',
   CLAUDE_3_HAIKU = 'claude-3-haiku',
 
-  // Google Models
+  // Google Models (Latest)
+  GEMINI_2_0_FLASH = 'gemini-2.0-flash', // Latest Google model (Dec 2024)
+  GEMINI_1_5_PRO = 'gemini-1.5-pro', // Strong performance, large context
+  GEMINI_2_5_PRO = 'gemini-2.5-pro', // Legacy naming
   GEMINI_PRO = 'gemini-pro',
-  GEMINI_2_5_PRO = 'gemini-2.5-pro',
 
   // Open Source Models
   LLAMA_3_1_70B = 'llama-3.1-70b',
