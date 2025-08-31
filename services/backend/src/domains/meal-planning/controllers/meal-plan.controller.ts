@@ -47,12 +47,14 @@ export class MealPlanController {
   @ApiOperation({ summary: 'Get all meal plans for the current user' })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status' })
   @ApiQuery({ name: 'planType', required: false, description: 'Filter by plan type' })
-  @ApiQuery({ name: 'active', required: false, type: Boolean, description: 'Filter by active status' })
+  @ApiQuery({
+    name: 'active',
+    required: false,
+    type: Boolean,
+    description: 'Filter by active status',
+  })
   @ApiResponse({ status: 200, description: 'Meal plans retrieved successfully' })
-  async findAll(
-    @Query() query: MealPlanQueryDto,
-    @Req() req: Request,
-  ): Promise<MealPlan[]> {
+  async findAll(@Query() query: MealPlanQueryDto, @Req() req: Request): Promise<MealPlan[]> {
     const userId = req.user?.['sub'];
     if (!userId) {
       throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
@@ -84,8 +86,8 @@ export class MealPlanController {
   }
 
   @Get('today-meals')
-  @ApiOperation({ summary: 'Get today\'s meals' })
-  @ApiResponse({ status: 200, description: 'Today\'s meals retrieved successfully' })
+  @ApiOperation({ summary: "Get today's meals" })
+  @ApiResponse({ status: 200, description: "Today's meals retrieved successfully" })
   async getTodayMeals(@Req() req: Request): Promise<any> {
     const userId = req.user?.['sub'];
     if (!userId) {

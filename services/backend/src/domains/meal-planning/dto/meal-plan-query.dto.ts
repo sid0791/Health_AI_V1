@@ -24,7 +24,12 @@ export class MealPlanQueryDto {
   @IsBoolean()
   active?: boolean;
 
-  @ApiProperty({ description: 'Number of results to return', required: false, minimum: 1, maximum: 100 })
+  @ApiProperty({
+    description: 'Number of results to return',
+    required: false,
+    minimum: 1,
+    maximum: 100,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)

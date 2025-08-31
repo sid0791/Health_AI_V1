@@ -62,7 +62,11 @@ export class AIRoutingController {
   @Post('route')
   @ApiOperation({ summary: 'Route AI request to optimal provider' })
   @ApiBody({ type: AIRoutingRequestDto })
-  @ApiResponse({ status: 200, description: 'Request routed successfully', type: AIRoutingResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Request routed successfully',
+    type: AIRoutingResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid request' })
   @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
   async routeRequest(
@@ -175,7 +179,9 @@ export class AIRoutingController {
   @ApiResponse({ status: 200, description: 'Analytics retrieved successfully' })
   async getAnalytics(@Query() query: AnalyticsQueryDto): Promise<any> {
     try {
-      const startDate = query.startDate ? new Date(query.startDate) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const startDate = query.startDate
+        ? new Date(query.startDate)
+        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const endDate = query.endDate ? new Date(query.endDate) : new Date();
 
       const analytics = await this.aiRoutingService.getRoutingAnalytics(startDate, endDate);

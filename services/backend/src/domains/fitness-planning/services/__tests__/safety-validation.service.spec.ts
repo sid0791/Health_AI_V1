@@ -24,12 +24,21 @@ describe('SafetyValidationService', () => {
     contraindications: ['lower back pain'],
     injuryWarnings: ['knee strain'],
     isSuitableForLevel: jest.fn().mockReturnValue(true),
+    isAvailableForEquipment: jest.fn().mockReturnValue(true),
+    isSafeForConditions: jest.fn().mockReturnValue(true),
+    incrementUsage: jest.fn(),
+    updateRating: jest.fn(),
+    approve: jest.fn(),
+    getEstimatedCaloriesBurn: jest.fn().mockReturnValue(200),
+    getRecommendedSets: jest.fn().mockReturnValue(3),
+    getRecommendedReps: jest.fn().mockReturnValue({ min: 8, max: 12 }),
     isActive: true,
     isApproved: true,
     usageCount: 100,
     totalRatings: 10,
     createdAt: new Date(),
     updatedAt: new Date(),
+    tags: [],
   } as any;
 
   const mockUserProfile = {

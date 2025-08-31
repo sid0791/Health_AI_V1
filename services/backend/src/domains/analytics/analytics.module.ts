@@ -7,9 +7,7 @@ import { AnalyticsController } from './controllers/analytics.controller';
 import { AnalyticsService } from './services/analytics.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([MealLog, MealPlan, User]),
-  ],
+  imports: [TypeOrmModule.forFeature([MealLog, MealPlan, User])],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
   exports: [AnalyticsService],

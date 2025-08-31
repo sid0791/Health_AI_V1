@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsEnum, IsArray, IsDateString, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  IsEnum,
+  IsArray,
+  IsDateString,
+  Min,
+  Max,
+} from 'class-validator';
 import { MealPlanType } from '../entities/meal-plan.entity';
 
 export class CreateMealPlanDto {
@@ -13,10 +24,10 @@ export class CreateMealPlanDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ 
-    description: 'Type of meal plan', 
+  @ApiProperty({
+    description: 'Type of meal plan',
     enum: MealPlanType,
-    example: MealPlanType.WEIGHT_LOSS 
+    example: MealPlanType.WEIGHT_LOSS,
   })
   @IsEnum(MealPlanType)
   planType: MealPlanType;
@@ -35,12 +46,21 @@ export class CreateMealPlanDto {
   @Max(30)
   durationDays: number;
 
-  @ApiProperty({ description: 'Whether to activate this plan immediately', required: false, default: false })
+  @ApiProperty({
+    description: 'Whether to activate this plan immediately',
+    required: false,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiProperty({ description: 'Target calories per day', example: 2000, minimum: 800, maximum: 5000 })
+  @ApiProperty({
+    description: 'Target calories per day',
+    example: 2000,
+    minimum: 800,
+    maximum: 5000,
+  })
   @IsNumber()
   @Min(800)
   @Max(5000)
@@ -86,25 +106,41 @@ export class CreateMealPlanDto {
   @Max(5)
   skillLevelRequired?: number;
 
-  @ApiProperty({ description: 'Dietary restrictions', required: false, example: ['vegetarian', 'gluten-free'] })
+  @ApiProperty({
+    description: 'Dietary restrictions',
+    required: false,
+    example: ['vegetarian', 'gluten-free'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   dietaryRestrictions?: string[];
 
-  @ApiProperty({ description: 'Cuisine preferences', required: false, example: ['indian', 'mediterranean'] })
+  @ApiProperty({
+    description: 'Cuisine preferences',
+    required: false,
+    example: ['indian', 'mediterranean'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   cuisinePreferences?: string[];
 
-  @ApiProperty({ description: 'Ingredients to avoid', required: false, example: ['peanuts', 'shellfish'] })
+  @ApiProperty({
+    description: 'Ingredients to avoid',
+    required: false,
+    example: ['peanuts', 'shellfish'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   avoidedIngredients?: string[];
 
-  @ApiProperty({ description: 'Preferred ingredients', required: false, example: ['quinoa', 'avocado'] })
+  @ApiProperty({
+    description: 'Preferred ingredients',
+    required: false,
+    example: ['quinoa', 'avocado'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

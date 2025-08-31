@@ -15,7 +15,10 @@ export class MealPlanEntryService {
     private mealPlanRepository: Repository<MealPlan>,
   ) {}
 
-  async create(createMealPlanEntryDto: CreateMealPlanEntryDto, userId: string): Promise<MealPlanEntry> {
+  async create(
+    createMealPlanEntryDto: CreateMealPlanEntryDto,
+    userId: string,
+  ): Promise<MealPlanEntry> {
     // Verify that the meal plan belongs to the user
     const mealPlan = await this.mealPlanRepository.findOne({
       where: { id: createMealPlanEntryDto.mealPlanId, userId },
@@ -32,7 +35,7 @@ export class MealPlanEntryService {
   async findByMealPlan(
     mealPlanId: string,
     userId: string,
-    filters?: { dayNumber?: number; mealType?: string }
+    filters?: { dayNumber?: number; mealType?: string },
   ): Promise<MealPlanEntry[]> {
     // Verify that the meal plan belongs to the user
     const mealPlan = await this.mealPlanRepository.findOne({
@@ -44,11 +47,11 @@ export class MealPlanEntryService {
     }
 
     const where: any = { mealPlanId };
-    
+
     if (filters?.dayNumber) {
       where.dayNumber = filters.dayNumber;
     }
-    
+
     if (filters?.mealType) {
       where.mealType = filters.mealType;
     }
@@ -73,7 +76,11 @@ export class MealPlanEntryService {
     return entry;
   }
 
-  async update(id: string, updateMealPlanEntryDto: UpdateMealPlanEntryDto, userId: string): Promise<MealPlanEntry> {
+  async update(
+    id: string,
+    updateMealPlanEntryDto: UpdateMealPlanEntryDto,
+    userId: string,
+  ): Promise<MealPlanEntry> {
     const existingEntry = await this.findOne(id, userId);
     if (!existingEntry) {
       throw new NotFoundException('Meal plan entry not found');
@@ -83,7 +90,12 @@ export class MealPlanEntryService {
     return this.findOne(id, userId);
   }
 
-  async markCompleted(id: string, userId: string, rating?: number, feedback?: string): Promise<MealPlanEntry> {
+  async markCompleted(
+    id: string,
+    userId: string,
+    rating?: number,
+    feedback?: string,
+  ): Promise<MealPlanEntry> {
     const entry = await this.findOne(id, userId);
     if (!entry) {
       throw new NotFoundException('Meal plan entry not found');
@@ -91,7 +103,7 @@ export class MealPlanEntryService {
 
     entry.markAsCompleted(rating, feedback);
     await this.mealPlanEntryRepository.save(entry);
-    
+
     return entry;
   }
 
@@ -103,11 +115,16 @@ export class MealPlanEntryService {
 
     entry.markAsSkipped(reason);
     await this.mealPlanEntryRepository.save(entry);
-    
+
     return entry;
   }
 
-  async substitute(id: string, userId: string, newRecipeId: string, reason?: string): Promise<MealPlanEntry> {
+  async substitute(
+    id: string,
+    userId: string,
+    newRecipeId: string,
+    reason?: string,
+  ): Promise<MealPlanEntry> {
     const entry = await this.findOne(id, userId);
     if (!entry) {
       throw new NotFoundException('Meal plan entry not found');
@@ -115,11 +132,15 @@ export class MealPlanEntryService {
 
     entry.substitute(newRecipeId, reason);
     await this.mealPlanEntryRepository.save(entry);
-    
+
     return this.findOne(id, userId);
   }
 
-  async updatePortionSize(id: string, userId: string, newPortionSize: number): Promise<MealPlanEntry> {
+  async updatePortionSize(
+    id: string,
+    userId: string,
+    newPortionSize: number,
+  ): Promise<MealPlanEntry> {
     const entry = await this.findOne(id, userId);
     if (!entry) {
       throw new NotFoundException('Meal plan entry not found');
@@ -131,7 +152,7 @@ export class MealPlanEntryService {
 
     entry.updatePortionSize(newPortionSize);
     await this.mealPlanEntryRepository.save(entry);
-    
+
     return entry;
   }
 
@@ -145,17 +166,20 @@ export class MealPlanEntryService {
   }
 
   // Helper methods for analytics and reporting
-  async getCompletionStats(mealPlanId: string, userId: string): Promise<{
+  async getCompletionStats(
+    mealPlanId: string,
+    userId: string,
+  ): Promise<{
     total: number;
     completed: number;
     skipped: number;
     remaining: number;
   }> {
     const entries = await this.findByMealPlan(mealPlanId, userId);
-    
+
     const total = entries.length;
-    const completed = entries.filter(entry => entry.status === MealEntryStatus.CONSUMED).length;
-    const skipped = entries.filter(entry => entry.status === MealEntryStatus.SKIPPED).length;
+    const completed = entries.filter((entry) => entry.status === MealEntryStatus.CONSUMED).length;
+    const skipped = entries.filter((entry) => entry.status === MealEntryStatus.SKIPPED).length;
     const remaining = total - completed - skipped;
 
     return { total, completed, skipped, remaining };

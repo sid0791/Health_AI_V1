@@ -66,10 +66,12 @@ export class AIRoutingWebhookController {
 
       // Process content through DLP
       const dlpResult = await this.dlpService.processText(payload.content);
-      
+
       // Log DLP results
       if (dlpResult.riskScore > 50) {
-        this.logger.warn(`High risk content detected (score: ${dlpResult.riskScore}): ${dlpResult.redactedFields.join(', ')}`);
+        this.logger.warn(
+          `High risk content detected (score: ${dlpResult.riskScore}): ${dlpResult.redactedFields.join(', ')}`,
+        );
       }
 
       // Create routing request
@@ -162,10 +164,11 @@ export class AIRoutingWebhookController {
   @ApiOperation({ summary: 'Webhook for quota threshold alerts' })
   @ApiHeader({ name: 'X-N8N-Signature', description: 'Webhook signature for verification' })
   async handleQuotaAlertWebhook(
-    @Body() payload: { 
-      provider: string; 
-      quotaUsed: number; 
-      quotaLimit: number; 
+    @Body()
+    payload: {
+      provider: string;
+      quotaUsed: number;
+      quotaLimit: number;
       percentage: number;
       severity: 'warning' | 'critical';
     },
@@ -177,7 +180,9 @@ export class AIRoutingWebhookController {
         throw new HttpException('Invalid webhook signature', HttpStatus.UNAUTHORIZED);
       }
 
-      this.logger.warn(`Quota alert: ${payload.provider} at ${payload.percentage}% (${payload.severity})`);
+      this.logger.warn(
+        `Quota alert: ${payload.provider} at ${payload.percentage}% (${payload.severity})`,
+      );
 
       // Implement quota alert handling:
       // 1. Send notifications to administrators
@@ -205,7 +210,8 @@ export class AIRoutingWebhookController {
   @ApiOperation({ summary: 'Webhook for audit log entries from n8n' })
   @ApiHeader({ name: 'X-N8N-Signature', description: 'Webhook signature for verification' })
   async handleAuditWebhook(
-    @Body() payload: {
+    @Body()
+    payload: {
       event: string;
       timestamp: string;
       details: Record<string, any>;
@@ -259,10 +265,10 @@ export class AIRoutingWebhookController {
         .digest('hex');
 
       const providedSignature = signature?.replace('sha256=', '') || '';
-      
+
       return crypto.timingSafeEqual(
         Buffer.from(expectedSignature, 'hex'),
-        Buffer.from(providedSignature, 'hex')
+        Buffer.from(providedSignature, 'hex'),
       );
     } catch (error) {
       this.logger.error('Signature verification failed', error);
