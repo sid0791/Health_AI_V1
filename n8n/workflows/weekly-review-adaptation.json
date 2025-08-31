@@ -1,0 +1,434 @@
+{
+  "name": "Weekly Review and Adaptation Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Weekly Schedule (Mondays 6AM)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/users/active",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-active-users",
+      "name": "Get Active Users",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      },
+      "id": "split-users",
+      "name": "Split into Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/users/{{$json.userId}}/logs/week",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "endDate",
+              "value": "={{new Date().toISOString().split('T')[0]}}"
+            },
+            {
+              "name": "includeMeals",
+              "value": "true"
+            },
+            {
+              "name": "includeExercise",
+              "value": "true"
+            },
+            {
+              "name": "includeWeight",
+              "value": "true"
+            },
+            {
+              "name": "includeWater",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ingest-user-logs",
+      "name": "Ingest User Logs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "analyze-adherence",
+      "name": "Analyze Adherence",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "code": "// Analyze user adherence and detect patterns\nconst userData = $('Split into Batches').first().json;\nconst weeklyLogs = $input.first().json;\n\n// Calculate adherence metrics\nfunction calculateAdherence(logs, targets) {\n  if (!logs || !targets) return { overall: 0, details: {} };\n  \n  let adherenceScores = {\n    meals: 0,\n    calories: 0,\n    protein: 0,\n    exercise: 0,\n    water: 0\n  };\n  \n  // Meal logging adherence (target: 3 meals/day = 21/week)\n  const mealCount = logs.meals ? logs.meals.length : 0;\n  adherenceScores.meals = Math.min(mealCount / 21, 1) * 100;\n  \n  // Calorie adherence (within 20% of target)\n  if (logs.nutrition && logs.nutrition.averageCalories && targets.calories) {\n    const calorieDiff = Math.abs(logs.nutrition.averageCalories - targets.calories);\n    const tolerance = targets.calories * 0.2;\n    adherenceScores.calories = Math.max(0, (1 - calorieDiff / tolerance)) * 100;\n  }\n  \n  // Protein adherence (within 15% of target)\n  if (logs.nutrition && logs.nutrition.averageProtein && targets.protein) {\n    const proteinDiff = Math.abs(logs.nutrition.averageProtein - targets.protein);\n    const tolerance = targets.protein * 0.15;\n    adherenceScores.protein = Math.max(0, (1 - proteinDiff / tolerance)) * 100;\n  }\n  \n  // Exercise adherence (target: 5 days/week)\n  const exerciseCount = logs.exercises ? logs.exercises.length : 0;\n  adherenceScores.exercise = Math.min(exerciseCount / 5, 1) * 100;\n  \n  // Water adherence (target: 8 glasses/day = 56/week)\n  const waterCount = logs.water ? logs.water.reduce((sum, day) => sum + day.glasses, 0) : 0;\n  adherenceScores.water = Math.min(waterCount / 56, 1) * 100;\n  \n  // Overall adherence (weighted average)\n  const weights = { meals: 0.3, calories: 0.25, protein: 0.2, exercise: 0.15, water: 0.1 };\n  const overall = Object.keys(adherenceScores).reduce((sum, key) => {\n    return sum + (adherenceScores[key] * weights[key]);\n  }, 0);\n  \n  return {\n    overall: Math.round(overall),\n    details: adherenceScores\n  };\n}\n\n// Detect micro-deficiencies\nfunction detectMicroDeficiencies(logs) {\n  const deficiencies = [];\n  \n  if (logs.nutrition) {\n    // Check key micronutrients\n    const micronutrients = logs.nutrition.micronutrients || {};\n    \n    if (micronutrients.iron && micronutrients.iron < 14) { // mg/day for women\n      deficiencies.push({ nutrient: 'iron', current: micronutrients.iron, target: 14, severity: 'moderate' });\n    }\n    \n    if (micronutrients.vitaminD && micronutrients.vitaminD < 15) { // µg/day\n      deficiencies.push({ nutrient: 'vitamin_d', current: micronutrients.vitaminD, target: 15, severity: 'high' });\n    }\n    \n    if (micronutrients.calcium && micronutrients.calcium < 1000) { // mg/day\n      deficiencies.push({ nutrient: 'calcium', current: micronutrients.calcium, target: 1000, severity: 'moderate' });\n    }\n    \n    if (micronutrients.vitaminB12 && micronutrients.vitaminB12 < 2.4) { // µg/day\n      deficiencies.push({ nutrient: 'vitamin_b12', current: micronutrients.vitaminB12, target: 2.4, severity: 'high' });\n    }\n  }\n  \n  return deficiencies;\n}\n\n// Identify improvement areas\nfunction identifyImprovementAreas(adherence, deficiencies, logs) {\n  const improvements = [];\n  \n  // Low adherence areas\n  Object.keys(adherence.details).forEach(area => {\n    if (adherence.details[area] < 70) {\n      improvements.push({\n        area: area,\n        type: 'adherence',\n        priority: adherence.details[area] < 50 ? 'high' : 'medium',\n        suggestion: getAdherenceSuggestion(area, adherence.details[area])\n      });\n    }\n  });\n  \n  // Micronutrient deficiencies\n  deficiencies.forEach(def => {\n    improvements.push({\n      area: def.nutrient,\n      type: 'nutrition',\n      priority: def.severity,\n      suggestion: getNutrientSuggestion(def.nutrient)\n    });\n  });\n  \n  // Progress analysis\n  if (logs.weight && logs.weight.length > 1) {\n    const weightChange = logs.weight[logs.weight.length - 1].value - logs.weight[0].value;\n    if (Math.abs(weightChange) < 0.5 && userData.goal !== 'maintain') {\n      improvements.push({\n        area: 'weight_progress',\n        type: 'progress',\n        priority: 'medium',\n        suggestion: 'Consider adjusting calorie targets or exercise intensity'\n      });\n    }\n  }\n  \n  return improvements;\n}\n\nfunction getAdherenceSuggestion(area, score) {\n  const suggestions = {\n    meals: 'Try meal prep on weekends to ensure consistent logging',\n    calories: 'Use portion control tools and check food labels more carefully',\n    protein: 'Add protein-rich snacks like Greek yogurt or nuts',\n    exercise: 'Start with 15-minute walks and gradually increase intensity',\n    water: 'Set hourly reminders or use a marked water bottle'\n  };\n  return suggestions[area] || 'Focus on building consistent habits';\n}\n\nfunction getNutrientSuggestion(nutrient) {\n  const suggestions = {\n    iron: 'Include more leafy greens, legumes, and lean red meat',\n    vitamin_d: 'Consider supplementation and more sunlight exposure',\n    calcium: 'Add dairy products, fortified plant milks, or green vegetables',\n    vitamin_b12: 'Include more animal products or consider B12 supplements'\n  };\n  return suggestions[nutrient] || 'Consult a nutritionist for personalized advice';\n}\n\n// Perform analysis\nconst userTargets = userData.targets || {};\nconst adherence = calculateAdherence(weeklyLogs, userTargets);\nconst deficiencies = detectMicroDeficiencies(weeklyLogs);\nconst improvements = identifyImprovementAreas(adherence, deficiencies, weeklyLogs);\n\nreturn {\n  userId: userData.userId,\n  weekEndingDate: new Date().toISOString().split('T')[0],\n  adherence: adherence,\n  deficiencies: deficiencies,\n  improvements: improvements,\n  needsPlanUpdate: adherence.overall < 60 || improvements.some(imp => imp.priority === 'high'),\n  analysisTimestamp: new Date().toISOString(),\n  rawLogs: weeklyLogs\n};"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "needs-update",
+              "leftValue": "={{$json.needsPlanUpdate}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-plan-update",
+      "name": "Check Plan Update Needed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/ai-routing/route",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "requestType",
+              "value": "plan_adaptation"
+            },
+            {
+              "name": "content",
+              "value": "={{JSON.stringify({ adherence: $json.adherence, improvements: $json.improvements, deficiencies: $json.deficiencies })}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "level",
+              "value": "2"
+            },
+            {
+              "name": "adaptationType",
+              "value": "weekly_review"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-adaptations",
+      "name": "Generate Plan Adaptations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 200],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/users/{{$json.userId}}/weekly-review",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "adherence",
+              "value": "={{$json.adherence}}"
+            },
+            {
+              "name": "deficiencies",
+              "value": "={{$json.deficiencies}}"
+            },
+            {
+              "name": "improvements",
+              "value": "={{$json.improvements}}"
+            },
+            {
+              "name": "adaptations",
+              "value": "={{$('Generate Plan Adaptations').first() ? $('Generate Plan Adaptations').first().json.adaptations : null}}"
+            },
+            {
+              "name": "weekEndingDate",
+              "value": "={{$json.weekEndingDate}}"
+            },
+            {
+              "name": "overallScore",
+              "value": "={{$json.adherence.overall}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "store-review",
+      "name": "Store Weekly Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 400],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/notifications/send",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$('Store Weekly Review').first().json.userId}}"
+            },
+            {
+              "name": "type",
+              "value": "weekly_review_ready"
+            },
+            {
+              "name": "title",
+              "value": "Your Weekly Health Review is Ready"
+            },
+            {
+              "name": "message",
+              "value": "This week's adherence: {{$('Store Weekly Review').first().json.overallScore}}%. {{$('Generate Plan Adaptations').first() ? 'Your plan has been updated based on your progress.' : 'Keep up the great work!'}}"
+            },
+            {
+              "name": "priority",
+              "value": "normal"
+            },
+            {
+              "name": "data",
+              "value": "={{$('Store Weekly Review').first().json}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-user",
+      "name": "Notify User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 300],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "api-token",
+          "name": "API Token"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Weekly Schedule (Mondays 6AM)": {
+      "main": [
+        [
+          {
+            "node": "Get Active Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Users": {
+      "main": [
+        [
+          {
+            "node": "Split into Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split into Batches": {
+      "main": [
+        [
+          {
+            "node": "Ingest User Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest User Logs": {
+      "main": [
+        [
+          {
+            "node": "Analyze Adherence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Adherence": {
+      "main": [
+        [
+          {
+            "node": "Check Plan Update Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Plan Update Needed": {
+      "main": [
+        [
+          {
+            "node": "Generate Plan Adaptations",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Store Weekly Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Store Weekly Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Plan Adaptations": {
+      "main": [
+        [
+          {
+            "node": "Store Weekly Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Weekly Review": {
+      "main": [
+        [
+          {
+            "node": "Notify User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "weekly-review-adaptation-workflow",
+  "tags": ["weekly-review", "adherence", "plan-adaptation", "micronutrients"]
+}

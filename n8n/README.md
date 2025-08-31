@@ -66,7 +66,67 @@ WEATHER_API_KEY=your-weather-api-key
 FITBIT_CLIENT_ID=your-fitbit-client-id
 ```
 
-## Core Workflows
+## Available Workflows
+
+The HealthCoachAI n8n setup includes the following production-ready workflows that implement all major pipelines required by PROMPT_README.md:
+
+### Complete Workflow List
+
+1. **ai-provider-failover.json** - AI Provider Failover Management
+2. **ai-quota-reset.json** - Daily AI Quota Reset  
+3. **weekly-feedback-loop.json** - Weekly User Feedback Processing
+4. **health-report-intake.json** - Health Report Processing Pipeline ✨ NEW
+5. **diet-plan-generator.json** - Diet Plan Generation Pipeline ✨ NEW
+6. **weekly-review-adaptation.json** - Weekly Review & Plan Adaptation ✨ NEW
+7. **notifications-nudges-engine.json** - Notifications & Nudges Engine ✨ NEW
+8. **external-integrations-sync.json** - External Integrations Sync ✨ NEW
+
+### Essential New Workflows Added
+
+#### 🏥 Health Report Intake Pipeline (`health-report-intake.json`)
+Complete HIPAA-compliant health report processing with:
+- File validation and OCR text extraction
+- PHI/PII redaction for privacy compliance  
+- Level 1 AI analysis for maximum accuracy
+- Structured data extraction and storage
+- Physician red-flag alert generation
+- User notification with summary
+
+#### 🍽️ Diet Plan Generator (`diet-plan-generator.json`)
+Comprehensive meal planning system with:
+- User context retrieval (preferences, restrictions, health conditions)
+- TDEE and macro calculation based on demographics
+- AI-powered 7-day meal plan generation (Indian cuisine focused)
+- Nutritional analysis with GI/GL computation
+- Plan validation against dietary restrictions
+- Automatic regeneration for failed validations
+
+#### 📊 Weekly Review & Adaptation (`weekly-review-adaptation.json`)
+Automated weekly analysis and plan optimization:
+- Batch processing of all active users (Mondays 6 AM)
+- Adherence analysis across meals, exercise, nutrition
+- Micronutrient deficiency detection
+- AI-powered plan adaptation recommendations
+- Progress tracking and user notifications
+
+#### 🔔 Notifications & Nudges Engine (`notifications-nudges-engine.json`)
+Intelligent notification system with:
+- User preference and quiet hours management
+- Multilingual content generation (English/Hindi)
+- Personalized messaging based on user context
+- Multi-channel routing (push, email, SMS, in-app)
+- Emergency notification bypass for critical alerts
+- Delivery tracking and analytics
+
+#### 🔄 External Integrations Sync (`external-integrations-sync.json`)
+Comprehensive integration management:
+- HealthKit, Google Fit, and Fitbit synchronization
+- Weather and AQI data collection for activity recommendations
+- Data normalization across different platforms
+- Health pattern analysis and anomaly detection
+- Automatic physician alerts for concerning patterns
+- Integration status monitoring and error handling
+
 
 ### 1. AI Routing and Quota Management
 
