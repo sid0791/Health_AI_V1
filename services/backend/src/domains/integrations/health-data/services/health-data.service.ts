@@ -383,31 +383,37 @@ export class HealthDataService {
   }
 
   // Provider-specific implementations (simplified for demo)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async exchangeFitbitAuthCode(_authCode: string, _config: ProviderConfig): Promise<any> {
     // Implement Fitbit OAuth flow
     return { accessToken: 'demo-token', refreshToken: 'demo-refresh', expiresAt: new Date(Date.now() + 3600000) };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async exchangeGoogleFitAuthCode(_authCode: string, _config: ProviderConfig): Promise<any> {
     // Implement Google Fit OAuth flow
     return { accessToken: 'demo-token', refreshToken: 'demo-refresh', expiresAt: new Date(Date.now() + 3600000) };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async fetchFitbitData(_connection: HealthDataConnection, _dataType: HealthDataType, _startDate: Date, _endDate: Date): Promise<any[]> {
     // Implement Fitbit API calls
     return [];
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async fetchGoogleFitData(_connection: HealthDataConnection, _dataType: HealthDataType, _startDate: Date, _endDate: Date): Promise<any[]> {
     // Implement Google Fit API calls
     return [];
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async processFitbitWebhook(_payload: any): Promise<void> {
     // Process Fitbit webhook notifications
     this.logger.log('Processing Fitbit webhook data');
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async processGoogleFitWebhook(_payload: any): Promise<void> {
     // Process Google Fit webhook notifications
     this.logger.log('Processing Google Fit webhook data');
