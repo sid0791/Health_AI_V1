@@ -11,9 +11,7 @@ import { ObservabilityController } from './observability.controller';
 
 @Global()
 @Module({
-  imports: [
-    HttpModule,
-  ],
+  imports: [HttpModule],
   providers: [
     DistributedTracingService,
     MetricsCollectionService,
@@ -21,9 +19,7 @@ import { ObservabilityController } from './observability.controller';
     SyntheticTestingService,
     CostControlsService,
   ],
-  controllers: [
-    ObservabilityController,
-  ],
+  controllers: [ObservabilityController],
   exports: [
     DistributedTracingService,
     MetricsCollectionService,

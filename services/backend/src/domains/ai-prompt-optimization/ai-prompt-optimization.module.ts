@@ -8,22 +8,9 @@ import { PromptOptimizationController } from './controllers/prompt-optimization.
 import { AIPromptOptimizationController } from './controllers/ai-prompt-optimization.controller';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([User])
-  ],
-  providers: [
-    PromptOptimizationService,
-    JsonTemplateLoaderService,
-    CostOptimizationService
-  ],
-  controllers: [
-    PromptOptimizationController,
-    AIPromptOptimizationController
-  ],
-  exports: [
-    PromptOptimizationService,
-    JsonTemplateLoaderService,
-    CostOptimizationService
-  ],
+  imports: [TypeOrmModule.forFeature([User])],
+  providers: [PromptOptimizationService, JsonTemplateLoaderService, CostOptimizationService],
+  controllers: [PromptOptimizationController, AIPromptOptimizationController],
+  exports: [PromptOptimizationService, JsonTemplateLoaderService, CostOptimizationService],
 })
 export class AIPromptOptimizationModule {}

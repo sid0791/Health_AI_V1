@@ -185,7 +185,7 @@ export class HinglishNLPService {
       };
     } catch (error) {
       this.logger.error('Error processing Hinglish message:', error);
-      
+
       // Return minimal processing on error
       return {
         content: message,
@@ -246,7 +246,10 @@ export class HinglishNLPService {
 
   // Private helper methods
 
-  private detectLanguage(text: string): { detected: 'en' | 'hi' | 'hinglish' | 'mixed'; confidence: number } {
+  private detectLanguage(text: string): {
+    detected: 'en' | 'hi' | 'hinglish' | 'mixed';
+    confidence: number;
+  } {
     const words = text.toLowerCase().split(/\s+/);
     let englishCount = 0;
     let hindiCount = 0;
@@ -273,13 +276,13 @@ export class HinglishNLPService {
 
     if (hinglishRatio > 0.2) {
       detected = 'hinglish';
-      confidence = 0.7 + (hinglishRatio * 0.3);
+      confidence = 0.7 + hinglishRatio * 0.3;
     } else if (hindiRatio > 0.3) {
       detected = 'hi';
-      confidence = 0.7 + (hindiRatio * 0.3);
+      confidence = 0.7 + hindiRatio * 0.3;
     } else if (englishRatio > 0.7) {
       detected = 'en';
-      confidence = 0.7 + (englishRatio * 0.3);
+      confidence = 0.7 + englishRatio * 0.3;
     } else {
       detected = 'mixed';
       confidence = 0.6;
@@ -297,13 +300,13 @@ export class HinglishNLPService {
   }
 
   private applyTransliterations(text: string, transliterations: Record<string, string>): string {
-    let processedText = text;
+    const processedText = text;
     const words = text.split(/\s+/);
 
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
       const transliteration = this.getTransliteration(word);
-      
+
       if (transliteration) {
         transliterations[word] = transliteration;
         words[i] = transliteration;
@@ -333,7 +336,7 @@ export class HinglishNLPService {
     for (const [pattern, replacement] of commonFixes) {
       const matches = processedText.match(pattern);
       if (matches) {
-        matches.forEach(match => {
+        matches.forEach((match) => {
           normalizations[match] = replacement;
         });
         processedText = processedText.replace(pattern, replacement);
@@ -343,7 +346,11 @@ export class HinglishNLPService {
     return processedText;
   }
 
-  private categorizeWords(text: string): { english: string[]; hindi: string[]; hinglish: string[] } {
+  private categorizeWords(text: string): {
+    english: string[];
+    hindi: string[];
+    hinglish: string[];
+  } {
     const words = text.split(/\s+/);
     const english: string[] = [];
     const hindi: string[] = [];
@@ -365,20 +372,82 @@ export class HinglishNLPService {
   private isEnglishWord(word: string): boolean {
     // Simple check for common English words in health/fitness domain
     const commonEnglishWords = [
-      'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by',
-      'health', 'fitness', 'nutrition', 'diet', 'exercise', 'workout', 'weight',
-      'protein', 'carbs', 'fat', 'calories', 'muscle', 'strength', 'cardio',
-      'plan', 'goal', 'target', 'progress', 'result', 'improve', 'increase',
-      'decrease', 'maintain', 'lose', 'gain', 'build', 'burn', 'consume',
-      'need', 'want', 'help', 'advice', 'suggestion', 'recommendation',
-      'good', 'bad', 'better', 'best', 'healthy', 'unhealthy', 'effective',
-      'daily', 'weekly', 'monthly', 'morning', 'evening', 'night',
-      'food', 'meal', 'breakfast', 'lunch', 'dinner', 'snack', 'drink',
-      'water', 'milk', 'juice', 'tea', 'coffee',
+      'the',
+      'and',
+      'or',
+      'but',
+      'in',
+      'on',
+      'at',
+      'to',
+      'for',
+      'with',
+      'by',
+      'health',
+      'fitness',
+      'nutrition',
+      'diet',
+      'exercise',
+      'workout',
+      'weight',
+      'protein',
+      'carbs',
+      'fat',
+      'calories',
+      'muscle',
+      'strength',
+      'cardio',
+      'plan',
+      'goal',
+      'target',
+      'progress',
+      'result',
+      'improve',
+      'increase',
+      'decrease',
+      'maintain',
+      'lose',
+      'gain',
+      'build',
+      'burn',
+      'consume',
+      'need',
+      'want',
+      'help',
+      'advice',
+      'suggestion',
+      'recommendation',
+      'good',
+      'bad',
+      'better',
+      'best',
+      'healthy',
+      'unhealthy',
+      'effective',
+      'daily',
+      'weekly',
+      'monthly',
+      'morning',
+      'evening',
+      'night',
+      'food',
+      'meal',
+      'breakfast',
+      'lunch',
+      'dinner',
+      'snack',
+      'drink',
+      'water',
+      'milk',
+      'juice',
+      'tea',
+      'coffee',
     ];
 
-    return commonEnglishWords.includes(word.toLowerCase()) || 
-           /^[a-zA-Z]+$/.test(word) && word.length > 2;
+    return (
+      commonEnglishWords.includes(word.toLowerCase()) ||
+      (/^[a-zA-Z]+$/.test(word) && word.length > 2)
+    );
   }
 
   private containsDevanagari(text: string): boolean {
@@ -391,19 +460,19 @@ export class HinglishNLPService {
    */
   private expandContractions(text: string): string {
     const contractions: Record<string, string> = {
-      "won't": "will not",
-      "can't": "cannot",
-      "n't": " not",
-      "'re": " are",
-      "'ve": " have",
-      "'ll": " will",
-      "'d": " would",
-      "'m": " am",
-      "i'm": "i am",
-      "it's": "it is",
-      "that's": "that is",
-      "what's": "what is",
-      "how's": "how is",
+      "won't": 'will not',
+      "can't": 'cannot',
+      "n't": ' not',
+      "'re": ' are',
+      "'ve": ' have',
+      "'ll": ' will',
+      "'d": ' would',
+      "'m": ' am',
+      "i'm": 'i am',
+      "it's": 'it is',
+      "that's": 'that is',
+      "what's": 'what is',
+      "how's": 'how is',
     };
 
     let processedText = text;
@@ -442,9 +511,9 @@ export class HinglishNLPService {
   private handleCodeSwitching(text: string): string {
     // Identify and properly handle sentences that mix languages
     const sentences = text.split(/[.!?]+/);
-    const processedSentences = sentences.map(sentence => {
+    const processedSentences = sentences.map((sentence) => {
       const words = sentence.trim().split(/\s+/);
-      const processedWords = words.map(word => {
+      const processedWords = words.map((word) => {
         const transliteration = this.getTransliteration(word);
         return transliteration || word;
       });
@@ -459,9 +528,9 @@ export class HinglishNLPService {
    */
   getLanguageLearningTips(): string[] {
     return [
-      "Try using English terms for better AI understanding",
-      "Common health terms: protein (प्रोटीन), carbs (कार्ब्स), exercise (व्यायाम)",
-      "You can mix Hindi and English - I understand both!",
+      'Try using English terms for better AI understanding',
+      'Common health terms: protein (प्रोटीन), carbs (कार्ब्स), exercise (व्यायाम)',
+      'You can mix Hindi and English - I understand both!',
       "Use simple words if you're not sure about spelling",
     ];
   }
@@ -471,25 +540,24 @@ export class HinglishNLPService {
    */
   validateProcessing(original: string, processed: string): { isValid: boolean; issues: string[] } {
     const issues: string[] = [];
-    
+
     // Check if processing was too aggressive (lost too much content)
     if (processed.length < original.length * 0.5) {
-      issues.push("Processing may have removed too much content");
+      issues.push('Processing may have removed too much content');
     }
 
     // Check if important health/fitness terms are preserved
     const importantTerms = ['protein', 'exercise', 'weight', 'health', 'diet'];
-    const originalHasTerms = importantTerms.some(term => 
-      original.toLowerCase().includes(term) || 
-      original.toLowerCase().includes(this.getHinglishEquivalent(term))
-    );
-    
-    const processedHasTerms = importantTerms.some(term => 
-      processed.toLowerCase().includes(term)
+    const originalHasTerms = importantTerms.some(
+      (term) =>
+        original.toLowerCase().includes(term) ||
+        original.toLowerCase().includes(this.getHinglishEquivalent(term)),
     );
 
+    const processedHasTerms = importantTerms.some((term) => processed.toLowerCase().includes(term));
+
     if (originalHasTerms && !processedHasTerms) {
-      issues.push("Important health/fitness terms may have been lost");
+      issues.push('Important health/fitness terms may have been lost');
     }
 
     return {

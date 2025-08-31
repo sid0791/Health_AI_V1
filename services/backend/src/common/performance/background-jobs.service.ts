@@ -75,14 +75,10 @@ export class BackgroundJobService {
           },
         });
 
-        const worker = new Worker(
-          config.name,
-          this.createJobProcessor(),
-          {
-            connection: redisConfig,
-            concurrency: config.concurrency,
-          }
-        );
+        const worker = new Worker(config.name, this.createJobProcessor(), {
+          connection: redisConfig,
+          concurrency: config.concurrency,
+        });
 
         // Add event listeners
         this.addEventListeners(worker, config.name);
@@ -100,10 +96,7 @@ export class BackgroundJobService {
   /**
    * Add job to queue
    */
-  async addJob(
-    jobData: JobData,
-    queueName: string = 'medium-priority'
-  ): Promise<string | null> {
+  async addJob(jobData: JobData, queueName: string = 'medium-priority'): Promise<string | null> {
     try {
       const queue = this.queues.get(queueName);
       if (!queue) {
@@ -127,10 +120,7 @@ export class BackgroundJobService {
   /**
    * Schedule recurring job
    */
-  async scheduleRecurringJob(
-    jobData: JobData,
-    cronPattern: string
-  ): Promise<string | null> {
+  async scheduleRecurringJob(jobData: JobData, cronPattern: string): Promise<string | null> {
     try {
       const queue = this.queues.get('scheduled');
       if (!queue) {
@@ -156,12 +146,12 @@ export class BackgroundJobService {
   private createJobProcessor() {
     return async (job: Job): Promise<JobResult> => {
       const start = Date.now();
-      
+
       try {
         this.logger.log(`Processing job ${job.id}: ${job.name}`);
-        
+
         let result: any;
-        
+
         switch (job.name) {
           case this.jobTypes.HEALTH_DATA_SYNC:
             result = await this.processHealthDataSync(job.data);
@@ -272,105 +262,105 @@ export class BackgroundJobService {
   private async processHealthDataSync(data: any): Promise<any> {
     // Sync health data from external providers
     this.logger.log(`Syncing health data for user: ${data.userId}`);
-    
+
     // Simulate processing
     await this.delay(2000);
-    
+
     return { synced: true, records: 10 };
   }
 
   private async processMealPlanGeneration(data: any): Promise<any> {
     // Generate personalized meal plan
     this.logger.log(`Generating meal plan for user: ${data.userId}`);
-    
+
     // Simulate processing
     await this.delay(5000);
-    
+
     return { planId: `plan_${Date.now()}`, meals: 21 };
   }
 
   private async processFitnessPlanGeneration(data: any): Promise<any> {
     // Generate personalized fitness plan
     this.logger.log(`Generating fitness plan for user: ${data.userId}`);
-    
+
     // Simulate processing
     await this.delay(3000);
-    
+
     return { planId: `fitness_${Date.now()}`, exercises: 15 };
   }
 
   private async processAIPromptBatch(data: any): Promise<any> {
     // Process batch of AI prompts
     this.logger.log(`Processing AI prompt batch: ${data.batchId}`);
-    
+
     // Simulate processing
     await this.delay(4000);
-    
+
     return { batchId: data.batchId, processed: data.requests?.length || 0 };
   }
 
   private async processReportGeneration(data: any): Promise<any> {
     // Generate health reports
     this.logger.log(`Generating report for user: ${data.userId}`);
-    
+
     // Simulate processing
     await this.delay(6000);
-    
+
     return { reportId: `report_${Date.now()}`, pages: 5 };
   }
 
   private async processDataCleanup(data: any): Promise<any> {
     // Clean up old data
     this.logger.log('Processing data cleanup');
-    
+
     // Simulate processing
     await this.delay(3000);
-    
+
     return { deleted: 100, cleaned: true };
   }
 
   private async processNotificationSend(data: any): Promise<any> {
     // Send notifications
     this.logger.log(`Sending notification to user: ${data.userId}`);
-    
+
     // Simulate processing
     await this.delay(1000);
-    
+
     return { sent: true, notificationId: `notif_${Date.now()}` };
   }
 
   private async processHealthInsights(data: any): Promise<any> {
     // Generate health insights
     this.logger.log(`Generating health insights for user: ${data.userId}`);
-    
+
     // Simulate processing
     await this.delay(4000);
-    
+
     return { insights: 5, recommendations: 3 };
   }
 
   private async processBackupData(data: any): Promise<any> {
     // Backup user data
     this.logger.log('Processing data backup');
-    
+
     // Simulate processing
     await this.delay(8000);
-    
+
     return { backupId: `backup_${Date.now()}`, size: '100MB' };
   }
 
   private async processCacheWarmup(data: any): Promise<any> {
     // Warm up cache
     this.logger.log('Processing cache warmup');
-    
+
     // Simulate processing
     await this.delay(2000);
-    
+
     return { warmedUp: true, keys: 50 };
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -378,28 +368,40 @@ export class BackgroundJobService {
    */
   async scheduleHealthJobs(): Promise<void> {
     // Schedule daily health data sync
-    await this.scheduleRecurringJob({
-      type: this.jobTypes.HEALTH_DATA_SYNC,
-      payload: { action: 'daily_sync' },
-    }, '0 6 * * *'); // 6 AM daily
+    await this.scheduleRecurringJob(
+      {
+        type: this.jobTypes.HEALTH_DATA_SYNC,
+        payload: { action: 'daily_sync' },
+      },
+      '0 6 * * *',
+    ); // 6 AM daily
 
     // Schedule weekly report generation
-    await this.scheduleRecurringJob({
-      type: this.jobTypes.REPORT_GENERATION,
-      payload: { action: 'weekly_reports' },
-    }, '0 9 * * 1'); // 9 AM every Monday
+    await this.scheduleRecurringJob(
+      {
+        type: this.jobTypes.REPORT_GENERATION,
+        payload: { action: 'weekly_reports' },
+      },
+      '0 9 * * 1',
+    ); // 9 AM every Monday
 
     // Schedule daily cache warmup
-    await this.scheduleRecurringJob({
-      type: this.jobTypes.CACHE_WARMUP,
-      payload: { action: 'daily_warmup' },
-    }, '0 5 * * *'); // 5 AM daily
+    await this.scheduleRecurringJob(
+      {
+        type: this.jobTypes.CACHE_WARMUP,
+        payload: { action: 'daily_warmup' },
+      },
+      '0 5 * * *',
+    ); // 5 AM daily
 
     // Schedule weekly data cleanup
-    await this.scheduleRecurringJob({
-      type: this.jobTypes.DATA_CLEANUP,
-      payload: { action: 'weekly_cleanup' },
-    }, '0 2 * * 0'); // 2 AM every Sunday
+    await this.scheduleRecurringJob(
+      {
+        type: this.jobTypes.DATA_CLEANUP,
+        payload: { action: 'weekly_cleanup' },
+      },
+      '0 2 * * 0',
+    ); // 2 AM every Sunday
 
     this.logger.log('Health-related recurring jobs scheduled');
   }
@@ -411,11 +413,11 @@ export class BackgroundJobService {
     for (const worker of this.workers.values()) {
       await worker.close();
     }
-    
+
     for (const queue of this.queues.values()) {
       await queue.close();
     }
-    
+
     this.logger.log('Background job service cleaned up');
   }
 }

@@ -4,11 +4,7 @@ import { Repository, Between } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
 import { User } from '../entities/user.entity';
-import { 
-  UserTokenUsage, 
-  TokenUsageType, 
-  TokenProvider 
-} from '../entities/user-token-usage.entity';
+import { UserTokenUsage, TokenUsageType, TokenProvider } from '../entities/user-token-usage.entity';
 
 export interface TokenConsumptionRequest {
   userId: string;
@@ -75,7 +71,7 @@ export class TokenManagementService {
     }
 
     const totalTokens = request.inputTokens + request.outputTokens;
-    
+
     // Update counters if needed
     await this.updateUserTokenCounters(user);
 
@@ -126,7 +122,9 @@ export class TokenManagementService {
       await this.userRepository.save(user);
     }
 
-    this.logger.log(`Token consumption recorded: ${totalTokens} tokens for user ${request.userId} (free tier: ${isFreeTier})`);
+    this.logger.log(
+      `Token consumption recorded: ${totalTokens} tokens for user ${request.userId} (free tier: ${isFreeTier})`,
+    );
 
     return {
       success: true,
@@ -171,7 +169,8 @@ export class TokenManagementService {
     endDate?: Date,
     limit: number = 100,
   ): Promise<UserTokenUsage[]> {
-    const query = this.tokenUsageRepository.createQueryBuilder('usage')
+    const query = this.tokenUsageRepository
+      .createQueryBuilder('usage')
       .where('usage.userId = :userId', { userId })
       .orderBy('usage.createdAt', 'DESC')
       .limit(limit);
@@ -219,21 +218,22 @@ export class TokenManagementService {
    */
   private async updateUserTokenCounters(user: User): Promise<void> {
     const today = new Date();
-    const needsUpdate = !user.lastTokenResetDate || 
+    const needsUpdate =
+      !user.lastTokenResetDate ||
       user.lastTokenResetDate.toDateString() !== today.toDateString() ||
       user.lastTokenResetDate.getMonth() !== today.getMonth();
 
     if (needsUpdate) {
-      const shouldResetDaily = !user.lastTokenResetDate || 
-        user.lastTokenResetDate.toDateString() !== today.toDateString();
-      
-      const shouldResetMonthly = !user.lastTokenResetDate || 
-        user.lastTokenResetDate.getMonth() !== today.getMonth();
+      const shouldResetDaily =
+        !user.lastTokenResetDate || user.lastTokenResetDate.toDateString() !== today.toDateString();
+
+      const shouldResetMonthly =
+        !user.lastTokenResetDate || user.lastTokenResetDate.getMonth() !== today.getMonth();
 
       if (shouldResetDaily) {
         user.resetDailyTokens();
       }
-      
+
       if (shouldResetMonthly) {
         user.resetMonthlyTokens();
       }
@@ -271,7 +271,11 @@ export class TokenManagementService {
   /**
    * Calculate cost based on provider and token usage
    */
-  private calculateCost(provider: TokenProvider, inputTokens: number, outputTokens: number): number {
+  private calculateCost(
+    provider: TokenProvider,
+    inputTokens: number,
+    outputTokens: number,
+  ): number {
     // Cost per 1000 tokens in USD
     const costMap = {
       [TokenProvider.OPENAI_GPT4]: { input: 0.03, output: 0.06 },
@@ -283,7 +287,7 @@ export class TokenManagementService {
     };
 
     const costs = costMap[provider] || { input: 0, output: 0 };
-    
-    return ((inputTokens * costs.input) + (outputTokens * costs.output)) / 1000;
+
+    return (inputTokens * costs.input + outputTokens * costs.output) / 1000;
   }
 }

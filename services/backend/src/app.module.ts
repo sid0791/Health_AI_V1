@@ -226,7 +226,7 @@ import { ChatContext } from './domains/chat/entities/chat-context.entity';
     LogsModule,
     ChatModule, // Phase 13
     ExternalApiModule,
-    
+
     // Phase 14 Modules
     IntegrationsModule,
     AIPromptOptimizationModule,

@@ -24,11 +24,7 @@ import { RecipeModule } from '../recipes/recipe.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      ChatSession,
-      ChatMessage,
-      ChatContext,
-    ]),
+    TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatContext]),
     ConfigModule,
     AIRoutingModule,
     UsersModule,
@@ -46,11 +42,6 @@ import { RecipeModule } from '../recipes/recipe.module';
     ChatSessionService,
     ChatRateLimitInterceptor,
   ],
-  exports: [
-    DomainScopedChatService,
-    RAGService,
-    HinglishNLPService,
-    ChatSessionService,
-  ],
+  exports: [DomainScopedChatService, RAGService, HinglishNLPService, ChatSessionService],
 })
 export class ChatModule {}

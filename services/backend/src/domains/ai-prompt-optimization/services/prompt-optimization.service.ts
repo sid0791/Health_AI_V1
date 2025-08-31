@@ -109,11 +109,11 @@ export class PromptOptimizationService {
    */
   private loadJsonTemplates(): void {
     const jsonTemplates = this.jsonTemplateLoader.getAllTemplates();
-    
+
     for (const template of jsonTemplates) {
       this.templates.set(template.id, template);
     }
-    
+
     this.logger.log(`Loaded ${jsonTemplates.length} JSON templates`);
   }
 
@@ -130,7 +130,7 @@ export class PromptOptimizationService {
       model?: string;
       maxTokens?: number;
       enableBatching?: boolean;
-    }
+    },
   ): Promise<PromptExecutionResult> {
     const startTime = Date.now();
 
@@ -159,11 +159,11 @@ export class PromptOptimizationService {
           userQuery: userInput.user_query || JSON.stringify(userInput),
           variables: userInput,
           priority: this.determinePriority(category),
-          timestamp: new Date()
+          timestamp: new Date(),
         };
 
         const batchId = await this.costOptimization.addToBatch(batchRequest);
-        
+
         return {
           prompt: 'Request added to batch for cost optimization',
           success: true,
@@ -173,7 +173,7 @@ export class PromptOptimizationService {
             category,
             batchId,
             batched: true,
-            costOptimized: true
+            costOptimized: true,
           },
         };
       }
@@ -184,10 +184,18 @@ export class PromptOptimizationService {
       // Track usage for cost monitoring
       const estimatedTokens = template.metadata?.estimatedTokens || 500;
       const estimatedCost = this.estimateCost(estimatedTokens, template.metadata?.model);
-      this.costOptimization.trackRequest(userId, category, template.id, estimatedTokens, estimatedCost);
+      this.costOptimization.trackRequest(
+        userId,
+        category,
+        template.id,
+        estimatedTokens,
+        estimatedCost,
+      );
 
       // Log the prompt execution for cost tracking
-      this.logger.log(`Executing prompt for user ${userId}, category: ${category}, template: ${template.id}`);
+      this.logger.log(
+        `Executing prompt for user ${userId}, category: ${category}, template: ${template.id}`,
+      );
 
       // Return the prompt (actual AI execution would happen in AI routing service)
       return {
@@ -201,7 +209,7 @@ export class PromptOptimizationService {
           costOptimized: template.costOptimized,
           estimatedTokens,
           estimatedCost,
-          quotaRemaining: quotaStatus.dailyQuota - quotaStatus.dailyUsed
+          quotaRemaining: quotaStatus.dailyQuota - quotaStatus.dailyUsed,
         },
       };
     } catch (error) {
@@ -219,22 +227,16 @@ export class PromptOptimizationService {
    * Determine request priority based on category
    */
   private determinePriority(category: PromptCategory): 'high' | 'medium' | 'low' {
-    const highPriorityCategories = [
-      PromptCategory.HEALTH_ANALYSIS,
-      PromptCategory.SYMPTOM_CHECKER
-    ];
-    
-    const lowPriorityCategories = [
-      PromptCategory.GENERAL_CHAT,
-      PromptCategory.LIFESTYLE_TIPS
-    ];
+    const highPriorityCategories = [PromptCategory.HEALTH_ANALYSIS, PromptCategory.SYMPTOM_CHECKER];
+
+    const lowPriorityCategories = [PromptCategory.GENERAL_CHAT, PromptCategory.LIFESTYLE_TIPS];
 
     if (highPriorityCategories.includes(category)) {
       return 'high';
     } else if (lowPriorityCategories.includes(category)) {
       return 'low';
     }
-    
+
     return 'medium';
   }
 
@@ -244,8 +246,8 @@ export class PromptOptimizationService {
   private estimateCost(tokens: number, model?: string): number {
     const costPerToken = {
       'gpt-3.5-turbo': 0.00002,
-      'gpt-4-turbo-preview': 0.00010,
-      'gpt-4': 0.00006
+      'gpt-4-turbo-preview': 0.0001,
+      'gpt-4': 0.00006,
     };
 
     const selectedModel = model || 'gpt-3.5-turbo';
@@ -258,7 +260,7 @@ export class PromptOptimizationService {
   private async generateOptimizedPrompt(
     template: PromptTemplate,
     userContext: UserContext,
-    userInput: Record<string, any>
+    userInput: Record<string, any>,
   ): Promise<string> {
     let prompt = template.template;
 
@@ -266,7 +268,7 @@ export class PromptOptimizationService {
     for (const variable of template.variables) {
       const placeholder = `{{${variable.name}}}`;
       const value = await this.resolveVariable(variable, userContext, userInput);
-      
+
       if (value !== undefined && value !== null) {
         prompt = prompt.replace(new RegExp(placeholder, 'g'), String(value));
       } else if (variable.required) {
@@ -281,7 +283,7 @@ export class PromptOptimizationService {
 
     // Clean up extra spaces and formatting
     prompt = prompt.replace(/\s+/g, ' ').trim();
-    
+
     return prompt;
   }
 
@@ -291,7 +293,7 @@ export class PromptOptimizationService {
   private async resolveVariable(
     variable: PromptVariable,
     userContext: UserContext,
-    userInput: Record<string, any>
+    userInput: Record<string, any>,
   ): Promise<any> {
     // First check user input
     if (userInput[variable.name] !== undefined) {
@@ -302,16 +304,16 @@ export class PromptOptimizationService {
     switch (variable.source) {
       case 'user_profile':
         return this.getFromUserProfile(variable.name, userContext);
-      
+
       case 'health_data':
         return this.getFromHealthData(variable.name, userContext);
-      
+
       case 'preferences':
         return this.getFromPreferences(variable.name, userContext);
-      
+
       case 'context':
         return this.getFromContext(variable.name, userContext);
-      
+
       default:
         return variable.defaultValue;
     }
@@ -326,20 +328,20 @@ export class PromptOptimizationService {
 
     // Map common field names
     const fieldMapping: Record<string, string> = {
-      'user_name': 'name',
-      'userName': 'name',
-      'user_age': 'age',
-      'userAge': 'age',
-      'user_gender': 'gender',
-      'userGender': 'gender',
-      'user_height': 'height',
-      'userHeight': 'height',
-      'user_weight': 'weight',
-      'userWeight': 'weight',
-      'user_location': 'location',
-      'userLocation': 'location',
-      'user_lifestyle': 'lifestyle',
-      'userLifestyle': 'lifestyle',
+      user_name: 'name',
+      userName: 'name',
+      user_age: 'age',
+      userAge: 'age',
+      user_gender: 'gender',
+      userGender: 'gender',
+      user_height: 'height',
+      userHeight: 'height',
+      user_weight: 'weight',
+      userWeight: 'weight',
+      user_location: 'location',
+      userLocation: 'location',
+      user_lifestyle: 'lifestyle',
+      userLifestyle: 'lifestyle',
     };
 
     const actualField = fieldMapping[fieldName] || fieldName;
@@ -354,14 +356,14 @@ export class PromptOptimizationService {
     if (!healthData) return undefined;
 
     const fieldMapping: Record<string, string> = {
-      'health_conditions': 'conditions',
-      'healthConditions': 'conditions',
-      'user_medications': 'medications',
-      'userMedications': 'medications',
-      'user_allergies': 'allergies',
-      'userAllergies': 'allergies',
-      'health_reports': 'reports',
-      'healthReports': 'reports',
+      health_conditions: 'conditions',
+      healthConditions: 'conditions',
+      user_medications: 'medications',
+      userMedications: 'medications',
+      user_allergies: 'allergies',
+      userAllergies: 'allergies',
+      health_reports: 'reports',
+      healthReports: 'reports',
     };
 
     const actualField = fieldMapping[fieldName] || fieldName;
@@ -383,16 +385,16 @@ export class PromptOptimizationService {
     if (!preferences) return undefined;
 
     const fieldMapping: Record<string, string> = {
-      'diet_type': 'dietType',
-      'dietType': 'dietType',
-      'user_cuisines': 'cuisines',
-      'userCuisines': 'cuisines',
-      'dietary_restrictions': 'restrictions',
-      'dietaryRestrictions': 'restrictions',
-      'user_goals': 'goals',
-      'userGoals': 'goals',
-      'preferred_languages': 'languages',
-      'preferredLanguages': 'languages',
+      diet_type: 'dietType',
+      dietType: 'dietType',
+      user_cuisines: 'cuisines',
+      userCuisines: 'cuisines',
+      dietary_restrictions: 'restrictions',
+      dietaryRestrictions: 'restrictions',
+      user_goals: 'goals',
+      userGoals: 'goals',
+      preferred_languages: 'languages',
+      preferredLanguages: 'languages',
     };
 
     const actualField = fieldMapping[fieldName] || fieldName;
@@ -412,14 +414,14 @@ export class PromptOptimizationService {
   private getFromContext(fieldName: string, userContext: UserContext): any {
     // This can include current date/time, session info, etc.
     const contextValues: Record<string, any> = {
-      'current_date': new Date().toLocaleDateString(),
-      'currentDate': new Date().toLocaleDateString(),
-      'current_time': new Date().toLocaleTimeString(),
-      'currentTime': new Date().toLocaleTimeString(),
-      'user_id': userContext.userId,
-      'userId': userContext.userId,
-      'interaction_count': userContext.history?.interactions || 0,
-      'interactionCount': userContext.history?.interactions || 0,
+      current_date: new Date().toLocaleDateString(),
+      currentDate: new Date().toLocaleDateString(),
+      current_time: new Date().toLocaleTimeString(),
+      currentTime: new Date().toLocaleTimeString(),
+      user_id: userContext.userId,
+      userId: userContext.userId,
+      interaction_count: userContext.history?.interactions || 0,
+      interactionCount: userContext.history?.interactions || 0,
     };
 
     return contextValues[fieldName];
@@ -441,7 +443,7 @@ export class PromptOptimizationService {
     }
 
     if (variable.type === 'string') {
-      let strValue = String(value);
+      const strValue = String(value);
       if (pattern) {
         const regex = new RegExp(pattern);
         if (!regex.test(strValue)) {
@@ -474,18 +476,18 @@ export class PromptOptimizationService {
 
     // Provide safe defaults based on variable type and context
     const safeFallbacks: Record<string, string> = {
-      'user_name': 'user',
-      'userName': 'user',
-      'user_age': 'adult',
-      'userAge': 'adult',
-      'user_gender': 'person',
-      'userGender': 'person',
-      'health_conditions': 'none reported',
-      'healthConditions': 'none reported',
-      'dietary_restrictions': 'none specified',
-      'dietaryRestrictions': 'none specified',
-      'user_goals': 'general wellness',
-      'userGoals': 'general wellness',
+      user_name: 'user',
+      userName: 'user',
+      user_age: 'adult',
+      userAge: 'adult',
+      user_gender: 'person',
+      userGender: 'person',
+      health_conditions: 'none reported',
+      healthConditions: 'none reported',
+      dietary_restrictions: 'none specified',
+      dietaryRestrictions: 'none specified',
+      user_goals: 'general wellness',
+      userGoals: 'general wellness',
     };
 
     return safeFallbacks[variable.name] || '[not specified]';
@@ -497,7 +499,7 @@ export class PromptOptimizationService {
   private selectTemplate(
     category: PromptCategory,
     templateId?: string,
-    language?: 'en' | 'hi' | 'hinglish'
+    language?: 'en' | 'hi' | 'hinglish',
   ): PromptTemplate | null {
     // If specific template requested, try to find it
     if (templateId && this.templates.has(templateId)) {
@@ -505,21 +507,20 @@ export class PromptOptimizationService {
     }
 
     // Find templates matching category and language
-    const candidates = Array.from(this.templates.values()).filter(t => 
-      t.category === category && 
-      (!language || t.language === language)
+    const candidates = Array.from(this.templates.values()).filter(
+      (t) => t.category === category && (!language || t.language === language),
     );
 
     if (candidates.length === 0) {
       // Fallback to any template in the category
-      const fallbackCandidates = Array.from(this.templates.values()).filter(t => 
-        t.category === category
+      const fallbackCandidates = Array.from(this.templates.values()).filter(
+        (t) => t.category === category,
       );
       return fallbackCandidates[0] || null;
     }
 
     // Prefer cost-optimized templates
-    const costOptimized = candidates.filter(t => t.costOptimized);
+    const costOptimized = candidates.filter((t) => t.costOptimized);
     if (costOptimized.length > 0) {
       return costOptimized[0];
     }
@@ -573,10 +574,10 @@ export class PromptOptimizationService {
   private getResolvedVariableCount(
     template: PromptTemplate,
     userContext: UserContext,
-    userInput: Record<string, any>
+    userInput: Record<string, any>,
   ): number {
     let resolved = 0;
-    
+
     for (const variable of template.variables) {
       if (userInput[variable.name] !== undefined) {
         resolved++;
@@ -621,7 +622,7 @@ export class PromptOptimizationService {
    * Get all templates for a category
    */
   getTemplatesByCategory(category: PromptCategory): PromptTemplate[] {
-    return Array.from(this.templates.values()).filter(t => t.category === category);
+    return Array.from(this.templates.values()).filter((t) => t.category === category);
   }
 
   /**
@@ -662,17 +663,71 @@ Please provide specific, actionable nutrition advice that:
 
 Keep the response concise, practical, and include specific food recommendations when relevant.`,
       variables: [
-        { name: 'user_name', type: 'string', required: true, source: 'user_profile', defaultValue: 'there' },
-        { name: 'user_age', type: 'string', required: false, source: 'user_profile', defaultValue: 'adult' },
-        { name: 'user_gender', type: 'string', required: false, source: 'user_profile', defaultValue: 'person' },
-        { name: 'user_location', type: 'string', required: false, source: 'user_profile', defaultValue: 'your area' },
-        { name: 'health_conditions', type: 'string', required: false, source: 'health_data', defaultValue: 'none reported' },
-        { name: 'dietary_restrictions', type: 'string', required: false, source: 'preferences', defaultValue: 'none specified' },
-        { name: 'diet_type', type: 'string', required: false, source: 'preferences', defaultValue: 'balanced' },
-        { name: 'user_goals', type: 'string', required: false, source: 'preferences', defaultValue: 'general wellness' },
-        { name: 'user_allergies', type: 'string', required: false, source: 'health_data', defaultValue: 'none reported' },
+        {
+          name: 'user_name',
+          type: 'string',
+          required: true,
+          source: 'user_profile',
+          defaultValue: 'there',
+        },
+        {
+          name: 'user_age',
+          type: 'string',
+          required: false,
+          source: 'user_profile',
+          defaultValue: 'adult',
+        },
+        {
+          name: 'user_gender',
+          type: 'string',
+          required: false,
+          source: 'user_profile',
+          defaultValue: 'person',
+        },
+        {
+          name: 'user_location',
+          type: 'string',
+          required: false,
+          source: 'user_profile',
+          defaultValue: 'your area',
+        },
+        {
+          name: 'health_conditions',
+          type: 'string',
+          required: false,
+          source: 'health_data',
+          defaultValue: 'none reported',
+        },
+        {
+          name: 'dietary_restrictions',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'none specified',
+        },
+        {
+          name: 'diet_type',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'balanced',
+        },
+        {
+          name: 'user_goals',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'general wellness',
+        },
+        {
+          name: 'user_allergies',
+          type: 'string',
+          required: false,
+          source: 'health_data',
+          defaultValue: 'none reported',
+        },
         { name: 'user_query', type: 'string', required: true, source: 'input' },
-      ]
+      ],
     });
 
     // Meal Planning Template
@@ -706,18 +761,84 @@ Requirements:
 
 Format as a structured weekly plan with shopping list.`,
       variables: [
-        { name: 'user_name', type: 'string', required: true, source: 'user_profile', defaultValue: 'user' },
-        { name: 'user_age', type: 'number', required: false, source: 'user_profile', defaultValue: '30' },
-        { name: 'user_weight', type: 'number', required: false, source: 'user_profile', defaultValue: '70' },
-        { name: 'user_height', type: 'number', required: false, source: 'user_profile', defaultValue: '170' },
-        { name: 'user_lifestyle', type: 'string', required: false, source: 'user_profile', defaultValue: 'moderate' },
-        { name: 'health_conditions', type: 'string', required: false, source: 'health_data', defaultValue: 'none' },
-        { name: 'diet_type', type: 'string', required: false, source: 'preferences', defaultValue: 'balanced' },
-        { name: 'user_cuisines', type: 'string', required: false, source: 'preferences', defaultValue: 'Indian' },
-        { name: 'dietary_restrictions', type: 'string', required: false, source: 'preferences', defaultValue: 'none' },
-        { name: 'user_goals', type: 'string', required: false, source: 'preferences', defaultValue: 'maintenance' },
-        { name: 'meal_focus', type: 'string', required: false, source: 'input', defaultValue: 'balanced nutrition' },
-      ]
+        {
+          name: 'user_name',
+          type: 'string',
+          required: true,
+          source: 'user_profile',
+          defaultValue: 'user',
+        },
+        {
+          name: 'user_age',
+          type: 'number',
+          required: false,
+          source: 'user_profile',
+          defaultValue: '30',
+        },
+        {
+          name: 'user_weight',
+          type: 'number',
+          required: false,
+          source: 'user_profile',
+          defaultValue: '70',
+        },
+        {
+          name: 'user_height',
+          type: 'number',
+          required: false,
+          source: 'user_profile',
+          defaultValue: '170',
+        },
+        {
+          name: 'user_lifestyle',
+          type: 'string',
+          required: false,
+          source: 'user_profile',
+          defaultValue: 'moderate',
+        },
+        {
+          name: 'health_conditions',
+          type: 'string',
+          required: false,
+          source: 'health_data',
+          defaultValue: 'none',
+        },
+        {
+          name: 'diet_type',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'balanced',
+        },
+        {
+          name: 'user_cuisines',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'Indian',
+        },
+        {
+          name: 'dietary_restrictions',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'none',
+        },
+        {
+          name: 'user_goals',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'maintenance',
+        },
+        {
+          name: 'meal_focus',
+          type: 'string',
+          required: false,
+          source: 'input',
+          defaultValue: 'balanced nutrition',
+        },
+      ],
     });
 
     // Fitness Guidance Template
@@ -751,17 +872,71 @@ Please provide:
 
 Consider their current fitness level and any health conditions.`,
       variables: [
-        { name: 'user_name', type: 'string', required: true, source: 'user_profile', defaultValue: 'there' },
-        { name: 'user_age', type: 'number', required: false, source: 'user_profile', defaultValue: '30' },
-        { name: 'user_weight', type: 'number', required: false, source: 'user_profile', defaultValue: '70' },
-        { name: 'target_weight', type: 'number', required: false, source: 'input', defaultValue: '65' },
-        { name: 'fitness_level', type: 'string', required: false, source: 'input', defaultValue: 'beginner' },
-        { name: 'workout_time', type: 'number', required: false, source: 'input', defaultValue: '30' },
-        { name: 'available_equipment', type: 'string', required: false, source: 'input', defaultValue: 'basic home equipment' },
-        { name: 'health_conditions', type: 'string', required: false, source: 'health_data', defaultValue: 'none' },
-        { name: 'user_goals', type: 'string', required: false, source: 'preferences', defaultValue: 'general fitness' },
+        {
+          name: 'user_name',
+          type: 'string',
+          required: true,
+          source: 'user_profile',
+          defaultValue: 'there',
+        },
+        {
+          name: 'user_age',
+          type: 'number',
+          required: false,
+          source: 'user_profile',
+          defaultValue: '30',
+        },
+        {
+          name: 'user_weight',
+          type: 'number',
+          required: false,
+          source: 'user_profile',
+          defaultValue: '70',
+        },
+        {
+          name: 'target_weight',
+          type: 'number',
+          required: false,
+          source: 'input',
+          defaultValue: '65',
+        },
+        {
+          name: 'fitness_level',
+          type: 'string',
+          required: false,
+          source: 'input',
+          defaultValue: 'beginner',
+        },
+        {
+          name: 'workout_time',
+          type: 'number',
+          required: false,
+          source: 'input',
+          defaultValue: '30',
+        },
+        {
+          name: 'available_equipment',
+          type: 'string',
+          required: false,
+          source: 'input',
+          defaultValue: 'basic home equipment',
+        },
+        {
+          name: 'health_conditions',
+          type: 'string',
+          required: false,
+          source: 'health_data',
+          defaultValue: 'none',
+        },
+        {
+          name: 'user_goals',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'general fitness',
+        },
         { name: 'user_query', type: 'string', required: true, source: 'input' },
-      ]
+      ],
     });
 
     // Hinglish Nutrition Template
@@ -791,17 +966,71 @@ Please provide practical aur specific nutrition advice jo:
 
 Response Hinglish mein dein aur simple language use karein.`,
       variables: [
-        { name: 'user_name', type: 'string', required: true, source: 'user_profile', defaultValue: 'dost' },
-        { name: 'user_age', type: 'number', required: false, source: 'user_profile', defaultValue: '30' },
-        { name: 'user_gender', type: 'string', required: false, source: 'user_profile', defaultValue: 'person' },
-        { name: 'user_location', type: 'string', required: false, source: 'user_profile', defaultValue: 'India' },
-        { name: 'health_conditions', type: 'string', required: false, source: 'health_data', defaultValue: 'koi nahi' },
-        { name: 'dietary_restrictions', type: 'string', required: false, source: 'preferences', defaultValue: 'koi nahi' },
-        { name: 'diet_type', type: 'string', required: false, source: 'preferences', defaultValue: 'vegetarian' },
-        { name: 'user_goals', type: 'string', required: false, source: 'preferences', defaultValue: 'healthy rehna' },
-        { name: 'user_allergies', type: 'string', required: false, source: 'health_data', defaultValue: 'koi nahi' },
+        {
+          name: 'user_name',
+          type: 'string',
+          required: true,
+          source: 'user_profile',
+          defaultValue: 'dost',
+        },
+        {
+          name: 'user_age',
+          type: 'number',
+          required: false,
+          source: 'user_profile',
+          defaultValue: '30',
+        },
+        {
+          name: 'user_gender',
+          type: 'string',
+          required: false,
+          source: 'user_profile',
+          defaultValue: 'person',
+        },
+        {
+          name: 'user_location',
+          type: 'string',
+          required: false,
+          source: 'user_profile',
+          defaultValue: 'India',
+        },
+        {
+          name: 'health_conditions',
+          type: 'string',
+          required: false,
+          source: 'health_data',
+          defaultValue: 'koi nahi',
+        },
+        {
+          name: 'dietary_restrictions',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'koi nahi',
+        },
+        {
+          name: 'diet_type',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'vegetarian',
+        },
+        {
+          name: 'user_goals',
+          type: 'string',
+          required: false,
+          source: 'preferences',
+          defaultValue: 'healthy rehna',
+        },
+        {
+          name: 'user_allergies',
+          type: 'string',
+          required: false,
+          source: 'health_data',
+          defaultValue: 'koi nahi',
+        },
         { name: 'user_query', type: 'string', required: true, source: 'input' },
-      ]
+      ],
     });
 
     this.logger.log(`Initialized ${this.templates.size} default prompt templates`);
@@ -814,9 +1043,9 @@ Response Hinglish mein dein aur simple language use karein.`,
     // Clear existing templates (keep only default ones)
     const defaultTemplateIds = [
       'nutrition_advice_basic_legacy',
-      'meal_planning_weekly_legacy', 
+      'meal_planning_weekly_legacy',
       'fitness_guidance_basic_legacy',
-      'nutrition_advice_hinglish_legacy'
+      'nutrition_advice_hinglish_legacy',
     ];
 
     for (const [id, template] of this.templates.entries()) {
@@ -880,7 +1109,10 @@ Response Hinglish mein dein aur simple language use karein.`,
   /**
    * Test template with sample data
    */
-  async testTemplate(templateId: string, sampleData: Record<string, any>): Promise<{
+  async testTemplate(
+    templateId: string,
+    sampleData: Record<string, any>,
+  ): Promise<{
     success: boolean;
     prompt?: string;
     error?: string;
@@ -894,8 +1126,8 @@ Response Hinglish mein dein aur simple language use karein.`,
 
       // Check for missing required variables
       const missingVariables = template.variables
-        .filter(v => v.required && !sampleData[v.name])
-        .map(v => v.name);
+        .filter((v) => v.required && !sampleData[v.name])
+        .map((v) => v.name);
 
       if (missingVariables.length > 0) {
         return { success: false, missingVariables };
@@ -906,7 +1138,7 @@ Response Hinglish mein dein aur simple language use karein.`,
         userId: 'test-user',
         profile: sampleData,
         preferences: sampleData,
-        healthData: sampleData
+        healthData: sampleData,
       };
 
       const prompt = await this.generateOptimizedPrompt(template, testContext, sampleData);
@@ -931,7 +1163,7 @@ Response Hinglish mein dein aur simple language use karein.`,
       mostUsed: [],
       leastUsed: [],
       averageExecutionTime: {},
-      costEffective: []
+      costEffective: [],
     };
   }
 }

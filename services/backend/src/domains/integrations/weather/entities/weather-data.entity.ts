@@ -26,12 +26,12 @@ export enum WeatherCondition {
 }
 
 export enum AQILevel {
-  GOOD = 'good',               // 0-50
-  MODERATE = 'moderate',       // 51-100
+  GOOD = 'good', // 0-50
+  MODERATE = 'moderate', // 51-100
   UNHEALTHY_SENSITIVE = 'unhealthy_for_sensitive', // 101-150
-  UNHEALTHY = 'unhealthy',     // 151-200
+  UNHEALTHY = 'unhealthy', // 151-200
   VERY_UNHEALTHY = 'very_unhealthy', // 201-300
-  HAZARDOUS = 'hazardous',     // 301+
+  HAZARDOUS = 'hazardous', // 301+
 }
 
 @Entity('weather_data')

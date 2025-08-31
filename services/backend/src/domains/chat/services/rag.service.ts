@@ -83,10 +83,10 @@ export class RAGService {
     userId: string,
     query: string,
     domain: string,
-    options: RAGRetrievalOptions = {}
+    options: RAGRetrievalOptions = {},
   ): Promise<RAGContext> {
     const startTime = Date.now();
-    
+
     this.logger.log(`Retrieving RAG context for user ${userId}, domain: ${domain}`);
 
     const {
@@ -122,14 +122,14 @@ export class RAGService {
       }
 
       // 5. Calculate relevance scores (simplified - would use embeddings in production)
-      const scoredSources = allSources.map(source => ({
+      const scoredSources = allSources.map((source) => ({
         ...source,
         relevanceScore: this.calculateRelevanceScore(query, source.content, domain),
       }));
 
       // 6. Filter and sort by relevance
       const relevantSources = scoredSources
-        .filter(source => source.relevanceScore >= relevanceThreshold)
+        .filter((source) => source.relevanceScore >= relevanceThreshold)
         .sort((a, b) => b.relevanceScore - a.relevanceScore)
         .slice(0, maxDocuments);
 
@@ -137,7 +137,7 @@ export class RAGService {
       const contextText = this.buildContextText(relevantSources);
 
       // 8. Build response sources
-      const sources = relevantSources.map(source => ({
+      const sources = relevantSources.map((source) => ({
         sourceId: source.id,
         sourceType: source.sourceType,
         title: source.title,
@@ -155,13 +155,14 @@ export class RAGService {
           totalDocuments: allSources.length,
           documentsRetrieved: relevantSources.length,
           retrievalTimeMs: retrievalTime,
-          avgRelevanceScore: relevantSources.length > 0 
-            ? relevantSources.reduce((sum, s) => sum + s.relevanceScore, 0) / relevantSources.length 
-            : 0,
-          contextTypes: [...new Set(relevantSources.map(s => s.sourceType))],
+          avgRelevanceScore:
+            relevantSources.length > 0
+              ? relevantSources.reduce((sum, s) => sum + s.relevanceScore, 0) /
+                relevantSources.length
+              : 0,
+          contextTypes: [...new Set(relevantSources.map((s) => s.sourceType))],
         },
       };
-
     } catch (error) {
       this.logger.error(`Error retrieving RAG context for user ${userId}:`, error);
       return this.getEmptyContext();
@@ -175,7 +176,7 @@ export class RAGService {
     try {
       let content = '';
       let title = '';
-      let metadata = { sourceId: data.id, sourceType: contextType };
+      const metadata = { sourceId: data.id, sourceType: contextType };
 
       switch (contextType) {
         case ContextType.HEALTH_REPORT:
@@ -228,7 +229,6 @@ export class RAGService {
         await this.chatContextRepository.save(chatContext);
         this.logger.log(`Indexed ${contextType} for user ${userId}`);
       }
-
     } catch (error) {
       this.logger.error(`Error indexing user data for ${userId}:`, error);
     }
@@ -237,7 +237,11 @@ export class RAGService {
   /**
    * Update context relevance scores based on user interactions
    */
-  async updateRelevanceScore(contextId: string, interactionType: 'viewed' | 'cited' | 'useful', userId: string): Promise<void> {
+  async updateRelevanceScore(
+    contextId: string,
+    interactionType: 'viewed' | 'cited' | 'useful',
+    userId: string,
+  ): Promise<void> {
     try {
       const context = await this.chatContextRepository.findOne({
         where: { id: contextId, userId },
@@ -245,7 +249,7 @@ export class RAGService {
 
       if (context) {
         context.incrementAccess();
-        
+
         // Adjust relevance based on interaction type
         let currentScore = context.getRelevanceScore();
         switch (interactionType) {
@@ -270,9 +274,13 @@ export class RAGService {
 
   // Private helper methods
 
-  private async getUserContext(userId: string, contextTypes: string[], timeRange?: any): Promise<any[]> {
+  private async getUserContext(
+    userId: string,
+    contextTypes: string[],
+    timeRange?: any,
+  ): Promise<any[]> {
     const whereConditions: any = { userId, isActive: true };
-    
+
     if (contextTypes.length > 0) {
       whereConditions.contextType = In(contextTypes);
     }
@@ -287,7 +295,7 @@ export class RAGService {
       take: 20,
     });
 
-    return contexts.map(context => ({
+    return contexts.map((context) => ({
       id: context.id,
       sourceType: context.contextType,
       title: context.title,
@@ -307,21 +315,27 @@ export class RAGService {
       if (!user) return [];
 
       const profileContent = this.extractUserProfileContent(user);
-      
-      return [{
-        id: `user_profile_${userId}`,
-        sourceType: 'user_profile',
-        title: 'User Profile',
-        content: profileContent,
-        metadata: { sourceId: userId, sourceType: 'user_profile' },
-      }];
+
+      return [
+        {
+          id: `user_profile_${userId}`,
+          sourceType: 'user_profile',
+          title: 'User Profile',
+          content: profileContent,
+          metadata: { sourceId: userId, sourceType: 'user_profile' },
+        },
+      ];
     } catch (error) {
       this.logger.error(`Error getting user profile context for ${userId}:`, error);
       return [];
     }
   }
 
-  private async getDomainSpecificContext(userId: string, domain: string, timeRange?: any): Promise<any[]> {
+  private async getDomainSpecificContext(
+    userId: string,
+    domain: string,
+    timeRange?: any,
+  ): Promise<any[]> {
     const contexts = [];
 
     try {
@@ -358,7 +372,7 @@ export class RAGService {
   private async getKnowledgeBaseContext(query: string, domain: string): Promise<any[]> {
     // Simple keyword matching for knowledge base
     // In production, this would use vector similarity search
-    
+
     const domainKeywords = {
       nutrition: ['protein', 'carbs', 'fat', 'vitamins', 'minerals', 'calories'],
       fitness: ['strength', 'cardio', 'muscle', 'training', 'recovery'],
@@ -367,15 +381,15 @@ export class RAGService {
 
     const keywords = domainKeywords[domain] || [];
     const queryLower = query.toLowerCase();
-    
+
     const relevantArticles = [];
-    
+
     for (const [id, doc] of this.knowledgeBase.entries()) {
       if (doc.metadata.domain === domain || doc.metadata.domain === 'general') {
-        const hasKeyword = keywords.some(keyword => 
-          queryLower.includes(keyword) && doc.content.toLowerCase().includes(keyword)
+        const hasKeyword = keywords.some(
+          (keyword) => queryLower.includes(keyword) && doc.content.toLowerCase().includes(keyword),
         );
-        
+
         if (hasKeyword) {
           relevantArticles.push({
             id,
@@ -394,27 +408,27 @@ export class RAGService {
   private calculateRelevanceScore(query: string, content: string, domain: string): number {
     // Simple relevance scoring based on keyword matching
     // In production, this would use vector similarity (cosine similarity)
-    
+
     const queryWords = query.toLowerCase().split(/\s+/);
     const contentWords = content.toLowerCase().split(/\s+/);
-    
+
     let matches = 0;
-    let totalWords = queryWords.length;
-    
+    const totalWords = queryWords.length;
+
     for (const word of queryWords) {
-      if (word.length > 2 && contentWords.some(cw => cw.includes(word) || word.includes(cw))) {
+      if (word.length > 2 && contentWords.some((cw) => cw.includes(word) || word.includes(cw))) {
         matches++;
       }
     }
 
     const baseScore = matches / totalWords;
-    
+
     // Boost score for domain-specific content
     const domainBoost = content.toLowerCase().includes(domain) ? 0.2 : 0;
-    
+
     // Boost for recent content (would check timestamps in production)
     const recencyBoost = 0.1;
-    
+
     return Math.min(1.0, baseScore + domainBoost + recencyBoost);
   }
 
@@ -422,7 +436,7 @@ export class RAGService {
     if (sources.length === 0) return '';
 
     let context = 'RELEVANT CONTEXT:\n\n';
-    
+
     sources.forEach((source, index) => {
       context += `${index + 1}. ${source.title}\n`;
       context += `${this.createExcerpt(source.content, 200)}\n\n`;
@@ -433,13 +447,11 @@ export class RAGService {
 
   private createExcerpt(content: string, maxLength: number): string {
     if (content.length <= maxLength) return content;
-    
+
     const truncated = content.substring(0, maxLength);
     const lastSpace = truncated.lastIndexOf(' ');
-    
-    return lastSpace > 0 
-      ? truncated.substring(0, lastSpace) + '...'
-      : truncated + '...';
+
+    return lastSpace > 0 ? truncated.substring(0, lastSpace) + '...' : truncated + '...';
   }
 
   private getEmptyContext(): RAGContext {
@@ -459,29 +471,32 @@ export class RAGService {
   private initializeKnowledgeBase(): void {
     // Initialize with some basic health and wellness knowledge
     // In production, this would be loaded from a comprehensive database
-    
+
     const articles = [
       {
         id: 'nutrition_basics',
         title: 'Nutrition Basics',
-        content: 'Macronutrients include proteins, carbohydrates, and fats. Proteins help build and repair tissues. Carbohydrates provide energy. Healthy fats support brain function and hormone production.',
+        content:
+          'Macronutrients include proteins, carbohydrates, and fats. Proteins help build and repair tissues. Carbohydrates provide energy. Healthy fats support brain function and hormone production.',
         domain: 'nutrition',
       },
       {
         id: 'exercise_principles',
         title: 'Exercise Principles',
-        content: 'Progressive overload is key to fitness improvement. Start with manageable weights and gradually increase intensity. Rest and recovery are as important as the workout itself.',
+        content:
+          'Progressive overload is key to fitness improvement. Start with manageable weights and gradually increase intensity. Rest and recovery are as important as the workout itself.',
         domain: 'fitness',
       },
       {
         id: 'biomarker_understanding',
         title: 'Understanding Biomarkers',
-        content: 'HbA1c measures average blood sugar over 2-3 months. Normal is below 5.7%. Cholesterol levels include LDL (bad) and HDL (good). Regular monitoring helps track health progress.',
+        content:
+          'HbA1c measures average blood sugar over 2-3 months. Normal is below 5.7%. Cholesterol levels include LDL (bad) and HDL (good). Regular monitoring helps track health progress.',
         domain: 'health',
       },
     ];
 
-    articles.forEach(article => {
+    articles.forEach((article) => {
       this.knowledgeBase.set(article.id, {
         id: article.id,
         content: article.content,
@@ -501,7 +516,7 @@ export class RAGService {
 
   private extractHealthReportContent(report: any): string {
     let content = `Health Report from ${report.reportDate || 'Unknown Date'}\n\n`;
-    
+
     if (report.biomarkers) {
       content += 'Biomarkers:\n';
       Object.entries(report.biomarkers).forEach(([key, value]) => {
@@ -522,7 +537,7 @@ export class RAGService {
 
   private extractMealPlanContent(mealPlan: any): string {
     let content = `Meal Plan for Week ${mealPlan.weekNumber || 'Current'}\n\n`;
-    
+
     if (mealPlan.meals) {
       mealPlan.meals.forEach((meal: any) => {
         content += `${meal.type}: ${meal.name}\n`;
@@ -541,7 +556,7 @@ export class RAGService {
 
   private extractFitnessPlanContent(fitnessPlan: any): string {
     let content = `Fitness Plan - Week ${fitnessPlan.currentWeek || 'Current'}\n\n`;
-    
+
     if (fitnessPlan.workouts) {
       fitnessPlan.workouts.forEach((workout: any) => {
         content += `${workout.name}: ${workout.description || ''}\n`;
@@ -567,7 +582,7 @@ export class RAGService {
 
   private extractRecipeContent(recipe: any): string {
     let content = `Recipe: ${recipe.name}\n\n`;
-    
+
     if (recipe.description) {
       content += `Description: ${recipe.description}\n\n`;
     }
@@ -592,7 +607,7 @@ export class RAGService {
 
   private extractUserProfileContent(user: any): string {
     let content = 'User Profile\n\n';
-    
+
     if (user.profile) {
       const profile = user.profile;
       content += `Age: ${profile.age || 'Not specified'}\n`;
@@ -600,15 +615,15 @@ export class RAGService {
       content += `Height: ${profile.height || 'Not specified'} cm\n`;
       content += `Weight: ${profile.weight || 'Not specified'} kg\n`;
       content += `Activity Level: ${profile.activityLevel || 'Not specified'}\n`;
-      
+
       if (profile.goals && profile.goals.length > 0) {
         content += `Goals: ${profile.goals.join(', ')}\n`;
       }
-      
+
       if (profile.healthConditions && profile.healthConditions.length > 0) {
         content += `Health Conditions: ${profile.healthConditions.join(', ')}\n`;
       }
-      
+
       if (profile.allergies && profile.allergies.length > 0) {
         content += `Allergies: ${profile.allergies.join(', ')}\n`;
       }
@@ -652,7 +667,7 @@ export class RAGService {
         take: 3,
       });
 
-      return reports.map(report => ({
+      return reports.map((report) => ({
         id: `health_report_${report.id}`,
         sourceType: 'health_report',
         title: `Health Report - ${report.testDate}`,
@@ -674,7 +689,7 @@ export class RAGService {
         relations: ['entries'],
       });
 
-      return mealPlans.map(plan => ({
+      return mealPlans.map((plan) => ({
         id: `meal_plan_${plan.id}`,
         sourceType: 'meal_plan',
         title: `Meal Plan - ${plan.name}`,
@@ -696,7 +711,7 @@ export class RAGService {
         relations: ['weeks', 'weeks.workouts', 'weeks.workouts.exercises'],
       });
 
-      return fitnessPlans.map(plan => ({
+      return fitnessPlans.map((plan) => ({
         id: `fitness_plan_${plan.id}`,
         sourceType: 'fitness_plan',
         title: `Fitness Plan - Week ${plan.getCurrentWeek()}`,
@@ -718,7 +733,7 @@ export class RAGService {
         relations: ['ingredients'],
       });
 
-      return recipes.map(recipe => ({
+      return recipes.map((recipe) => ({
         id: `recipe_${recipe.id}`,
         sourceType: 'recipe',
         title: `Recipe - ${recipe.name}`,

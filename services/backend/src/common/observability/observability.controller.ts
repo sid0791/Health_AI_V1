@@ -109,15 +109,18 @@ export class ObservabilityController {
     status: HttpStatus.OK,
     description: 'Traces searched successfully',
   })
-  async searchTraces(@Body() criteria: {
-    operation?: string;
-    service?: string;
-    minDuration?: number;
-    maxDuration?: number;
-    status?: string;
-    tag?: { key: string; value: any };
-    timeRange?: { start: number; end: number };
-  }) {
+  async searchTraces(
+    @Body()
+    criteria: {
+      operation?: string;
+      service?: string;
+      minDuration?: number;
+      maxDuration?: number;
+      status?: string;
+      tag?: { key: string; value: any };
+      timeRange?: { start: number; end: number };
+    },
+  ) {
     const traces = this.tracingService.searchTraces(criteria);
 
     return {
@@ -209,12 +212,15 @@ export class ObservabilityController {
     status: HttpStatus.OK,
     description: 'Metric recorded successfully',
   })
-  async recordMetric(@Body() body: {
-    name: string;
-    value: number;
-    tags?: Record<string, string>;
-    type?: 'counter' | 'gauge' | 'histogram' | 'summary';
-  }) {
+  async recordMetric(
+    @Body()
+    body: {
+      name: string;
+      value: number;
+      tags?: Record<string, string>;
+      type?: 'counter' | 'gauge' | 'histogram' | 'summary';
+    },
+  ) {
     this.metricsService.recordMetric(body.name, body.value, body.tags, body.type);
 
     return {
@@ -238,7 +244,7 @@ export class ObservabilityController {
     return {
       success: true,
       alertResults: results,
-      triggeredCount: results.filter(r => r.triggered).length,
+      triggeredCount: results.filter((r) => r.triggered).length,
       timestamp: new Date(),
     };
   }
@@ -286,15 +292,18 @@ export class ObservabilityController {
     status: HttpStatus.OK,
     description: 'Security events searched successfully',
   })
-  async searchSecurityEvents(@Body() criteria: {
-    type?: string;
-    severity?: string;
-    ipAddress?: string;
-    userId?: string;
-    status?: string;
-    timeRange?: { start: Date; end: Date };
-    limit?: number;
-  }) {
+  async searchSecurityEvents(
+    @Body()
+    criteria: {
+      type?: string;
+      severity?: string;
+      ipAddress?: string;
+      userId?: string;
+      status?: string;
+      timeRange?: { start: Date; end: Date };
+      limit?: number;
+    },
+  ) {
     const events = this.securityService.getEvents(criteria as any);
 
     return {
@@ -316,7 +325,7 @@ export class ObservabilityController {
   })
   async updateEventStatus(
     @Param('eventId') eventId: string,
-    @Body() body: { status: 'open' | 'investigating' | 'resolved' | 'false_positive' }
+    @Body() body: { status: 'open' | 'investigating' | 'resolved' | 'false_positive' },
   ) {
     const updated = this.securityService.updateEventStatus(eventId, body.status);
 
@@ -343,16 +352,25 @@ export class ObservabilityController {
     status: HttpStatus.OK,
     description: 'Security event recorded successfully',
   })
-  async recordSecurityEvent(@Body() body: {
-    type: 'auth_failure' | 'brute_force' | 'suspicious_ip' | 'data_access' | 'privilege_escalation' | 'unusual_activity';
-    severity: 'low' | 'medium' | 'high' | 'critical';
-    ipAddress: string;
-    description: string;
-    metadata?: Record<string, any>;
-    userId?: string;
-    userAgent?: string;
-    endpoint?: string;
-  }) {
+  async recordSecurityEvent(
+    @Body()
+    body: {
+      type:
+        | 'auth_failure'
+        | 'brute_force'
+        | 'suspicious_ip'
+        | 'data_access'
+        | 'privilege_escalation'
+        | 'unusual_activity';
+      severity: 'low' | 'medium' | 'high' | 'critical';
+      ipAddress: string;
+      description: string;
+      metadata?: Record<string, any>;
+      userId?: string;
+      userAgent?: string;
+      endpoint?: string;
+    },
+  ) {
     const eventId = this.securityService.recordSecurityEvent(
       body.type,
       body.severity,
@@ -361,7 +379,7 @@ export class ObservabilityController {
       body.metadata,
       body.userId,
       body.userAgent,
-      body.endpoint
+      body.endpoint,
     );
 
     return {
@@ -444,10 +462,7 @@ export class ObservabilityController {
     status: HttpStatus.OK,
     description: 'Test results retrieved successfully',
   })
-  async getTestResults(
-    @Param('testId') testId: string,
-    @Query('limit') limit?: number
-  ) {
+  async getTestResults(@Param('testId') testId: string, @Query('limit') limit?: number) {
     const results = this.syntheticTestingService.getTestResults(testId, limit);
     const summary = this.syntheticTestingService.getTestSummary(testId);
 
@@ -468,10 +483,7 @@ export class ObservabilityController {
     status: HttpStatus.OK,
     description: 'Test status updated successfully',
   })
-  async toggleSyntheticTest(
-    @Param('testId') testId: string,
-    @Body() body: { enabled: boolean }
-  ) {
+  async toggleSyntheticTest(@Param('testId') testId: string, @Body() body: { enabled: boolean }) {
     const updated = this.syntheticTestingService.toggleTest(testId, body.enabled);
 
     if (!updated) {

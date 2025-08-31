@@ -21,7 +21,14 @@ import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, UserProfile, UserConsent, UserPreferences, UserGoals, UserTokenUsage]),
+    TypeOrmModule.forFeature([
+      User,
+      UserProfile,
+      UserConsent,
+      UserPreferences,
+      UserGoals,
+      UserTokenUsage,
+    ]),
     ScheduleModule.forRoot(),
     AuthModule,
   ],

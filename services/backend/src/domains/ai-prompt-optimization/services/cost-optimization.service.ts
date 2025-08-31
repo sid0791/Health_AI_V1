@@ -87,7 +87,7 @@ export class CostOptimizationService {
 
     // Reset daily quotas at midnight
     this.scheduleDailyQuotaReset();
-    
+
     this.logger.log('Enhanced cost optimization service initialized with >80% target');
   }
 
@@ -103,14 +103,14 @@ export class CostOptimizationService {
     // Step 1: Check if we have a cached response for similar request
     const cacheKey = this.generateCacheKey(request);
     const cachedResult = this.requestCache.get(cacheKey);
-    
+
     if (cachedResult && Date.now() - cachedResult.timestamp < this.CACHE_TTL) {
       this.logger.debug(`Cache hit for request: ${cacheKey}`);
       return {
         result: cachedResult.data,
         wasCached: true,
         wasDeduped: false,
-        costSaved: this.estimateRequestCost(request)
+        costSaved: this.estimateRequestCost(request),
       };
     }
 
@@ -122,24 +122,24 @@ export class CostOptimizationService {
         result: await this.waitForSimilarRequest(similarRequest),
         wasCached: false,
         wasDeduped: true,
-        costSaved: this.estimateRequestCost(request) * 0.9 // 90% cost saved via dedup
+        costSaved: this.estimateRequestCost(request) * 0.9, // 90% cost saved via dedup
       };
     }
 
     // Step 3: Add to batch for processing
     const batchId = await this.addToBatch(request);
-    
+
     // For now, return a mock result - in real implementation, this would wait for actual processing
     const result = { batchId, processed: true };
-    
+
     // Cache the result
     this.cacheResult(cacheKey, result);
-    
+
     return {
       result,
       wasCached: false,
       wasDeduped: false,
-      costSaved: 0
+      costSaved: 0,
     };
   }
 
@@ -148,7 +148,7 @@ export class CostOptimizationService {
    */
   async addToBatch(request: BatchedRequest): Promise<string> {
     const batchKey = this.getBatchKey(request);
-    
+
     if (!this.batchQueue.has(batchKey)) {
       this.batchQueue.set(batchKey, []);
     }
@@ -177,7 +177,7 @@ export class CostOptimizationService {
     try {
       // Combine similar requests for cost optimization
       const optimizedBatch = this.optimizeBatch(batch);
-      
+
       // Create batch execution result
       const result: BatchOptimizationResult = {
         batchId: `batch-${Date.now()}`,
@@ -185,11 +185,13 @@ export class CostOptimizationService {
         totalTokensSaved: this.calculateTokensSaved(batch, optimizedBatch),
         totalCostSaved: this.calculateCostSaved(batch, optimizedBatch),
         optimizationRatio: optimizedBatch.length / batch.length,
-        batchSize: optimizedBatch.length
+        batchSize: optimizedBatch.length,
       };
 
       // Log optimization results
-      this.logger.log(`Processed batch ${result.batchId}: ${result.batchSize} requests, saved ${result.totalTokensSaved} tokens, $${result.totalCostSaved.toFixed(4)}`);
+      this.logger.log(
+        `Processed batch ${result.batchId}: ${result.batchSize} requests, saved ${result.totalTokensSaved} tokens, $${result.totalCostSaved.toFixed(4)}`,
+      );
 
       // Clear processed batch
       this.batchQueue.delete(batchKey);
@@ -207,20 +209,20 @@ export class CostOptimizationService {
   private optimizeBatch(requests: BatchedRequest[]): BatchedRequest[] {
     // Group requests by template and similarity
     const groups = new Map<string, BatchedRequest[]>();
-    
+
     for (const request of requests) {
       const groupKey = `${request.templateId}-${request.category}`;
-      
+
       if (!groups.has(groupKey)) {
         groups.set(groupKey, []);
       }
-      
+
       groups.get(groupKey)!.push(request);
     }
 
     // Optimize each group
     const optimized: BatchedRequest[] = [];
-    
+
     for (const [groupKey, groupRequests] of groups) {
       if (groupRequests.length > 1) {
         // Combine similar requests into one optimized request
@@ -240,16 +242,16 @@ export class CostOptimizationService {
   private combineRequests(requests: BatchedRequest[]): BatchedRequest {
     // Take the first request as base and combine user queries
     const base = requests[0];
-    const combinedQueries = requests.map(r => r.userQuery).join(' | ');
-    
+    const combinedQueries = requests.map((r) => r.userQuery).join(' | ');
+
     return {
       ...base,
       userQuery: `Multiple user requests: ${combinedQueries}`,
       variables: {
         ...base.variables,
         batch_size: requests.length,
-        combined_queries: combinedQueries
-      }
+        combined_queries: combinedQueries,
+      },
     };
   }
 
@@ -284,14 +286,14 @@ export class CostOptimizationService {
    */
   private async processPendingBatches(): Promise<void> {
     const batchKeys = Array.from(this.batchQueue.keys());
-    
+
     for (const batchKey of batchKeys) {
       const batch = this.batchQueue.get(batchKey);
       if (batch && batch.length > 0) {
         // Process batch if it's been waiting for the timeout period
         const oldestRequest = batch[0];
         const waitTime = Date.now() - oldestRequest.timestamp.getTime();
-        
+
         if (waitTime >= this.BATCH_TIMEOUT) {
           await this.processBatch(batchKey);
         }
@@ -310,7 +312,7 @@ export class CostOptimizationService {
 
     const dailyUsed = this.getDailyUsage(userId);
     const monthlyUsed = this.getMonthlyUsage(userId);
-    
+
     const dailyQuota = this.DAILY_QUOTA_DEFAULT;
     const monthlyQuota = this.MONTHLY_QUOTA_DEFAULT;
 
@@ -322,7 +324,7 @@ export class CostOptimizationService {
       monthlyUsed,
       isNearLimit: dailyUsed > dailyQuota * 0.8 || monthlyUsed > monthlyQuota * 0.8,
       isOverLimit: dailyUsed >= dailyQuota || monthlyUsed >= monthlyQuota,
-      resetTime: this.getNextDailyReset()
+      resetTime: this.getNextDailyReset(),
     };
   }
 
@@ -332,7 +334,7 @@ export class CostOptimizationService {
   private getDailyUsage(userId: string): number {
     const history = this.requestHistory.get(userId) || [];
     const today = new Date().toDateString();
-    return history.filter(r => new Date(r.timestamp).toDateString() === today).length;
+    return history.filter((r) => new Date(r.timestamp).toDateString() === today).length;
   }
 
   /**
@@ -342,7 +344,7 @@ export class CostOptimizationService {
     const history = this.requestHistory.get(userId) || [];
     const thisMonth = new Date().getMonth();
     const thisYear = new Date().getFullYear();
-    return history.filter(r => {
+    return history.filter((r) => {
       const date = new Date(r.timestamp);
       return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
     }).length;
@@ -363,14 +365,17 @@ export class CostOptimizationService {
    */
   private scheduleDailyQuotaReset(): void {
     const msUntilMidnight = this.getNextDailyReset().getTime() - Date.now();
-    
+
     setTimeout(() => {
       this.resetDailyQuotas();
-      
+
       // Schedule next reset
-      setInterval(() => {
-        this.resetDailyQuotas();
-      }, 24 * 60 * 60 * 1000); // 24 hours
+      setInterval(
+        () => {
+          this.resetDailyQuotas();
+        },
+        24 * 60 * 60 * 1000,
+      ); // 24 hours
     }, msUntilMidnight);
   }
 
@@ -380,20 +385,26 @@ export class CostOptimizationService {
   private resetDailyQuotas(): void {
     // Clear daily usage tracking
     for (const [userId, history] of this.requestHistory.entries()) {
-      const filtered = history.filter(r => {
+      const filtered = history.filter((r) => {
         const date = new Date(r.timestamp);
         return date.toDateString() !== new Date().toDateString();
       });
       this.requestHistory.set(userId, filtered);
     }
-    
+
     this.logger.log('Daily quotas reset for all users');
   }
 
   /**
    * Track request usage for cost monitoring
    */
-  trackRequest(userId: string, category: string, templateId: string, tokens: number, cost: number): void {
+  trackRequest(
+    userId: string,
+    category: string,
+    templateId: string,
+    tokens: number,
+    cost: number,
+  ): void {
     if (!this.requestHistory.has(userId)) {
       this.requestHistory.set(userId, []);
     }
@@ -404,7 +415,7 @@ export class CostOptimizationService {
       category,
       templateId,
       tokens,
-      cost
+      cost,
     });
 
     // Keep only last 1000 requests per user
@@ -418,7 +429,7 @@ export class CostOptimizationService {
    */
   getCostMetrics(userId: string): CostMetrics {
     const history = this.requestHistory.get(userId) || [];
-    
+
     if (history.length === 0) {
       return {
         totalRequests: 0,
@@ -431,7 +442,7 @@ export class CostOptimizationService {
         requestsByCategory: {},
         dailyCost: 0,
         monthlyCost: 0,
-        projectedMonthlyCost: 0
+        projectedMonthlyCost: 0,
       };
     }
 
@@ -441,22 +452,25 @@ export class CostOptimizationService {
 
     const today = new Date().toDateString();
     const dailyCost = history
-      .filter(r => new Date(r.timestamp).toDateString() === today)
+      .filter((r) => new Date(r.timestamp).toDateString() === today)
       .reduce((sum, r) => sum + r.cost, 0);
 
     const thisMonth = new Date().getMonth();
     const thisYear = new Date().getFullYear();
     const monthlyCost = history
-      .filter(r => {
+      .filter((r) => {
         const date = new Date(r.timestamp);
         return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
       })
       .reduce((sum, r) => sum + r.cost, 0);
 
-    const requestsByCategory = history.reduce((acc, r) => {
-      acc[r.category] = (acc[r.category] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const requestsByCategory = history.reduce(
+      (acc, r) => {
+        acc[r.category] = (acc[r.category] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return {
       totalRequests,
@@ -469,7 +483,7 @@ export class CostOptimizationService {
       requestsByCategory,
       dailyCost,
       monthlyCost,
-      projectedMonthlyCost: dailyCost * 30 // Simple projection
+      projectedMonthlyCost: dailyCost * 30, // Simple projection
     };
   }
 
@@ -498,24 +512,25 @@ export class CostOptimizationService {
    */
   private async findSimilarPendingRequest(request: BatchedRequest): Promise<string | null> {
     const normalizedQuery = this.normalizeQuery(request.userQuery);
-    
+
     for (const [batchKey, batch] of this.batchQueue.entries()) {
       for (const pendingRequest of batch) {
-        if (pendingRequest.category === request.category && 
-            pendingRequest.templateId === request.templateId) {
-          
+        if (
+          pendingRequest.category === request.category &&
+          pendingRequest.templateId === request.templateId
+        ) {
           const similarity = this.calculateSimilarity(
-            normalizedQuery, 
-            this.normalizeQuery(pendingRequest.userQuery)
+            normalizedQuery,
+            this.normalizeQuery(pendingRequest.userQuery),
           );
-          
+
           if (similarity >= this.similarityThreshold) {
             return batchKey;
           }
         }
       }
     }
-    
+
     return null;
   }
 
@@ -525,10 +540,10 @@ export class CostOptimizationService {
   private calculateSimilarity(str1: string, str2: string): number {
     const words1 = new Set(str1.split(' '));
     const words2 = new Set(str2.split(' '));
-    
-    const intersection = new Set([...words1].filter(x => words2.has(x)));
+
+    const intersection = new Set([...words1].filter((x) => words2.has(x)));
     const union = new Set([...words1, ...words2]);
-    
+
     return intersection.size / union.size;
   }
 
@@ -537,7 +552,7 @@ export class CostOptimizationService {
    */
   private async waitForSimilarRequest(batchKey: string): Promise<any> {
     // In real implementation, this would wait for the batch to complete
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       setTimeout(() => {
         resolve({ fromSimilarRequest: true, batchKey });
       }, 1000);
@@ -558,7 +573,7 @@ export class CostOptimizationService {
 
     this.requestCache.set(cacheKey, {
       data: result,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
@@ -568,14 +583,14 @@ export class CostOptimizationService {
   private cleanupCache(): void {
     const now = Date.now();
     let removedCount = 0;
-    
+
     for (const [key, value] of this.requestCache.entries()) {
       if (now - value.timestamp > this.CACHE_TTL) {
         this.requestCache.delete(key);
         removedCount++;
       }
     }
-    
+
     if (removedCount > 0) {
       this.logger.debug(`Cleaned up ${removedCount} expired cache entries`);
     }
@@ -589,7 +604,7 @@ export class CostOptimizationService {
     const queryTokens = request.userQuery.length / 4; // Rough estimate: 4 chars per token
     const baseTokens = 500; // Base template tokens
     const totalTokens = queryTokens + baseTokens;
-    
+
     return totalTokens * 0.00002; // GPT-3.5 pricing estimate
   }
 
@@ -606,19 +621,22 @@ export class CostOptimizationService {
     recommendations: string[];
   } {
     const cacheHits = Array.from(this.requestCache.values()).length;
-    const totalRequests = Array.from(this.requestHistory.values()).reduce((sum, h) => sum + h.length, 0);
-    
+    const totalRequests = Array.from(this.requestHistory.values()).reduce(
+      (sum, h) => sum + h.length,
+      0,
+    );
+
     const cacheHitRate = totalRequests > 0 ? cacheHits / totalRequests : 0;
     const batchingEfficiency = this.calculateBatchingEfficiency();
     const deduplicationRate = 0.15; // Estimated 15% deduplication rate
-    
+
     // Calculate current optimization rate based on various factors
     const currentOptimizationRate = Math.min(
       60 + // Base optimization
-      (cacheHitRate * 30) + // Cache contribution
-      (batchingEfficiency * 20) + // Batching contribution  
-      (deduplicationRate * 15), // Deduplication contribution
-      95 // Cap at 95%
+        cacheHitRate * 30 + // Cache contribution
+        batchingEfficiency * 20 + // Batching contribution
+        deduplicationRate * 15, // Deduplication contribution
+      95, // Cap at 95%
     );
 
     const recommendations = this.generateOptimizationRecommendations(currentOptimizationRate);
@@ -630,7 +648,7 @@ export class CostOptimizationService {
       deduplicationRate: Math.round(deduplicationRate * 10000) / 100,
       batchingEfficiency: Math.round(batchingEfficiency * 10000) / 100,
       totalCostSaved: this.calculateTotalCostSaved(),
-      recommendations
+      recommendations,
     };
   }
 
@@ -640,13 +658,13 @@ export class CostOptimizationService {
   private calculateBatchingEfficiency(): number {
     let totalOriginalRequests = 0;
     let totalBatchedRequests = 0;
-    
+
     for (const batch of this.batchQueue.values()) {
       totalOriginalRequests += batch.length;
       totalBatchedRequests += Math.ceil(batch.length / this.BATCH_SIZE);
     }
-    
-    return totalOriginalRequests > 0 ? 1 - (totalBatchedRequests / totalOriginalRequests) : 0;
+
+    return totalOriginalRequests > 0 ? 1 - totalBatchedRequests / totalOriginalRequests : 0;
   }
 
   /**
@@ -654,10 +672,13 @@ export class CostOptimizationService {
    */
   private calculateTotalCostSaved(): number {
     // Simplified calculation - in real implementation would track actual savings
-    const totalRequests = Array.from(this.requestHistory.values()).reduce((sum, h) => sum + h.length, 0);
+    const totalRequests = Array.from(this.requestHistory.values()).reduce(
+      (sum, h) => sum + h.length,
+      0,
+    );
     const averageCostPerRequest = 0.02; // $0.02 estimate
     const optimizationRate = this.getEnhancedOptimizationMetrics().currentOptimizationRate / 100;
-    
+
     return totalRequests * averageCostPerRequest * optimizationRate;
   }
 
@@ -666,23 +687,23 @@ export class CostOptimizationService {
    */
   private generateOptimizationRecommendations(currentRate: number): string[] {
     const recommendations = [];
-    
+
     if (currentRate < 80) {
       recommendations.push('Increase cache TTL to 2 hours for better cache hit rates');
       recommendations.push('Implement more aggressive request batching (batch size: 20)');
       recommendations.push('Add semantic similarity matching for better deduplication');
     }
-    
+
     if (currentRate < 75) {
       recommendations.push('Prioritize free open-source models for Level 2 requests');
       recommendations.push('Implement request queuing to batch similar requests');
     }
-    
+
     if (currentRate < 85) {
       recommendations.push('Add prompt compression techniques to reduce token usage');
       recommendations.push('Implement smart context pruning for long conversations');
     }
-    
+
     return recommendations;
   }
 }

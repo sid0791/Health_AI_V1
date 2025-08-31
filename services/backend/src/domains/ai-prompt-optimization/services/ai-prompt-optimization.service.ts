@@ -3,7 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
-import { AIPromptTemplate, PromptCategory, VariableType, PromptStatus } from '../entities/ai-prompt-template.entity';
+import {
+  AIPromptTemplate,
+  PromptCategory,
+  VariableType,
+  PromptStatus,
+} from '../entities/ai-prompt-template.entity';
 import { AIPromptExecution, ExecutionStatus } from '../entities/ai-prompt-execution.entity';
 import { User } from '../../users/entities/user.entity';
 import { AIRoutingService } from '../../ai-routing/services/ai-routing.service';
@@ -61,7 +66,7 @@ export class AIPromptOptimizationService {
       }
 
       // Get the optimal template
-      const template = templateId 
+      const template = templateId
         ? await this.getTemplateById(templateId)
         : await this.getOptimalTemplate(category);
 
@@ -75,7 +80,7 @@ export class AIPromptOptimizationService {
 
       // Count tokens (approximate)
       const inputTokens = this.estimateTokens(processedPrompt);
-      
+
       // Create execution record
       const execution = this.executionRepository.create({
         userId,
@@ -135,7 +140,6 @@ export class AIPromptOptimizationService {
           response: aiResponse,
           execution,
         };
-
       } catch (aiError) {
         execution.status = ExecutionStatus.FAILED;
         execution.errorMessage = aiError.message;
@@ -148,7 +152,6 @@ export class AIPromptOptimizationService {
           execution,
         };
       }
-
     } catch (error) {
       this.logger.error(`Error executing prompt for user ${userId}:`, error);
       throw error;
@@ -160,11 +163,11 @@ export class AIPromptOptimizationService {
    */
   async getOptimalTemplate(category: PromptCategory): Promise<AIPromptTemplate | null> {
     return await this.templateRepository.findOne({
-      where: { 
-        category, 
-        status: PromptStatus.ACTIVE 
+      where: {
+        category,
+        status: PromptStatus.ACTIVE,
       },
-      order: { 
+      order: {
         usageCount: 'DESC', // Prefer most used templates
         averageTokens: 'ASC', // Prefer lower token usage for cost optimization
       },
@@ -188,7 +191,8 @@ export class AIPromptOptimizationService {
     startDate?: Date,
     endDate?: Date,
   ): Promise<any> {
-    const queryBuilder = this.executionRepository.createQueryBuilder('execution')
+    const queryBuilder = this.executionRepository
+      .createQueryBuilder('execution')
       .leftJoinAndSelect('execution.template', 'template');
 
     if (userId) {
@@ -213,19 +217,24 @@ export class AIPromptOptimizationService {
     const totalExecutions = executions.length;
     const totalCost = executions.reduce((sum, exec) => sum + exec.cost, 0);
     const totalTokens = executions.reduce((sum, exec) => sum + exec.totalTokens, 0);
-    const averageResponseTime = executions.reduce((sum, exec) => sum + exec.responseTimeMs, 0) / totalExecutions;
-    const successRate = executions.filter(exec => exec.status === ExecutionStatus.SUCCESS).length / totalExecutions;
+    const averageResponseTime =
+      executions.reduce((sum, exec) => sum + exec.responseTimeMs, 0) / totalExecutions;
+    const successRate =
+      executions.filter((exec) => exec.status === ExecutionStatus.SUCCESS).length / totalExecutions;
 
-    const categoryBreakdown = executions.reduce((acc, exec) => {
-      const cat = exec.template.category;
-      if (!acc[cat]) {
-        acc[cat] = { count: 0, cost: 0, tokens: 0 };
-      }
-      acc[cat].count++;
-      acc[cat].cost += exec.cost;
-      acc[cat].tokens += exec.totalTokens;
-      return acc;
-    }, {} as Record<string, any>);
+    const categoryBreakdown = executions.reduce(
+      (acc, exec) => {
+        const cat = exec.template.category;
+        if (!acc[cat]) {
+          acc[cat] = { count: 0, cost: 0, tokens: 0 };
+        }
+        acc[cat].count++;
+        acc[cat].cost += exec.cost;
+        acc[cat].tokens += exec.totalTokens;
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
 
     return {
       summary: {
@@ -252,7 +261,10 @@ export class AIPromptOptimizationService {
     for (const variable of template.variables) {
       try {
         if (this.variableResolvers[variable.name]) {
-          resolvedValues[variable.name] = await this.variableResolvers[variable.name](user, context);
+          resolvedValues[variable.name] = await this.variableResolvers[variable.name](
+            user,
+            context,
+          );
         } else if (variable.dataPath) {
           resolvedValues[variable.name] = this.extractDataPath(user, variable.dataPath);
         } else if (context && context[variable.name]) {
@@ -320,11 +332,13 @@ export class AIPromptOptimizationService {
     execution: AIPromptExecution,
   ): Promise<void> {
     template.usageCount++;
-    
+
     // Update rolling average for tokens
-    const newAverageTokens = (template.averageTokens * (template.usageCount - 1) + execution.totalTokens) / template.usageCount;
+    const newAverageTokens =
+      (template.averageTokens * (template.usageCount - 1) + execution.totalTokens) /
+      template.usageCount;
     template.averageTokens = Math.round(newAverageTokens * 100) / 100;
-    
+
     // Update total cost
     template.totalCost += execution.cost;
 
@@ -337,7 +351,10 @@ export class AIPromptOptimizationService {
       userAge: (user: User) => user.profile?.age || 'not specified',
       userWeight: (user: User) => user.profile?.weight || 'not specified',
       userHeight: (user: User) => user.profile?.height || 'not specified',
-      userGoals: (user: User) => Array.isArray(user.goals) ? user.goals.map(g => g.primaryGoal).join(', ') : user.goals?.primaryGoal || 'general health',
+      userGoals: (user: User) =>
+        Array.isArray(user.goals)
+          ? user.goals.map((g) => g.primaryGoal).join(', ')
+          : user.goals?.primaryGoal || 'general health',
       dietaryPreferences: (user: User) => user.preferences?.dietaryPreference || 'none specified',
       healthConditions: (user: User) => user.profile?.healthConditions || 'none reported',
       activityLevel: (user: User) => user.profile?.activityLevel || 'moderate',

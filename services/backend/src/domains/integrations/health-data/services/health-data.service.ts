@@ -4,9 +4,18 @@ import { Repository, Between } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 
-import { HealthDataEntry, HealthDataProvider, HealthDataType, SyncStatus } from '../entities/health-data-entry.entity';
+import {
+  HealthDataEntry,
+  HealthDataProvider,
+  HealthDataType,
+  SyncStatus,
+} from '../entities/health-data-entry.entity';
 import { HealthDataConnection, ConnectionStatus } from '../entities/health-data-connection.entity';
-import { ConnectHealthProviderDto, SyncHealthDataDto, HealthDataQueryDto } from '../dto/health-data.dto';
+import {
+  ConnectHealthProviderDto,
+  SyncHealthDataDto,
+  HealthDataQueryDto,
+} from '../dto/health-data.dto';
 import { LogsService } from '../../../logs/services/logs.service';
 import { LogType, LogSource } from '../../../logs/entities/log-entry.entity';
 
@@ -44,9 +53,12 @@ export class HealthDataService {
   /**
    * Connect to a health data provider
    */
-  async connectProvider(userId: string, connectDto: ConnectHealthProviderDto): Promise<HealthDataConnection> {
+  async connectProvider(
+    userId: string,
+    connectDto: ConnectHealthProviderDto,
+  ): Promise<HealthDataConnection> {
     const providerConfig = this.getProviderConfig(connectDto.provider);
-    
+
     // Check if connection already exists
     let connection = await this.connectionRepository.findOne({
       where: { userId, provider: connectDto.provider },
@@ -64,8 +76,12 @@ export class HealthDataService {
     try {
       // Exchange auth code for tokens (if provided)
       if (connectDto.authCode) {
-        const tokens = await this.exchangeAuthCode(connectDto.provider, connectDto.authCode, providerConfig);
-        
+        const tokens = await this.exchangeAuthCode(
+          connectDto.provider,
+          connectDto.authCode,
+          providerConfig,
+        );
+
         connection.accessToken = tokens.accessToken;
         connection.refreshToken = tokens.refreshToken;
         connection.tokenExpiresAt = tokens.expiresAt;
@@ -75,7 +91,7 @@ export class HealthDataService {
       }
 
       connection = await this.connectionRepository.save(connection);
-      
+
       this.logger.log(`Connected to ${connectDto.provider} for user ${userId}`);
       return connection;
     } catch (error) {
@@ -83,9 +99,11 @@ export class HealthDataService {
       connection.lastError = error.message;
       connection.errorCount++;
       await this.connectionRepository.save(connection);
-      
+
       this.logger.error(`Failed to connect to ${connectDto.provider}:`, error);
-      throw new BadRequestException(`Failed to connect to ${connectDto.provider}: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to connect to ${connectDto.provider}: ${error.message}`,
+      );
     }
   }
 
@@ -124,15 +142,15 @@ export class HealthDataService {
    */
   async getHealthData(userId: string, queryDto: HealthDataQueryDto): Promise<HealthDataEntry[]> {
     const where: any = { userId };
-    
+
     if (queryDto.provider) {
       where.provider = queryDto.provider;
     }
-    
+
     if (queryDto.dataType) {
       where.dataType = queryDto.dataType;
     }
-    
+
     if (queryDto.startDate && queryDto.endDate) {
       where.recordedAt = Between(new Date(queryDto.startDate), new Date(queryDto.endDate));
     }
@@ -174,9 +192,9 @@ export class HealthDataService {
     connection.accessToken = null;
     connection.refreshToken = null;
     connection.tokenExpiresAt = null;
-    
+
     await this.connectionRepository.save(connection);
-    
+
     this.logger.log(`Disconnected from ${provider} for user ${userId}`);
   }
 
@@ -185,7 +203,7 @@ export class HealthDataService {
    */
   async processWebhookData(provider: HealthDataProvider, payload: any): Promise<void> {
     this.logger.log(`Processing webhook data from ${provider}`);
-    
+
     try {
       switch (provider) {
         case HealthDataProvider.FITBIT:
@@ -203,7 +221,11 @@ export class HealthDataService {
     }
   }
 
-  private async exchangeAuthCode(provider: HealthDataProvider, authCode: string, config: ProviderConfig): Promise<any> {
+  private async exchangeAuthCode(
+    provider: HealthDataProvider,
+    authCode: string,
+    config: ProviderConfig,
+  ): Promise<any> {
     // Implementation for OAuth token exchange would be provider-specific
     // This is a simplified version for demonstration
     switch (provider) {
@@ -233,26 +255,31 @@ export class HealthDataService {
 
     try {
       const data = await this.fetchProviderData(connection, dataType, startDate, endDate);
-      
+
       for (const record of data) {
         result.recordsProcessed++;
-        
+
         try {
-          await this.createHealthDataEntry(connection.userId, connection.provider, dataType, record);
+          await this.createHealthDataEntry(
+            connection.userId,
+            connection.provider,
+            dataType,
+            record,
+          );
           result.recordsSuccess++;
-          
+
           // Create log entry for successful sync
           await this.logsService.createLogEntry(connection.userId, {
             logType: this.mapDataTypeToLogType(dataType),
             source: this.mapProviderToLogSource(connection.provider),
             message: `${dataType} data synced from ${connection.provider}`,
-            data: { 
-              value: record.value, 
+            data: {
+              value: record.value,
               unit: record.unit,
-              provider: connection.provider, 
+              provider: connection.provider,
               dataType,
               record: record,
-              timestamp: record.timestamp || new Date()
+              timestamp: record.timestamp || new Date(),
             },
           });
         } catch (error) {
@@ -334,11 +361,26 @@ export class HealthDataService {
   private getDefaultDataTypes(provider: HealthDataProvider): HealthDataType[] {
     switch (provider) {
       case HealthDataProvider.FITBIT:
-        return [HealthDataType.STEPS, HealthDataType.HEART_RATE, HealthDataType.CALORIES_BURNED, HealthDataType.SLEEP_DURATION];
+        return [
+          HealthDataType.STEPS,
+          HealthDataType.HEART_RATE,
+          HealthDataType.CALORIES_BURNED,
+          HealthDataType.SLEEP_DURATION,
+        ];
       case HealthDataProvider.GOOGLE_FIT:
-        return [HealthDataType.STEPS, HealthDataType.CALORIES_BURNED, HealthDataType.DISTANCE, HealthDataType.ACTIVE_MINUTES];
+        return [
+          HealthDataType.STEPS,
+          HealthDataType.CALORIES_BURNED,
+          HealthDataType.DISTANCE,
+          HealthDataType.ACTIVE_MINUTES,
+        ];
       case HealthDataProvider.APPLE_HEALTHKIT:
-        return [HealthDataType.STEPS, HealthDataType.HEART_RATE, HealthDataType.CALORIES_BURNED, HealthDataType.WORKOUT];
+        return [
+          HealthDataType.STEPS,
+          HealthDataType.HEART_RATE,
+          HealthDataType.CALORIES_BURNED,
+          HealthDataType.WORKOUT,
+        ];
       default:
         return [HealthDataType.STEPS, HealthDataType.CALORIES_BURNED];
     }
@@ -386,23 +428,44 @@ export class HealthDataService {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async exchangeFitbitAuthCode(_authCode: string, _config: ProviderConfig): Promise<any> {
     // Implement Fitbit OAuth flow
-    return { accessToken: 'demo-token', refreshToken: 'demo-refresh', expiresAt: new Date(Date.now() + 3600000) };
+    return {
+      accessToken: 'demo-token',
+      refreshToken: 'demo-refresh',
+      expiresAt: new Date(Date.now() + 3600000),
+    };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async exchangeGoogleFitAuthCode(_authCode: string, _config: ProviderConfig): Promise<any> {
+  private async exchangeGoogleFitAuthCode(
+    _authCode: string,
+    _config: ProviderConfig,
+  ): Promise<any> {
     // Implement Google Fit OAuth flow
-    return { accessToken: 'demo-token', refreshToken: 'demo-refresh', expiresAt: new Date(Date.now() + 3600000) };
+    return {
+      accessToken: 'demo-token',
+      refreshToken: 'demo-refresh',
+      expiresAt: new Date(Date.now() + 3600000),
+    };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async fetchFitbitData(_connection: HealthDataConnection, _dataType: HealthDataType, _startDate: Date, _endDate: Date): Promise<any[]> {
+  private async fetchFitbitData(
+    _connection: HealthDataConnection,
+    _dataType: HealthDataType,
+    _startDate: Date,
+    _endDate: Date,
+  ): Promise<any[]> {
     // Implement Fitbit API calls
     return [];
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async fetchGoogleFitData(_connection: HealthDataConnection, _dataType: HealthDataType, _startDate: Date, _endDate: Date): Promise<any[]> {
+  private async fetchGoogleFitData(
+    _connection: HealthDataConnection,
+    _dataType: HealthDataType,
+    _startDate: Date,
+    _endDate: Date,
+  ): Promise<any[]> {
     // Implement Google Fit API calls
     return [];
   }

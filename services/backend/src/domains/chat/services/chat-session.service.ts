@@ -3,11 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
-import { 
-  ChatSession, 
-  ChatSessionType, 
-  ChatSessionStatus 
-} from '../entities/chat-session.entity';
+import { ChatSession, ChatSessionType, ChatSessionStatus } from '../entities/chat-session.entity';
 import { User } from '../../users/entities/user.entity';
 
 export interface CreateSessionOptions {
@@ -69,10 +65,13 @@ export class ChatSessionService {
 
       // Set expiration time
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + (options.expirationHours || this.defaultExpirationHours));
+      expiresAt.setHours(
+        expiresAt.getHours() + (options.expirationHours || this.defaultExpirationHours),
+      );
 
       // Generate appropriate title if not provided
-      const title = options.title || this.generateSessionTitle(options.type || ChatSessionType.GENERAL);
+      const title =
+        options.title || this.generateSessionTitle(options.type || ChatSessionType.GENERAL);
 
       // Create session
       const session = this.chatSessionRepository.create({
@@ -88,9 +87,9 @@ export class ChatSessionService {
       });
 
       const savedSession = await this.chatSessionRepository.save(session);
-      
+
       this.logger.log(`Created chat session ${savedSession.id} for user ${userId}`);
-      
+
       return savedSession;
     } catch (error) {
       this.logger.error(`Error creating chat session for user ${userId}:`, error);
@@ -125,7 +124,7 @@ export class ChatSessionService {
    */
   async getUserSessions(userId: string, includeExpired = false): Promise<SessionSummary[]> {
     const whereCondition: any = { userId };
-    
+
     if (!includeExpired) {
       whereCondition.status = ChatSessionStatus.ACTIVE;
     }
@@ -136,7 +135,7 @@ export class ChatSessionService {
       take: this.maxSessionsPerUser,
     });
 
-    return sessions.map(session => ({
+    return sessions.map((session) => ({
       id: session.id,
       type: session.type,
       status: session.status,
@@ -155,10 +154,10 @@ export class ChatSessionService {
   async updateSessionActivity(sessionId: string, userId: string): Promise<void> {
     const result = await this.chatSessionRepository.update(
       { id: sessionId, userId },
-      { 
+      {
         lastActivityAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     );
 
     if (result.affected === 0) {
@@ -170,19 +169,19 @@ export class ChatSessionService {
    * Update session preferences
    */
   async updateSessionPreferences(
-    sessionId: string, 
-    userId: string, 
-    preferences: Partial<CreateSessionOptions['userPreferences']>
+    sessionId: string,
+    userId: string,
+    preferences: Partial<CreateSessionOptions['userPreferences']>,
   ): Promise<ChatSession> {
     const session = await this.getSession(sessionId, userId);
-    
+
     session.userPreferences = {
       ...session.userPreferences,
       ...preferences,
     };
 
     session.updateActivity();
-    
+
     return await this.chatSessionRepository.save(session);
   }
 
@@ -190,19 +189,19 @@ export class ChatSessionService {
    * Update session context
    */
   async updateSessionContext(
-    sessionId: string, 
-    userId: string, 
-    context: Record<string, any>
+    sessionId: string,
+    userId: string,
+    context: Record<string, any>,
   ): Promise<ChatSession> {
     const session = await this.getSession(sessionId, userId);
-    
+
     session.context = {
       ...session.context,
       ...context,
     };
 
     session.updateActivity();
-    
+
     return await this.chatSessionRepository.save(session);
   }
 
@@ -211,10 +210,10 @@ export class ChatSessionService {
    */
   async pauseSession(sessionId: string, userId: string): Promise<ChatSession> {
     const session = await this.getSession(sessionId, userId);
-    
+
     session.status = ChatSessionStatus.PAUSED;
     session.updateActivity();
-    
+
     return await this.chatSessionRepository.save(session);
   }
 
@@ -232,7 +231,7 @@ export class ChatSessionService {
 
     session.status = ChatSessionStatus.ACTIVE;
     session.updateActivity();
-    
+
     return await this.chatSessionRepository.save(session);
   }
 
@@ -242,10 +241,10 @@ export class ChatSessionService {
   async archiveSession(sessionId: string, userId: string): Promise<void> {
     const result = await this.chatSessionRepository.update(
       { id: sessionId, userId },
-      { 
+      {
         status: ChatSessionStatus.ARCHIVED,
         updatedAt: new Date(),
-      }
+      },
     );
 
     if (result.affected === 0) {
@@ -268,7 +267,7 @@ export class ChatSessionService {
     }
 
     await this.chatSessionRepository.remove(session);
-    
+
     this.logger.log(`Deleted session ${sessionId} for user ${userId}`);
   }
 
@@ -283,25 +282,26 @@ export class ChatSessionService {
 
     const stats = {
       totalSessions: sessions.length,
-      activeSessions: sessions.filter(s => s.status === ChatSessionStatus.ACTIVE).length,
-      pausedSessions: sessions.filter(s => s.status === ChatSessionStatus.PAUSED).length,
-      archivedSessions: sessions.filter(s => s.status === ChatSessionStatus.ARCHIVED).length,
+      activeSessions: sessions.filter((s) => s.status === ChatSessionStatus.ACTIVE).length,
+      pausedSessions: sessions.filter((s) => s.status === ChatSessionStatus.PAUSED).length,
+      archivedSessions: sessions.filter((s) => s.status === ChatSessionStatus.ARCHIVED).length,
       totalMessages: sessions.reduce((sum, s) => sum + s.messageCount, 0),
-      avgMessagesPerSession: sessions.length > 0 
-        ? sessions.reduce((sum, s) => sum + s.messageCount, 0) / sessions.length 
-        : 0,
+      avgMessagesPerSession:
+        sessions.length > 0
+          ? sessions.reduce((sum, s) => sum + s.messageCount, 0) / sessions.length
+          : 0,
       sessionsByType: {} as Record<string, number>,
-      oldestSession: sessions.length > 0 
-        ? Math.min(...sessions.map(s => s.createdAt.getTime()))
-        : null,
-      lastActivity: sessions.length > 0 
-        ? Math.max(...sessions.map(s => (s.lastActivityAt || s.createdAt).getTime()))
-        : null,
+      oldestSession:
+        sessions.length > 0 ? Math.min(...sessions.map((s) => s.createdAt.getTime())) : null,
+      lastActivity:
+        sessions.length > 0
+          ? Math.max(...sessions.map((s) => (s.lastActivityAt || s.createdAt).getTime()))
+          : null,
     };
 
     // Count sessions by type
     for (const type of Object.values(ChatSessionType)) {
-      stats.sessionsByType[type] = sessions.filter(s => s.type === type).length;
+      stats.sessionsByType[type] = sessions.filter((s) => s.type === type).length;
     }
 
     return stats;
@@ -320,14 +320,14 @@ export class ChatSessionService {
         },
       });
 
-      const nowExpiredSessions = expiredSessions.filter(session => session.isExpired());
-      
+      const nowExpiredSessions = expiredSessions.filter((session) => session.isExpired());
+
       for (const session of nowExpiredSessions) {
         await this.expireSession(session.id);
       }
 
       this.logger.log(`Cleaned up ${nowExpiredSessions.length} expired sessions`);
-      
+
       return nowExpiredSessions.length;
     } catch (error) {
       this.logger.error('Error during session cleanup:', error);
@@ -371,7 +371,7 @@ export class ChatSessionService {
       });
     }
 
-    if (lastActivity && (Date.now() - lastActivity.getTime()) > 24 * 60 * 60 * 1000) {
+    if (lastActivity && Date.now() - lastActivity.getTime() > 24 * 60 * 60 * 1000) {
       recommendations.push({
         type: 'check_in',
         title: 'Health check-in',
@@ -387,8 +387,8 @@ export class ChatSessionService {
 
   private async enforceSessionLimits(userId: string): Promise<void> {
     const activeSessions = await this.chatSessionRepository.count({
-      where: { 
-        userId, 
+      where: {
+        userId,
         status: ChatSessionStatus.ACTIVE,
       },
     });
@@ -396,8 +396,8 @@ export class ChatSessionService {
     if (activeSessions >= this.maxSessionsPerUser) {
       // Archive oldest sessions
       const oldestSessions = await this.chatSessionRepository.find({
-        where: { 
-          userId, 
+        where: {
+          userId,
           status: ChatSessionStatus.ACTIVE,
         },
         order: { lastActivityAt: 'ASC' },
@@ -415,10 +415,10 @@ export class ChatSessionService {
   private async expireSession(sessionId: string): Promise<void> {
     await this.chatSessionRepository.update(
       { id: sessionId },
-      { 
+      {
         status: ChatSessionStatus.COMPLETED,
         updatedAt: new Date(),
-      }
+      },
     );
   }
 
@@ -434,7 +434,7 @@ export class ChatSessionService {
 
     const baseTitle = titles[type] || 'Health Chat';
     const timestamp = new Date().toLocaleDateString();
-    
+
     return `${baseTitle} - ${timestamp}`;
   }
 
@@ -450,7 +450,7 @@ export class ChatSessionService {
     if (sessions.length === 0) return null;
 
     const typeCounts = new Map<ChatSessionType, number>();
-    
+
     for (const session of sessions) {
       const count = typeCounts.get(session.type) || 0;
       typeCounts.set(session.type, count + 1);
@@ -481,7 +481,7 @@ export class ChatSessionService {
    */
   async getSessionHealth(sessionId: string, userId: string): Promise<any> {
     const session = await this.getSession(sessionId, userId);
-    
+
     const health = {
       isHealthy: true,
       issues: [] as string[],
@@ -489,7 +489,7 @@ export class ChatSessionService {
       metrics: {
         messageCount: session.messageCount,
         ageInHours: (Date.now() - session.createdAt.getTime()) / (1000 * 60 * 60),
-        timeSinceLastActivity: session.lastActivityAt 
+        timeSinceLastActivity: session.lastActivityAt
           ? (Date.now() - session.lastActivityAt.getTime()) / (1000 * 60 * 60)
           : 0,
       },
@@ -507,7 +507,8 @@ export class ChatSessionService {
       health.recommendations.push('Consider archiving if no longer needed');
     }
 
-    if (health.metrics.ageInHours > 168) { // 1 week
+    if (health.metrics.ageInHours > 168) {
+      // 1 week
       health.issues.push('Session is over a week old');
       health.recommendations.push('Review session goals and progress');
     }

@@ -102,7 +102,8 @@ export class WeeklyAdaptationService {
   /**
    * Scheduled weekly adaptation runner (called by n8n workflow)
    */
-  @Cron('0 6 * * 1', { // Every Monday at 6 AM
+  @Cron('0 6 * * 1', {
+    // Every Monday at 6 AM
     name: 'weekly-fitness-adaptation',
     timeZone: 'Asia/Kolkata',
   })
@@ -112,23 +113,25 @@ export class WeeklyAdaptationService {
     try {
       // Get all users with active fitness plans
       const activeUsers = await this.getActiveUsers();
-      
+
       this.logger.log(`Found ${activeUsers.length} users with active fitness plans`);
 
       // Process adaptations in batches to avoid overwhelming the system
       const batchSize = 10;
       for (let i = 0; i < activeUsers.length; i += batchSize) {
         const batch = activeUsers.slice(i, i + batchSize);
-        
+
         await Promise.allSettled(
-          batch.map(user => this.adaptUserFitnessPlan({
-            userId: user.id,
-            adaptationType: 'automatic'
-          }))
+          batch.map((user) =>
+            this.adaptUserFitnessPlan({
+              userId: user.id,
+              adaptationType: 'automatic',
+            }),
+          ),
         );
 
         // Small delay between batches
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       this.logger.log('Completed scheduled weekly fitness adaptation');
@@ -160,31 +163,36 @@ export class WeeklyAdaptationService {
 
     // Analyze last week's adherence and performance
     const adherenceAnalysis = await this.analyzeWeeklyAdherence(userId, activePlan);
-    
+
     // Compute deficiencies and needed adaptations
     const deficiencies = await this.computeDeficiencies(userId, activePlan, adherenceAnalysis);
-    
+
     // Generate adaptations using AI if significant changes needed
-    const adaptations = await this.generateAdaptations(userId, activePlan, deficiencies, adherenceAnalysis);
-    
+    const adaptations = await this.generateAdaptations(
+      userId,
+      activePlan,
+      deficiencies,
+      adherenceAnalysis,
+    );
+
     // Apply safety validation to all adaptations
     const validatedAdaptations = await this.validateAdaptations(adaptations, user, activePlan);
-    
+
     // Create next week's plan with adaptations
     const nextWeekPlan = await this.createAdaptedWeeklyPlan(
       activePlan,
       validatedAdaptations,
-      deficiencies
+      deficiencies,
     );
-    
+
     // Generate measurement requests if needed
     const measurementRequests = this.generateMeasurementRequests(deficiencies, adherenceAnalysis);
-    
+
     // Generate recommendations for the user
     const recommendations = await this.generateUserRecommendations(
       validatedAdaptations,
       deficiencies,
-      adherenceAnalysis
+      adherenceAnalysis,
     );
 
     const result: WeeklyAdaptationResult = {
@@ -201,7 +209,9 @@ export class WeeklyAdaptationService {
     // Log the adaptation for analytics
     await this.logAdaptation(result, adaptationType);
 
-    this.logger.log(`Completed weekly adaptation for user ${userId} with ${validatedAdaptations.length} changes`);
+    this.logger.log(
+      `Completed weekly adaptation for user ${userId} with ${validatedAdaptations.length} changes`,
+    );
 
     return result;
   }
@@ -252,17 +262,16 @@ export class WeeklyAdaptationService {
     });
 
     // Get scheduled workouts for the past week
-    const currentWeek = plan.weeks.find(w => w.weekNumber === plan.getCurrentWeek());
+    const currentWeek = plan.weeks.find((w) => w.weekNumber === plan.getCurrentWeek());
     const scheduledWorkouts = currentWeek?.workouts || [];
 
     // Calculate adherence metrics
-    const completedWorkouts = workoutLogs.filter(log => 
-      log.data?.completed === true || log.metadata?.completed === true
+    const completedWorkouts = workoutLogs.filter(
+      (log) => log.data?.completed === true || log.metadata?.completed === true,
     ).length;
     const totalScheduledWorkouts = scheduledWorkouts.length;
-    const adherencePercentage = totalScheduledWorkouts > 0 
-      ? (completedWorkouts / totalScheduledWorkouts) * 100 
-      : 0;
+    const adherencePercentage =
+      totalScheduledWorkouts > 0 ? (completedWorkouts / totalScheduledWorkouts) * 100 : 0;
 
     // Analyze workout quality and intensity
     const avgIntensity = this.calculateAverageIntensity(workoutLogs);
@@ -287,23 +296,23 @@ export class WeeklyAdaptationService {
   private async computeDeficiencies(
     userId: string,
     plan: FitnessPlan,
-    adherenceAnalysis: any
+    adherenceAnalysis: any,
   ): Promise<DeficiencyAnalysis> {
     // Volume deficiency based on missed workouts
     const volumeDeficiency = Math.max(0, 100 - adherenceAnalysis.overallScore);
-    
+
     // Intensity deficiency based on reported effort vs planned
     const intensityDeficiency = this.calculateIntensityDeficiency(adherenceAnalysis);
-    
+
     // Consistency score based on workout frequency patterns
     const consistencyScore = adherenceAnalysis.consistencyScore;
-    
+
     // Analyze which muscle groups were under-trained
     const weakMuscleGroups = await this.identifyWeakMuscleGroups(userId, adherenceAnalysis);
-    
+
     // Identify missed workout types
     const missedWorkoutTypes = this.identifyMissedWorkoutTypes(adherenceAnalysis);
-    
+
     // Recovery analysis
     const recoveryIndicators = await this.analyzeRecoveryNeeds(userId, adherenceAnalysis);
 
@@ -324,7 +333,7 @@ export class WeeklyAdaptationService {
     userId: string,
     plan: FitnessPlan,
     deficiencies: DeficiencyAnalysis,
-    adherenceAnalysis: any
+    adherenceAnalysis: any,
   ): Promise<AdaptationChange[]> {
     const adaptations: AdaptationChange[] = [];
 
@@ -351,7 +360,12 @@ export class WeeklyAdaptationService {
 
     // Use AI for complex adaptations when deficiencies are significant
     if (deficiencies.volumeDeficiency > 30 || deficiencies.intensityDeficiency > 25) {
-      const aiAdaptations = await this.generateAIAdaptations(userId, plan, deficiencies, adherenceAnalysis);
+      const aiAdaptations = await this.generateAIAdaptations(
+        userId,
+        plan,
+        deficiencies,
+        adherenceAnalysis,
+      );
       adaptations.push(...aiAdaptations);
     }
 
@@ -365,7 +379,7 @@ export class WeeklyAdaptationService {
     userId: string,
     plan: FitnessPlan,
     deficiencies: DeficiencyAnalysis,
-    adherenceAnalysis: any
+    adherenceAnalysis: any,
   ): Promise<AdaptationChange[]> {
     try {
       const aiRequest: AIRoutingRequest = {
@@ -393,7 +407,7 @@ export class WeeklyAdaptationService {
       };
 
       const response = await this.aiRoutingService.routeRequest(aiRequest);
-      
+
       if (response.success && response.data?.adaptations) {
         return response.data.adaptations.map((adaptation: any) => ({
           type: adaptation.type,
@@ -418,19 +432,16 @@ export class WeeklyAdaptationService {
   private async validateAdaptations(
     adaptations: AdaptationChange[],
     user: User,
-    plan: FitnessPlan
+    plan: FitnessPlan,
   ): Promise<AdaptationChange[]> {
     const validatedAdaptations: AdaptationChange[] = [];
 
     for (const adaptation of adaptations) {
       try {
-        const isValid = await this.safetyValidationService.validateAdaptation(
-          adaptation,
-          {
-            experienceLevel: plan.experienceLevel,
-            healthConditions: plan.physicalLimitations,
-          },
-        );
+        const isValid = await this.safetyValidationService.validateAdaptation(adaptation, {
+          experienceLevel: plan.experienceLevel,
+          healthConditions: plan.physicalLimitations,
+        });
 
         if (isValid) {
           adaptation.safetyValidated = true;
@@ -452,13 +463,13 @@ export class WeeklyAdaptationService {
   private async createAdaptedWeeklyPlan(
     plan: FitnessPlan,
     adaptations: AdaptationChange[],
-    deficiencies: DeficiencyAnalysis
+    deficiencies: DeficiencyAnalysis,
   ): Promise<WeeklyPlanSummary> {
     const nextWeekNumber = plan.getCurrentWeek() + 1;
-    
+
     // Apply adaptations to create modified plan parameters
-    let adjustedParams = this.applyAdaptationsToParams(plan, adaptations);
-    
+    const adjustedParams = this.applyAdaptationsToParams(plan, adaptations);
+
     // Generate next week using adjusted parameters
     const nextWeek = await this.planGeneratorService.generateWeeklyPlan(
       plan.planType,
@@ -478,10 +489,13 @@ export class WeeklyAdaptationService {
     return {
       weekNumber: nextWeekNumber,
       totalWorkouts: nextWeek.workouts.length,
-      estimatedDuration: nextWeek.workouts.reduce((sum, w) => sum + (w.estimatedDurationMinutes || 60), 0),
+      estimatedDuration: nextWeek.workouts.reduce(
+        (sum, w) => sum + (w.estimatedDurationMinutes || 60),
+        0,
+      ),
       primaryFocus: [], // Focus areas would be determined from workout analysis
       newExercises: this.countNewExercises(nextWeek, plan),
-      progressionChanges: adaptations.filter(a => a.type === 'progression').length,
+      progressionChanges: adaptations.filter((a) => a.type === 'progression').length,
       difficultyAdjustment: this.determineDifficultyChange(adaptations),
     };
   }
@@ -491,7 +505,7 @@ export class WeeklyAdaptationService {
    */
   private generateMeasurementRequests(
     deficiencies: DeficiencyAnalysis,
-    adherenceAnalysis: any
+    adherenceAnalysis: any,
   ): MeasurementRequest[] {
     const requests: MeasurementRequest[] = [];
 
@@ -526,32 +540,30 @@ export class WeeklyAdaptationService {
   private async generateUserRecommendations(
     adaptations: AdaptationChange[],
     deficiencies: DeficiencyAnalysis,
-    adherenceAnalysis: any
+    adherenceAnalysis: any,
   ): Promise<string[]> {
     const recommendations: string[] = [];
 
     if (adherenceAnalysis.overallScore < 70) {
       recommendations.push(
-        'Consider scheduling your workouts at consistent times to build a routine'
+        'Consider scheduling your workouts at consistent times to build a routine',
       );
     }
 
     if (deficiencies.volumeDeficiency > 20) {
       recommendations.push(
-        'Your workout frequency has decreased. Try starting with shorter, more manageable sessions'
+        'Your workout frequency has decreased. Try starting with shorter, more manageable sessions',
       );
     }
 
     if (deficiencies.recoveryIndicators.potentialOvertraining) {
       recommendations.push(
-        'Your body may need more recovery time. Consider taking an extra rest day this week'
+        'Your body may need more recovery time. Consider taking an extra rest day this week',
       );
     }
 
     if (deficiencies.weakMuscleGroups.length > 0) {
-      recommendations.push(
-        `Focus on strengthening: ${deficiencies.weakMuscleGroups.join(', ')}`
-      );
+      recommendations.push(`Focus on strengthening: ${deficiencies.weakMuscleGroups.join(', ')}`);
     }
 
     return recommendations;
@@ -559,35 +571,33 @@ export class WeeklyAdaptationService {
 
   // Helper methods
   private calculateAverageIntensity(workoutLogs: LogEntry[]): number {
-    const intensityLogs = workoutLogs.filter(log => 
-      log.data?.intensity || log.metadata?.intensity
+    const intensityLogs = workoutLogs.filter(
+      (log) => log.data?.intensity || log.metadata?.intensity,
     );
     if (intensityLogs.length === 0) return 0;
-    
-    const totalIntensity = intensityLogs.reduce((sum, log) => 
-      sum + (log.data?.intensity || log.metadata?.intensity || 0), 0
+
+    const totalIntensity = intensityLogs.reduce(
+      (sum, log) => sum + (log.data?.intensity || log.metadata?.intensity || 0),
+      0,
     );
     return totalIntensity / intensityLogs.length;
   }
 
   private calculateAverageDuration(workoutLogs: LogEntry[]): number {
-    const durationLogs = workoutLogs.filter(log => 
-      log.data?.duration || log.metadata?.duration
-    );
+    const durationLogs = workoutLogs.filter((log) => log.data?.duration || log.metadata?.duration);
     if (durationLogs.length === 0) return 0;
-    
-    const totalDuration = durationLogs.reduce((sum, log) => 
-      sum + (log.data?.duration || log.metadata?.duration || 0), 0
+
+    const totalDuration = durationLogs.reduce(
+      (sum, log) => sum + (log.data?.duration || log.metadata?.duration || 0),
+      0,
     );
     return totalDuration / durationLogs.length;
   }
 
   private calculateConsistencyScore(workoutLogs: LogEntry[]): number {
     // Simple consistency score based on workout frequency patterns
-    const daysWithWorkouts = new Set(
-      workoutLogs.map(log => log.loggedAt.toDateString())
-    ).size;
-    
+    const daysWithWorkouts = new Set(workoutLogs.map((log) => log.loggedAt.toDateString())).size;
+
     return Math.min(100, (daysWithWorkouts / 7) * 100);
   }
 
@@ -595,24 +605,26 @@ export class WeeklyAdaptationService {
     // Compare actual vs planned intensity (assuming planned intensity is stored)
     const targetIntensity = 7; // Default target RPE
     const actualIntensity = adherenceAnalysis.avgIntensity || 0;
-    
+
     return Math.max(0, ((targetIntensity - actualIntensity) / targetIntensity) * 100);
   }
 
-  private async identifyWeakMuscleGroups(userId: string, adherenceAnalysis: any): Promise<string[]> {
+  private async identifyWeakMuscleGroups(
+    userId: string,
+    adherenceAnalysis: any,
+  ): Promise<string[]> {
     // Analyze which muscle groups were under-trained based on missed workouts
-    const missedWorkouts = adherenceAnalysis.scheduledWorkouts.filter((workout: any) => 
-      !adherenceAnalysis.workoutLogs.some((log: any) => 
-        log.data?.workoutId === workout.id && log.data?.completed
-      )
+    const missedWorkouts = adherenceAnalysis.scheduledWorkouts.filter(
+      (workout: any) =>
+        !adherenceAnalysis.workoutLogs.some(
+          (log: any) => log.data?.workoutId === workout.id && log.data?.completed,
+        ),
     );
 
     const missedMuscleGroups = new Set<string>();
     missedWorkouts.forEach((workout: any) => {
       workout.exercises?.forEach((exercise: any) => {
-        exercise.primaryMuscleGroups?.forEach((group: string) => 
-          missedMuscleGroups.add(group)
-        );
+        exercise.primaryMuscleGroups?.forEach((group: string) => missedMuscleGroups.add(group));
       });
     });
 
@@ -621,12 +633,12 @@ export class WeeklyAdaptationService {
 
   private identifyMissedWorkoutTypes(adherenceAnalysis: any): string[] {
     const missedTypes = new Set<string>();
-    
+
     adherenceAnalysis.scheduledWorkouts.forEach((workout: any) => {
-      const wasCompleted = adherenceAnalysis.workoutLogs.some((log: any) => 
-        log.data?.workoutId === workout.id && log.data?.completed
+      const wasCompleted = adherenceAnalysis.workoutLogs.some(
+        (log: any) => log.data?.workoutId === workout.id && log.data?.completed,
       );
-      
+
       if (!wasCompleted && workout.type) {
         missedTypes.add(workout.type);
       }
@@ -639,19 +651,20 @@ export class WeeklyAdaptationService {
     // Simple recovery analysis based on workout patterns
     return {
       overdueRestDays: 0, // Could calculate based on consecutive workout days
-      potentialOvertraining: adherenceAnalysis.avgIntensity > 8.5 && adherenceAnalysis.consistencyScore > 90,
+      potentialOvertraining:
+        adherenceAnalysis.avgIntensity > 8.5 && adherenceAnalysis.consistencyScore > 90,
       recommendedDeload: adherenceAnalysis.overallScore < 40,
     };
   }
 
   private applyAdaptationsToParams(plan: FitnessPlan, adaptations: AdaptationChange[]): any {
-    let params = {
+    const params = {
       workoutsPerWeek: plan.workoutsPerWeek,
       maxWorkoutDurationMinutes: plan.maxWorkoutDurationMinutes,
       // ... other parameters
     };
 
-    adaptations.forEach(adaptation => {
+    adaptations.forEach((adaptation) => {
       switch (adaptation.type) {
         case 'volume':
           if (adaptation.description.includes('Reduce')) {
@@ -671,9 +684,9 @@ export class WeeklyAdaptationService {
   private countNewExercises(nextWeek: any, plan: FitnessPlan): number {
     // Count exercises not in previous weeks
     const existingExercises = new Set<string>();
-    plan.weeks.forEach(week => {
-      week.workouts.forEach(workout => {
-        workout.exercises.forEach(exercise => {
+    plan.weeks.forEach((week) => {
+      week.workouts.forEach((workout) => {
+        workout.exercises.forEach((exercise) => {
           existingExercises.add(exercise.exerciseName);
         });
       });
@@ -692,11 +705,11 @@ export class WeeklyAdaptationService {
   }
 
   private determineDifficultyChange(adaptations: AdaptationChange[]): 'easier' | 'same' | 'harder' {
-    const volumeReductions = adaptations.filter(a => 
-      a.type === 'volume' && a.description.toLowerCase().includes('reduce')
+    const volumeReductions = adaptations.filter(
+      (a) => a.type === 'volume' && a.description.toLowerCase().includes('reduce'),
     ).length;
-    
-    const progressions = adaptations.filter(a => a.type === 'progression').length;
+
+    const progressions = adaptations.filter((a) => a.type === 'progression').length;
 
     if (volumeReductions > progressions) return 'easier';
     if (progressions > volumeReductions) return 'harder';
@@ -735,7 +748,10 @@ export class WeeklyAdaptationService {
     };
   }
 
-  private async logAdaptation(result: WeeklyAdaptationResult, adaptationType: string): Promise<void> {
+  private async logAdaptation(
+    result: WeeklyAdaptationResult,
+    adaptationType: string,
+  ): Promise<void> {
     try {
       // Log to analytics for tracking and improvement
       this.logger.log(`Weekly adaptation completed for user ${result.userId}:`, {

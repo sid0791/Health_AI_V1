@@ -3,12 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { 
-  LogEntry, 
-  LogType, 
-  LogSource, 
-  LogCategory, 
-  LogSeverity 
+import {
+  LogEntry,
+  LogType,
+  LogSource,
+  LogCategory,
+  LogSeverity,
 } from '../entities/log-entry.entity';
 
 export interface CreateLogEntryDto {
@@ -82,8 +82,10 @@ export class LogsService {
     this.isLoggingEnabled = this.configService.get('LOGS_ENABLED', 'true') === 'true';
     this.batchSize = parseInt(this.configService.get('LOGS_BATCH_SIZE', '100'));
     this.retentionDays = parseInt(this.configService.get('LOGS_RETENTION_DAYS', '90'));
-    
-    this.logger.log(`Logs service initialized - enabled: ${this.isLoggingEnabled}, retention: ${this.retentionDays} days`);
+
+    this.logger.log(
+      `Logs service initialized - enabled: ${this.isLoggingEnabled}, retention: ${this.retentionDays} days`,
+    );
   }
 
   /**
@@ -104,7 +106,7 @@ export class LogsService {
       });
 
       const savedEntry = await this.logEntryRepository.save(logEntry);
-      
+
       // Log to application logger for critical events
       if (logData.severity === LogSeverity.ERROR || logData.severity === LogSeverity.FATAL) {
         this.logger.error(`${logData.logType}: ${logData.message}`, {
@@ -130,7 +132,10 @@ export class LogsService {
   /**
    * Create a log entry (compatibility method)
    */
-  async createLogEntry(userId: string, logData: Partial<CreateLogEntryDto>): Promise<LogEntry | null> {
+  async createLogEntry(
+    userId: string,
+    logData: Partial<CreateLogEntryDto>,
+  ): Promise<LogEntry | null> {
     return this.createLog({
       userId,
       logType: logData.logType || LogType.SYSTEM_MAINTENANCE,
@@ -150,14 +155,14 @@ export class LogsService {
     }
 
     try {
-      const logEntries = logsData.map(logData => 
+      const logEntries = logsData.map((logData) =>
         this.logEntryRepository.create({
           ...logData,
           severity: logData.severity || LogSeverity.INFO,
           success: logData.success !== undefined ? logData.success : true,
           dataClassification: 'LOG',
           retentionDays: this.retentionDays,
-        })
+        }),
       );
 
       return await this.logEntryRepository.save(logEntries);
@@ -286,7 +291,7 @@ export class LogsService {
 
     // Get total count for pagination
     const totalQuery = this.logEntryRepository.createQueryBuilder('log');
-    
+
     // Apply same filters for count
     if (userId) totalQuery.andWhere('log.userId = :userId', { userId });
     if (logType) {
@@ -341,11 +346,13 @@ export class LogsService {
   /**
    * Get log statistics
    */
-  async getStatistics(options: {
-    userId?: string;
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<LogStatistics> {
+  async getStatistics(
+    options: {
+      userId?: string;
+      startDate?: Date;
+      endDate?: Date;
+    } = {},
+  ): Promise<LogStatistics> {
     const { userId, startDate, endDate } = options;
 
     const queryBuilder = this.logEntryRepository.createQueryBuilder('log');
@@ -375,7 +382,7 @@ export class LogsService {
       logsBySource,
       errorLogs,
       avgDurationResult,
-      dateRangeResult
+      dateRangeResult,
     ] = await Promise.all([
       // Total logs count
       queryBuilder.getCount(),
@@ -470,7 +477,9 @@ export class LogsService {
         .where('created_at < :cutoffDate', { cutoffDate })
         .execute();
 
-      this.logger.log(`Cleaned up ${result.affected} old log entries older than ${this.retentionDays} days`);
+      this.logger.log(
+        `Cleaned up ${result.affected} old log entries older than ${this.retentionDays} days`,
+      );
     } catch (error) {
       this.logger.error('Failed to cleanup old logs', error);
     }
@@ -543,30 +552,74 @@ export class LogsService {
    * Convenience methods for common log types
    */
 
-  async logMeal(userId: string, mealData: any, source: LogSource = LogSource.MOBILE_APP): Promise<LogEntry | null> {
-    return this.createLog(LogEntry.createMealLog(userId, LogType.MEAL_LOGGED, 'Meal logged', mealData, source));
+  async logMeal(
+    userId: string,
+    mealData: any,
+    source: LogSource = LogSource.MOBILE_APP,
+  ): Promise<LogEntry | null> {
+    return this.createLog(
+      LogEntry.createMealLog(userId, LogType.MEAL_LOGGED, 'Meal logged', mealData, source),
+    );
   }
 
-  async logWorkout(userId: string, workoutData: any, source: LogSource = LogSource.MOBILE_APP): Promise<LogEntry | null> {
-    return this.createLog(LogEntry.createWorkoutLog(userId, LogType.WORKOUT_COMPLETED, 'Workout completed', workoutData, source));
+  async logWorkout(
+    userId: string,
+    workoutData: any,
+    source: LogSource = LogSource.MOBILE_APP,
+  ): Promise<LogEntry | null> {
+    return this.createLog(
+      LogEntry.createWorkoutLog(
+        userId,
+        LogType.WORKOUT_COMPLETED,
+        'Workout completed',
+        workoutData,
+        source,
+      ),
+    );
   }
 
-  async logHealthMetric(userId: string, healthData: any, source: LogSource = LogSource.MOBILE_APP): Promise<LogEntry | null> {
-    return this.createLog(LogEntry.createHealthLog(userId, LogType.HEALTH_METRIC_LOGGED, 'Health metric logged', healthData, source));
+  async logHealthMetric(
+    userId: string,
+    healthData: any,
+    source: LogSource = LogSource.MOBILE_APP,
+  ): Promise<LogEntry | null> {
+    return this.createLog(
+      LogEntry.createHealthLog(
+        userId,
+        LogType.HEALTH_METRIC_LOGGED,
+        'Health metric logged',
+        healthData,
+        source,
+      ),
+    );
   }
 
-  async logAIInteraction(userId: string, interactionData: any, source: LogSource = LogSource.AI_SYSTEM): Promise<LogEntry | null> {
-    return this.createLog(LogEntry.createAIInteractionLog(userId, LogType.AI_CHAT_MESSAGE, 'AI interaction', interactionData, source));
+  async logAIInteraction(
+    userId: string,
+    interactionData: any,
+    source: LogSource = LogSource.AI_SYSTEM,
+  ): Promise<LogEntry | null> {
+    return this.createLog(
+      LogEntry.createAIInteractionLog(
+        userId,
+        LogType.AI_CHAT_MESSAGE,
+        'AI interaction',
+        interactionData,
+        source,
+      ),
+    );
   }
 
   async logError(error: Error, context?: any, userId?: string): Promise<LogEntry | null> {
-    return this.createLog(LogEntry.createErrorLog(
-      LogType.ERROR_OCCURRED,
-      'Application error occurred',
-      { error: error.message, stack: error.stack, context },
-      'APP_ERROR',
-      error.message,
-      userId
-    ));
+    return this.createLog(
+      LogEntry.createErrorLog(
+        LogType.ERROR_OCCURRED,
+        'Application error occurred',
+        { error: error.message, stack: error.stack, context },
+        'APP_ERROR',
+        error.message,
+        userId,
+      ),
+    );
   }
 }

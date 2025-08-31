@@ -22,10 +22,10 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User as UserDecorator } from '../../auth/decorators/user.decorator';
 import { User } from '../../users/entities/user.entity';
-import { 
-  WeeklyAdaptationService, 
+import {
+  WeeklyAdaptationService,
   WeeklyAdaptationRequest,
-  WeeklyAdaptationResult 
+  WeeklyAdaptationResult,
 } from '../services/weekly-adaptation.service';
 
 export class TriggerWeeklyAdaptationDto {
@@ -56,9 +56,7 @@ export class BatchAdaptationResponseDto {
 export class WeeklyAdaptationController {
   private readonly logger = new Logger(WeeklyAdaptationController.name);
 
-  constructor(
-    private readonly weeklyAdaptationService: WeeklyAdaptationService,
-  ) {}
+  constructor(private readonly weeklyAdaptationService: WeeklyAdaptationService) {}
 
   /**
    * Trigger weekly adaptation for current user
@@ -67,7 +65,7 @@ export class WeeklyAdaptationController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Trigger weekly fitness plan adaptation',
-    description: 'Analyzes the past week\'s adherence and adapts the upcoming week\'s fitness plan',
+    description: "Analyzes the past week's adherence and adapts the upcoming week's fitness plan",
   })
   @ApiBody({ type: TriggerWeeklyAdaptationDto })
   @ApiResponse({
@@ -84,11 +82,14 @@ export class WeeklyAdaptationController {
     @Body() triggerDto: TriggerWeeklyAdaptationDto,
   ): Promise<WeeklyAdaptationResponseDto> {
     try {
-      this.logger.log(`Triggering weekly adaptation for user ${user.id} via ${triggerDto.triggerType}`);
+      this.logger.log(
+        `Triggering weekly adaptation for user ${user.id} via ${triggerDto.triggerType}`,
+      );
 
       const request: WeeklyAdaptationRequest = {
         userId: user.id,
-        adaptationType: triggerDto.triggerType === 'user_requested' ? 'user_requested' : 'automatic',
+        adaptationType:
+          triggerDto.triggerType === 'user_requested' ? 'user_requested' : 'automatic',
       };
 
       const result = await this.weeklyAdaptationService.adaptUserFitnessPlan(request);

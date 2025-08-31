@@ -49,11 +49,7 @@ import { LogsModule } from '../logs/logs.module';
     SafetyValidationService,
     WeeklyAdaptationService,
   ],
-  controllers: [
-    ExerciseController, 
-    FitnessPlanController,
-    WeeklyAdaptationController,
-  ],
+  controllers: [ExerciseController, FitnessPlanController, WeeklyAdaptationController],
   exports: [
     ExerciseLibraryService,
     FitnessPlanService,

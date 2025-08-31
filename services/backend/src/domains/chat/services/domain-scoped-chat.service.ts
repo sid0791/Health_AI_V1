@@ -16,7 +16,7 @@ import { AIRoutingService, AIRoutingRequest } from '../../ai-routing/services/ai
 import { RequestType } from '../../ai-routing/entities/ai-routing-decision.entity';
 
 // Token management integration
-import { 
+import {
   TokenManagementService,
   TokenConsumptionRequest,
 } from '../../users/services/token-management.service';
@@ -127,19 +127,19 @@ export class DomainScopedChatService {
    */
   async processMessage(userId: string, request: ChatRequest): Promise<ChatResponse> {
     const startTime = Date.now();
-    
+
     this.logger.log(`Processing chat message for user ${userId}`);
 
     try {
       // Get or create chat session
       const session = await this.getOrCreateSession(userId, request);
-      
+
       // Process the user's message with Hinglish NLP
       const processedMessage = await this.hinglishNLPService.processMessage(request.message);
-      
+
       // Classify domain and check scope
       const domainClassification = await this.classifyDomain(processedMessage.content);
-      
+
       // Create user message record
       const userMessage = await this.createUserMessage(session, request.message, {
         processedContent: processedMessage.content,
@@ -162,21 +162,25 @@ export class DomainScopedChatService {
           maxDocuments: 5,
           relevanceThreshold: 0.7,
           contextTypes: this.getDomainContextTypes(domainClassification.domain),
-        }
+        },
       );
 
       // Apply DLP to the message and context
-      const dlpProcessedContent = await this.dlpService.processText(
-        processedMessage.content
-      );
+      const dlpProcessedContent = await this.dlpService.processText(processedMessage.content);
 
       // Determine AI routing level based on domain
       const routingLevel = this.determineRoutingLevel(domainClassification.domain);
-      
+
       // Check user token limits before routing
-      const estimatedTokens = this.estimateTokenUsage(dlpProcessedContent.processedText, ragContext);
-      const canConsumeTokens = await this.tokenManagementService.canConsumeTokens(userId, estimatedTokens);
-      
+      const estimatedTokens = this.estimateTokenUsage(
+        dlpProcessedContent.processedText,
+        ragContext,
+      );
+      const canConsumeTokens = await this.tokenManagementService.canConsumeTokens(
+        userId,
+        estimatedTokens,
+      );
+
       // Build AI request with RAG context
       const aiRequest = await this.buildAIRequest(
         userId,
@@ -184,7 +188,7 @@ export class DomainScopedChatService {
         ragContext,
         domainClassification,
         routingLevel,
-        session
+        session,
       );
 
       // Route to AI provider with token awareness
@@ -197,13 +201,13 @@ export class DomainScopedChatService {
       const processedResponse = await this.processAIResponse(
         'AI response content here', // Would be from actual AI call
         ragContext,
-        domainClassification
+        domainClassification,
       );
 
       // Record token consumption
       const actualTokensUsed = this.calculateActualTokenUsage(
         dlpProcessedContent.processedText,
-        processedResponse.content
+        processedResponse.content,
       );
 
       if (!aiResponse.usedFreeTier) {
@@ -236,7 +240,7 @@ export class DomainScopedChatService {
           },
           ragContext: {
             documentsUsed: ragContext.metadata.documentsRetrieved,
-            sources: ragContext.sources.map(s => ({
+            sources: ragContext.sources.map((s) => ({
               title: s.title,
               excerpt: s.excerpt,
               relevanceScore: s.relevanceScore,
@@ -263,7 +267,7 @@ export class DomainScopedChatService {
             usedFreeTier: aiResponse.usedFreeTier,
             cost: aiResponse.estimatedCost,
           },
-        }
+        },
       );
 
       // Update session activity
@@ -283,7 +287,7 @@ export class DomainScopedChatService {
           languageDetection: processedMessage.languageDetection,
           ragContext: {
             documentsUsed: ragContext.metadata.documentsRetrieved,
-            sources: ragContext.sources.map(s => ({
+            sources: ragContext.sources.map((s) => ({
               title: s.title,
               excerpt: s.excerpt,
               relevanceScore: s.relevanceScore,
@@ -300,7 +304,6 @@ export class DomainScopedChatService {
         citations: this.buildCitations(ragContext.sources),
         followUpQuestions: processedResponse.followUpQuestions,
       };
-
     } catch (error) {
       this.logger.error(`Error processing chat message for user ${userId}:`, error);
       throw new BadRequestException(`Chat processing failed: ${error.message}`);
@@ -345,7 +348,7 @@ export class DomainScopedChatService {
     userId: string,
     messageId: string,
     actionIndex: number,
-    confirmed: boolean
+    confirmed: boolean,
   ): Promise<any> {
     const message = await this.chatMessageRepository.findOne({
       where: { id: messageId },
@@ -368,7 +371,7 @@ export class DomainScopedChatService {
     // Execute the action based on type
     try {
       const result = await this.executeSpecificAction(action, userId);
-      
+
       // Update action status
       action.status = 'executed';
       message.actionRequests[actionIndex] = action;
@@ -382,7 +385,7 @@ export class DomainScopedChatService {
       };
     } catch (error) {
       this.logger.error(`Error executing action for user ${userId}:`, error);
-      
+
       // Update action status
       action.status = 'rejected';
       message.actionRequests[actionIndex] = action;
@@ -399,7 +402,7 @@ export class DomainScopedChatService {
       const session = await this.chatSessionRepository.findOne({
         where: { id: request.sessionId, userId },
       });
-      
+
       if (session && session.isActive()) {
         return session;
       }
@@ -416,9 +419,9 @@ export class DomainScopedChatService {
   private async classifyDomain(message: string): Promise<any> {
     // Simple keyword-based classification for now
     // In production, this would use a dedicated classification model
-    
+
     const lowerMessage = message.toLowerCase();
-    
+
     // Check for out-of-scope content first
     for (const keyword of this.outOfScopeKeywords) {
       if (lowerMessage.includes(keyword)) {
@@ -444,9 +447,9 @@ export class DomainScopedChatService {
     let bestScore = 0.3;
 
     for (const [domain, keywords] of Object.entries(domainKeywords)) {
-      const matches = keywords.filter(keyword => lowerMessage.includes(keyword)).length;
+      const matches = keywords.filter((keyword) => lowerMessage.includes(keyword)).length;
       const score = matches / keywords.length;
-      
+
       if (score > bestScore) {
         bestDomain = domain;
         bestScore = score;
@@ -463,9 +466,10 @@ export class DomainScopedChatService {
   private async handleOutOfScopeMessage(
     session: ChatSession,
     userMessage: ChatMessage,
-    domainClassification: any
+    domainClassification: any,
   ): Promise<ChatResponse> {
-    const outOfScopeResponse = "I'm a health and wellness coach focused on nutrition, fitness, and health topics. I can help you with meal planning, workout routines, health reports, and wellness questions. Could you please ask something related to your health and fitness goals?";
+    const outOfScopeResponse =
+      "I'm a health and wellness coach focused on nutrition, fitness, and health topics. I can help you with meal planning, workout routines, health reports, and wellness questions. Could you please ask something related to your health and fitness goals?";
 
     userMessage.processingStatus = MessageProcessingStatus.OUT_OF_SCOPE;
     await this.chatMessageRepository.save(userMessage);
@@ -515,9 +519,10 @@ export class DomainScopedChatService {
     ragContext: any,
     domainClassification: any,
     routingLevel: 'L1' | 'L2',
-    session: ChatSession
+    session: ChatSession,
   ): Promise<AIRoutingRequest> {
-    const requestType = routingLevel === 'L1' ? RequestType.HEALTH_REPORT_ANALYSIS : RequestType.GENERAL_CHAT;
+    const requestType =
+      routingLevel === 'L1' ? RequestType.HEALTH_REPORT_ANALYSIS : RequestType.GENERAL_CHAT;
 
     // Build system prompt with domain context and RAG information
     const systemPrompt = this.buildSystemPrompt(domainClassification.domain, ragContext);
@@ -534,23 +539,29 @@ export class DomainScopedChatService {
 
   private buildSystemPrompt(domain: string, ragContext: any): string {
     let basePrompt = `You are a helpful health and wellness AI assistant focused on ${domain}. `;
-    
+
     const domainPrompts = {
-      health_reports: 'You help users understand their health reports and provide evidence-based insights about biomarkers and health conditions.',
-      nutrition: 'You provide scientifically-backed nutrition advice, meal suggestions, and dietary guidance.',
-      fitness: 'You help create and adapt fitness plans, explain exercises, and provide workout guidance.',
-      meal_planning: 'You help users plan healthy, balanced meals that fit their dietary preferences and health goals.',
+      health_reports:
+        'You help users understand their health reports and provide evidence-based insights about biomarkers and health conditions.',
+      nutrition:
+        'You provide scientifically-backed nutrition advice, meal suggestions, and dietary guidance.',
+      fitness:
+        'You help create and adapt fitness plans, explain exercises, and provide workout guidance.',
+      meal_planning:
+        'You help users plan healthy, balanced meals that fit their dietary preferences and health goals.',
       recipe: 'You provide healthy recipe suggestions and cooking guidance.',
       general_wellness: 'You provide general health and wellness advice.',
     };
 
     basePrompt += domainPrompts[domain] || domainPrompts.general_wellness;
-    
+
     basePrompt += '\n\nIMPORTANT GUIDELINES:\n';
     basePrompt += '- Only answer questions related to health, nutrition, fitness, and wellness\n';
-    basePrompt += '- If asked about topics outside your domain, politely redirect to health/wellness topics\n';
+    basePrompt +=
+      '- If asked about topics outside your domain, politely redirect to health/wellness topics\n';
     basePrompt += '- Always cite sources when available in your knowledge base\n';
-    basePrompt += '- Suggest actionable steps when appropriate, but ask for confirmation before executing actions\n';
+    basePrompt +=
+      '- Suggest actionable steps when appropriate, but ask for confirmation before executing actions\n';
     basePrompt += '- Be encouraging and supportive while providing accurate information\n';
 
     if (ragContext.sources.length > 0) {
@@ -563,11 +574,15 @@ export class DomainScopedChatService {
     return basePrompt;
   }
 
-  private async processAIResponse(response: string, ragContext: any, domainClassification: any): Promise<any> {
+  private async processAIResponse(
+    response: string,
+    ragContext: any,
+    domainClassification: any,
+  ): Promise<any> {
     // Parse response for action requests and follow-up questions
     const actionRequests = this.extractActionRequests(response);
     const followUpQuestions = this.extractFollowUpQuestions(response);
-    
+
     // Clean response of action markers
     const cleanedResponse = this.cleanResponseContent(response);
 
@@ -582,7 +597,7 @@ export class DomainScopedChatService {
     // Simple pattern matching for action requests
     // In production, this would be more sophisticated
     const actions = [];
-    
+
     if (response.includes('[ACTION:LOG_MEAL]')) {
       actions.push({
         actionType: 'log_meal',
@@ -611,7 +626,7 @@ export class DomainScopedChatService {
     const followUpPattern = /\[FOLLOWUP:([^\]]+)\]/g;
     const matches = [];
     let match;
-    
+
     while ((match = followUpPattern.exec(response)) !== null) {
       matches.push(match[1].trim());
     }
@@ -628,12 +643,16 @@ export class DomainScopedChatService {
   }
 
   private buildCitations(sources: any[]): string[] {
-    return sources.map(source => 
-      `${source.title} (Relevance: ${(source.relevanceScore * 100).toFixed(1)}%)`
+    return sources.map(
+      (source) => `${source.title} (Relevance: ${(source.relevanceScore * 100).toFixed(1)}%)`,
     );
   }
 
-  private async createUserMessage(session: ChatSession, content: string, metadata: any): Promise<ChatMessage> {
+  private async createUserMessage(
+    session: ChatSession,
+    content: string,
+    metadata: any,
+  ): Promise<ChatMessage> {
     const message = this.chatMessageRepository.create({
       sessionId: session.id,
       type: MessageType.USER,
@@ -647,7 +666,11 @@ export class DomainScopedChatService {
     return await this.chatMessageRepository.save(message);
   }
 
-  private async createAssistantMessage(session: ChatSession, content: string, metadata: any): Promise<ChatMessage> {
+  private async createAssistantMessage(
+    session: ChatSession,
+    content: string,
+    metadata: any,
+  ): Promise<ChatMessage> {
     const message = this.chatMessageRepository.create({
       sessionId: session.id,
       type: MessageType.ASSISTANT,
@@ -668,15 +691,15 @@ export class DomainScopedChatService {
       case 'log_meal':
         // Integrate with meal logging service
         return { message: 'Meal logging integration pending' };
-      
+
       case 'update_profile':
         // Integrate with user profile service
         return { message: 'Profile update integration pending' };
-      
+
       case 'schedule_workout':
         // Integrate with fitness planning service
         return { message: 'Workout scheduling integration pending' };
-      
+
       default:
         throw new Error(`Unknown action type: ${action.actionType}`);
     }
@@ -688,8 +711,9 @@ export class DomainScopedChatService {
   private estimateTokenUsage(content: string, ragContext: any): number {
     // Rough estimation: 1 token ≈ 4 characters
     const inputTokens = Math.ceil(content.length / 4);
-    const ragTokens = ragContext.sources ? 
-      Math.ceil(ragContext.sources.reduce((sum, source) => sum + source.content.length, 0) / 4) : 0;
+    const ragTokens = ragContext.sources
+      ? Math.ceil(ragContext.sources.reduce((sum, source) => sum + source.content.length, 0) / 4)
+      : 0;
     const expectedOutputTokens = 500; // Typical response length
 
     return inputTokens + ragTokens + expectedOutputTokens;
@@ -711,10 +735,10 @@ export class DomainScopedChatService {
    */
   private mapAIProviderToTokenProvider(aiProvider: string): TokenProvider {
     const mapping = {
-      'openai': TokenProvider.OPENAI_GPT4,
-      'anthropic': TokenProvider.ANTHROPIC_CLAUDE,
-      'huggingface': TokenProvider.HUGGINGFACE_FREE,
-      'groq': TokenProvider.GROQ_FREE,
+      openai: TokenProvider.OPENAI_GPT4,
+      anthropic: TokenProvider.ANTHROPIC_CLAUDE,
+      huggingface: TokenProvider.HUGGINGFACE_FREE,
+      groq: TokenProvider.GROQ_FREE,
     };
 
     return mapping[aiProvider] || TokenProvider.GROQ_FREE;

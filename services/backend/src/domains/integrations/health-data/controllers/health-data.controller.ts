@@ -99,7 +99,7 @@ export class HealthDataController {
 
     // Group data by type and calculate summaries
     const summary = this.calculateHealthDataSummary(healthData, daysNum);
-    
+
     return {
       period: {
         startDate: startDate.toISOString(),
@@ -111,19 +111,22 @@ export class HealthDataController {
   }
 
   private calculateHealthDataSummary(data: HealthDataEntry[], days: number): any {
-    const grouped = data.reduce((acc, entry) => {
-      const key = entry.dataType;
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(entry);
-      return acc;
-    }, {} as Record<string, HealthDataEntry[]>);
+    const grouped = data.reduce(
+      (acc, entry) => {
+        const key = entry.dataType;
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+        acc[key].push(entry);
+        return acc;
+      },
+      {} as Record<string, HealthDataEntry[]>,
+    );
 
     const summary: any = {};
 
     for (const [dataType, entries] of Object.entries(grouped)) {
-      const values = entries.map(e => e.value);
+      const values = entries.map((e) => e.value);
       const total = values.reduce((sum, val) => sum + val, 0);
       const average = total / values.length;
       const max = Math.max(...values);

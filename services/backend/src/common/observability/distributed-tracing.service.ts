@@ -30,11 +30,17 @@ export class DistributedTracingService {
   private readonly logger = new Logger(DistributedTracingService.name);
   private readonly traces = new Map<string, TraceContext[]>();
   private readonly activeSpans = new Map<string, TraceContext>();
-  private readonly serviceDependencies = new Map<string, Map<string, {
-    callCount: number;
-    totalDuration: number;
-    errorCount: number;
-  }>>();
+  private readonly serviceDependencies = new Map<
+    string,
+    Map<
+      string,
+      {
+        callCount: number;
+        totalDuration: number;
+        errorCount: number;
+      }
+    >
+  >();
 
   private readonly serviceName: string;
 
@@ -49,7 +55,7 @@ export class DistributedTracingService {
   startSpan(
     operation: string,
     parentContext?: { traceId: string; spanId: string },
-    tags: Record<string, any> = {}
+    tags: Record<string, any> = {},
   ): TraceContext {
     const traceId = parentContext?.traceId || this.generateTraceId();
     const spanId = this.generateSpanId();
@@ -90,7 +96,7 @@ export class DistributedTracingService {
     spanId: string,
     status: 'success' | 'error' | 'timeout' = 'success',
     error?: string,
-    additionalTags?: Record<string, any>
+    additionalTags?: Record<string, any>,
   ): void {
     const span = this.activeSpans.get(spanId);
     if (!span) {
@@ -113,9 +119,7 @@ export class DistributedTracingService {
     // Track service dependencies
     this.trackServiceDependency(span);
 
-    this.logger.debug(
-      `Finished span: ${span.operation} (${span.duration}ms, status: ${status})`
-    );
+    this.logger.debug(`Finished span: ${span.operation} (${span.duration}ms, status: ${status})`);
 
     // Clean up old traces
     this.cleanupOldTraces();
@@ -165,30 +169,41 @@ export class DistributedTracingService {
     activeSpans: number;
     avgTraceDuration: number;
     errorRate: number;
-    operationStats: Record<string, {
-      count: number;
-      avgDuration: number;
-      errorRate: number;
-    }>;
+    operationStats: Record<
+      string,
+      {
+        count: number;
+        avgDuration: number;
+        errorRate: number;
+      }
+    >;
   } {
     const allSpans = Array.from(this.traces.values()).flat();
-    const completedSpans = allSpans.filter(span => span.endTime);
+    const completedSpans = allSpans.filter((span) => span.endTime);
 
     const totalTraces = this.traces.size;
     const activeSpans = this.activeSpans.size;
-    const avgTraceDuration = completedSpans.length > 0 
-      ? completedSpans.reduce((sum, span) => sum + (span.duration || 0), 0) / completedSpans.length
-      : 0;
-    const errorRate = completedSpans.length > 0
-      ? (completedSpans.filter(span => span.status === 'error').length / completedSpans.length) * 100
-      : 0;
+    const avgTraceDuration =
+      completedSpans.length > 0
+        ? completedSpans.reduce((sum, span) => sum + (span.duration || 0), 0) /
+          completedSpans.length
+        : 0;
+    const errorRate =
+      completedSpans.length > 0
+        ? (completedSpans.filter((span) => span.status === 'error').length /
+            completedSpans.length) *
+          100
+        : 0;
 
     // Operation statistics
-    const operationStats: Record<string, {
-      count: number;
-      avgDuration: number;
-      errorRate: number;
-    }> = {};
+    const operationStats: Record<
+      string,
+      {
+        count: number;
+        avgDuration: number;
+        errorRate: number;
+      }
+    > = {};
 
     for (const span of completedSpans) {
       if (!operationStats[span.operation]) {
@@ -201,13 +216,14 @@ export class DistributedTracingService {
 
       const stats = operationStats[span.operation];
       stats.count++;
-      stats.avgDuration = ((stats.avgDuration * (stats.count - 1)) + (span.duration || 0)) / stats.count;
+      stats.avgDuration =
+        (stats.avgDuration * (stats.count - 1) + (span.duration || 0)) / stats.count;
     }
 
     // Calculate error rates for operations
     for (const operation of Object.keys(operationStats)) {
-      const operationSpans = completedSpans.filter(span => span.operation === operation);
-      const errorCount = operationSpans.filter(span => span.status === 'error').length;
+      const operationSpans = completedSpans.filter((span) => span.operation === operation);
+      const errorCount = operationSpans.filter((span) => span.status === 'error').length;
       operationStats[operation].errorRate = (errorCount / operationSpans.length) * 100;
     }
 
@@ -263,8 +279,8 @@ export class DistributedTracingService {
     timeRange?: { start: number; end: number };
   }): TraceContext[] {
     const allSpans = Array.from(this.traces.values()).flat();
-    
-    return allSpans.filter(span => {
+
+    return allSpans.filter((span) => {
       // Operation filter
       if (criteria.operation && span.operation !== criteria.operation) {
         return false;
@@ -330,7 +346,7 @@ export class DistributedTracingService {
     }
 
     const serviceOperations = this.serviceDependencies.get(service)!;
-    
+
     if (!serviceOperations.has(operation)) {
       serviceOperations.set(operation, {
         callCount: 0,
@@ -342,7 +358,7 @@ export class DistributedTracingService {
     const stats = serviceOperations.get(operation)!;
     stats.callCount++;
     stats.totalDuration += span.duration || 0;
-    
+
     if (span.status === 'error') {
       stats.errorCount++;
     }
@@ -355,7 +371,7 @@ export class DistributedTracingService {
     if (this.traces.size > 1000) {
       const traceIds = Array.from(this.traces.keys());
       const oldestTraces = traceIds.slice(0, this.traces.size - 1000);
-      
+
       for (const traceId of oldestTraces) {
         this.traces.delete(traceId);
       }
@@ -367,7 +383,7 @@ export class DistributedTracingService {
    */
   exportTraces(format: 'jaeger' | 'zipkin' | 'opentelemetry' = 'opentelemetry'): any[] {
     const allSpans = Array.from(this.traces.values()).flat();
-    
+
     switch (format) {
       case 'opentelemetry':
         return this.exportOpenTelemetry(allSpans);
@@ -384,7 +400,7 @@ export class DistributedTracingService {
    * Export in OpenTelemetry format
    */
   private exportOpenTelemetry(spans: TraceContext[]): any[] {
-    return spans.map(span => ({
+    return spans.map((span) => ({
       traceId: span.traceId,
       spanId: span.spanId,
       parentSpanId: span.parentSpanId,
@@ -405,7 +421,7 @@ export class DistributedTracingService {
    * Export in Jaeger format
    */
   private exportJaeger(spans: TraceContext[]): any[] {
-    return spans.map(span => ({
+    return spans.map((span) => ({
       traceID: span.traceId,
       spanID: span.spanId,
       parentSpanID: span.parentSpanId,
@@ -428,7 +444,7 @@ export class DistributedTracingService {
    * Export in Zipkin format
    */
   private exportZipkin(spans: TraceContext[]): any[] {
-    return spans.map(span => ({
+    return spans.map((span) => ({
       traceId: span.traceId,
       id: span.spanId,
       parentId: span.parentSpanId,
@@ -440,10 +456,14 @@ export class DistributedTracingService {
         serviceName: this.serviceName,
       },
       tags: span.tags,
-      annotations: span.error ? [{
-        timestamp: span.endTime! * 1000,
-        value: 'error',
-      }] : [],
+      annotations: span.error
+        ? [
+            {
+              timestamp: span.endTime! * 1000,
+              value: 'error',
+            },
+          ]
+        : [],
     }));
   }
 
