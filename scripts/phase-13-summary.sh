@@ -109,8 +109,8 @@ echo ""
 echo "🧪 Testing Infrastructure:"
 test_files=(
     "src/domains/users/services/__tests__/token-management.service.spec.ts"
-    "test-phase-13-functionality.sh"
-    "test-phase-13-integration.sh"
+    "scripts/test-phase-13-functionality.sh"
+    "scripts/test-phase-13-integration.sh"
 )
 
 for file in "${test_files[@]}"; do

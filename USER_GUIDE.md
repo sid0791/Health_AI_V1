@@ -1,6 +1,8 @@
 # HealthCoachAI - User Installation & Development Guide
 
-Welcome to HealthCoachAI - a comprehensive, AI-powered health, diet, and fitness application. This guide will help you install, configure, and run the application locally for development and testing.
+Welcome to HealthCoachAI - a comprehensive, AI-powered health, diet, and fitness
+application. This guide will help you install, configure, and run the
+application locally for development and testing.
 
 ## Table of Contents
 
@@ -26,11 +28,13 @@ Welcome to HealthCoachAI - a comprehensive, AI-powered health, diet, and fitness
 - **Docker** (optional, for containers)
 
 ### Mobile Development (Optional)
+
 - **Xcode** (v15+) - For iOS development
 - **Android Studio** (v2023.3+) - For Android development
 - **iOS Simulator** or **Android Emulator**
 
 ### Tools
+
 - **Git** (v2.40+)
 - **Turbo** (installed via pnpm)
 - **n8n** (for workflow orchestration)
@@ -38,11 +42,13 @@ Welcome to HealthCoachAI - a comprehensive, AI-powered health, diet, and fitness
 ## System Requirements
 
 ### Minimum Hardware
+
 - **RAM**: 8GB (16GB recommended)
 - **Storage**: 10GB free space
 - **CPU**: 4 cores (8 cores recommended)
 
 ### Operating Systems
+
 - **macOS**: 12.0+ (for iOS development)
 - **Windows**: 10/11 with WSL2
 - **Linux**: Ubuntu 20.04+ or equivalent
@@ -117,6 +123,7 @@ cp n8n/.env.example n8n/.env
 The backend uses environment variables for configuration. Key settings include:
 
 #### Database Settings
+
 ```env
 DB_HOST=localhost
 DB_PORT=5432
@@ -127,6 +134,7 @@ POSTGRES_URL=postgresql://healthcoachai:your_secure_password@localhost:5432/heal
 ```
 
 #### Redis Settings
+
 ```env
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -134,6 +142,7 @@ REDIS_URL=redis://localhost:6379
 ```
 
 #### JWT Configuration
+
 ```env
 JWT_SECRET=your-super-secure-jwt-secret-key-for-development
 JWT_ACCESS_TTL=900
@@ -142,83 +151,104 @@ JWT_REFRESH_TTL=1209600
 
 ## Demo/Placeholder APIs
 
-⚠️ **IMPORTANT**: The application comes with demo API configurations for development. You MUST replace these with actual credentials for production use.
+⚠️ **IMPORTANT**: The application comes with demo API configurations for
+development. You MUST replace these with actual credentials for production use.
 
 ### Authentication Providers
 
 #### Google OAuth
+
 ```env
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
+
 📍 **Setup**: [Google Cloud Console](https://console.cloud.google.com/)
 
 #### Apple Sign-In
+
 ```env
 APPLE_CLIENT_ID=your-apple-client-id
 APPLE_TEAM_ID=your-apple-team-id
 APPLE_KEY_ID=your-apple-key-id
 APPLE_PRIVATE_KEY_B64=your-base64-encoded-private-key
 ```
+
 📍 **Setup**: [Apple Developer Portal](https://developer.apple.com/)
 
 #### Facebook Login
+
 ```env
 FACEBOOK_APP_ID=your-facebook-app-id
 FACEBOOK_APP_SECRET=your-facebook-app-secret
 ```
+
 📍 **Setup**: [Facebook Developers](https://developers.facebook.com/)
 
 ### AI Providers
 
 #### OpenAI
+
 ```env
 OPENAI_API_KEY=sk-your-openai-api-key
 OPENAI_ORGANIZATION=your-org-id
 ```
+
 📍 **Setup**: [OpenAI Platform](https://platform.openai.com/)
 
 #### Anthropic
+
 ```env
 ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
 ```
+
 📍 **Setup**: [Anthropic Console](https://console.anthropic.com/)
 
 #### Google Vertex AI
+
 ```env
 GOOGLE_VERTEX_PROJECT=your-project-id
 GOOGLE_VERTEX_LOCATION=us-central1
 GOOGLE_APPLICATION_CREDENTIALS_B64=your-service-account-json-base64
 ```
+
 📍 **Setup**: [Google Cloud Console](https://console.cloud.google.com/)
 
 ### External Services
 
 #### Twilio (SMS/OTP)
+
 ```env
 TWILIO_ACCOUNT_SID=your-twilio-account-sid
 TWILIO_AUTH_TOKEN=your-twilio-auth-token
 TWILIO_SERVICE_SID=your-twilio-verify-service-sid
 ```
+
 📍 **Setup**: [Twilio Console](https://console.twilio.com/)
 
 #### Weather & Air Quality
+
 ```env
 OPENWEATHER_API_KEY=your-openweather-api-key
 IQAIR_API_KEY=your-iqair-api-key
 ```
-📍 **Setup**: [OpenWeather](https://openweathermap.org/api), [IQAir](https://www.iqair.com/air-pollution-data-api)
+
+📍 **Setup**: [OpenWeather](https://openweathermap.org/api),
+[IQAir](https://www.iqair.com/air-pollution-data-api)
 
 #### Health Integrations
+
 ```env
 FITBIT_CLIENT_ID=your-fitbit-client-id
 FITBIT_CLIENT_SECRET=your-fitbit-client-secret
 ```
+
 📍 **Setup**: [Fitbit Developer](https://dev.fitbit.com/)
 
 #### Push Notifications
 
 ##### iOS (APNs)
+
 ```env
 APNS_KEY_ID=your-apns-key-id
 APNS_TEAM_ID=your-apple-team-id
@@ -227,6 +257,7 @@ APNS_BUNDLE_ID=com.healthcoachai.app
 ```
 
 ##### Android (FCM)
+
 ```env
 FCM_PROJECT_ID=your-firebase-project-id
 FCM_CLIENT_EMAIL=your-service-account-email
@@ -274,11 +305,13 @@ Swagger API documentation is available at: `http://localhost:8080/api/docs`
 ### iOS Development
 
 #### Prerequisites
+
 - macOS with Xcode 15+
 - iOS Simulator or physical iOS device
 - Apple Developer Account (for device testing)
 
 #### Setup
+
 ```bash
 cd apps/mobile/ios
 
@@ -290,6 +323,7 @@ open HealthCoachAI.xcodeproj
 ```
 
 #### Building and Running
+
 1. Open Xcode
 2. Select your target device/simulator
 3. Press Cmd+R to build and run
@@ -297,11 +331,13 @@ open HealthCoachAI.xcodeproj
 ### Android Development
 
 #### Prerequisites
+
 - Android Studio 2023.3+
 - Android SDK (API level 24+)
 - Android Emulator or physical device
 
 #### Setup
+
 ```bash
 cd apps/mobile/android
 
@@ -310,6 +346,7 @@ cd apps/mobile/android
 ```
 
 #### Building and Running
+
 1. Open Android Studio
 2. Import the `apps/mobile/android` directory
 3. Sync Gradle files
@@ -318,14 +355,18 @@ cd apps/mobile/android
 ### Configuration for Mobile Apps
 
 #### iOS Configuration
+
 Edit `apps/mobile/ios/.env`:
+
 ```env
 API_BASE_URL=http://localhost:8080
 ENVIRONMENT=development
 ```
 
 #### Android Configuration
+
 Edit `apps/mobile/android/.env`:
+
 ```env
 API_BASE_URL=http://10.0.2.2:8080
 ENVIRONMENT=development
@@ -351,6 +392,7 @@ npm run test:e2e
 ### Mobile Testing
 
 #### iOS Testing
+
 ```bash
 cd apps/mobile/ios
 
@@ -359,6 +401,7 @@ cd apps/mobile/ios
 ```
 
 #### Android Testing
+
 ```bash
 cd apps/mobile/android
 
@@ -376,7 +419,7 @@ cd apps/mobile/android
 pnpm run test
 
 # Run integration tests
-./test-phase-13-integration.sh
+./scripts/test-phase-13-integration.sh
 ```
 
 ## Troubleshooting
@@ -384,6 +427,7 @@ pnpm run test
 ### Common Issues
 
 #### Database Connection Issues
+
 ```bash
 # Check PostgreSQL status
 pg_isready -h localhost -p 5432
@@ -393,6 +437,7 @@ redis-cli ping
 ```
 
 #### Node.js/pnpm Issues
+
 ```bash
 # Clear node modules and reinstall
 rm -rf node_modules
@@ -403,6 +448,7 @@ pnpm store prune
 ```
 
 #### Build Failures
+
 ```bash
 # Clean and rebuild
 pnpm run clean
@@ -412,10 +458,12 @@ pnpm run build
 ### iOS Issues
 
 #### Code Signing
+
 - Ensure you have a valid Apple Developer Account
 - Configure proper provisioning profiles in Xcode
 
 #### Simulator Issues
+
 ```bash
 # Reset iOS Simulator
 xcrun simctl erase all
@@ -424,6 +472,7 @@ xcrun simctl erase all
 ### Android Issues
 
 #### Gradle Issues
+
 ```bash
 cd apps/mobile/android
 ./gradlew clean
@@ -431,6 +480,7 @@ cd apps/mobile/android
 ```
 
 #### Emulator Issues
+
 - Ensure Android Virtual Device (AVD) has sufficient RAM
 - Use API level 24+ for compatibility
 
@@ -466,6 +516,7 @@ NODE_ENV=production npm run migration:run
 ## Application Architecture
 
 ### Backend Structure
+
 ```
 services/backend/src/
 ├── domains/
@@ -484,6 +535,7 @@ services/backend/src/
 ```
 
 ### Mobile App Structure
+
 ```
 apps/mobile/
 ├── ios/                # iOS SwiftUI app
@@ -504,6 +556,7 @@ apps/mobile/
 ## Feature Status
 
 ### ✅ Fully Implemented
+
 - Authentication system (OAuth + OTP)
 - Mobile app foundations (iOS + Android)
 - Backend API architecture
@@ -513,11 +566,13 @@ apps/mobile/
 - Performance optimization
 
 ### 🔧 Partially Implemented (with TODOs)
+
 - Android onboarding flow (API integration pending)
 - Some mobile UI screens (placeholder content)
 - Token management system (tests failing)
 
 ### 📋 Demo/Placeholder Status
+
 - All external API credentials are demo keys
 - Mock data for development testing
 - Placeholder health report processing
@@ -525,6 +580,7 @@ apps/mobile/
 ## Support
 
 For issues and questions:
+
 1. Check this user guide
 2. Review the troubleshooting section
 3. Check existing GitHub issues
@@ -532,4 +588,5 @@ For issues and questions:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE file for
+details.
