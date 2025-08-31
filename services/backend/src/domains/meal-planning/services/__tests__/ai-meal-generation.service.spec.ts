@@ -16,6 +16,9 @@ import { MealPlan, MealPlanType } from '../../entities/meal-plan.entity';
 import { MealPlanEntry } from '../../entities/meal-plan-entry.entity';
 import { Recipe } from '../../../recipes/entities/recipe.entity';
 import { User } from '../../../users/entities/user.entity';
+import { HealthReportsService } from '../../../health-reports/services/health-reports.service';
+import { HealthInterpretationService } from '../../../health-reports/services/health-interpretation.service';
+import { StructuredEntityService } from '../../../health-reports/services/structured-entity.service';
 
 describe('AIMealGenerationService', () => {
   let service: AIMealGenerationService;
@@ -25,10 +28,24 @@ describe('AIMealGenerationService', () => {
   let cacheManager: jest.Mocked<Cache>;
 
   const mockRepositoryMethods = {
-    findOne: jest.fn(),
-    find: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findOne: jest.fn().mockImplementation((query) => {
+      // Handle different user IDs
+      const userId = query?.where?.id;
+      if (userId === 'test-user-id' || userId === 'phase12-test-user') {
+        return Promise.resolve({
+          id: userId,
+          email: 'test@example.com',
+          name: 'Test User',
+          profile: {},
+          healthData: {},
+          preferences: {},
+        });
+      }
+      return Promise.resolve(null);
+    }),
+    find: jest.fn().mockResolvedValue([]),
+    create: jest.fn().mockImplementation((data) => data),
+    save: jest.fn().mockImplementation((data) => Promise.resolve(data)),
   };
 
   beforeEach(async () => {
@@ -54,26 +71,39 @@ describe('AIMealGenerationService', () => {
         {
           provide: AIRoutingService,
           useValue: {
-            routeRequest: jest.fn(),
+            routeRequest: jest.fn().mockResolvedValue({
+              provider: 'openai',
+              model: 'gpt-4',
+              decisionId: 'test-decision-id',
+              estimatedCost: 0.001,
+              routingReason: 'Test routing',
+              routingDecision: 'test_decision',
+            }),
             updateCompletion: jest.fn(),
           },
         },
         {
           provide: EnhancedNutritionService,
           useValue: {
-            analyzeRecipe: jest.fn(),
+            analyzeRecipe: jest.fn().mockResolvedValue({
+              calories: 250,
+              protein: 15,
+              carbs: 30,
+              fat: 8,
+              fiber: 5,
+            }),
           },
         },
         {
           provide: GlycemicIndexService,
           useValue: {
-            calculateGlycemicLoad: jest.fn(),
+            calculateGlycemicLoad: jest.fn().mockResolvedValue(12),
           },
         },
         {
           provide: CookingTransformationService,
           useValue: {
-            applyTransformation: jest.fn(),
+            applyTransformation: jest.fn().mockImplementation((recipe) => recipe),
           },
         },
         {
@@ -87,6 +117,28 @@ describe('AIMealGenerationService', () => {
           useValue: {
             get: jest.fn(),
             set: jest.fn(),
+          },
+        },
+        {
+          provide: HealthReportsService,
+          useValue: {
+            processHealthReport: jest.fn(),
+            analyzeHealthMetrics: jest.fn(),
+            findByUserId: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: HealthInterpretationService, 
+          useValue: {
+            interpretHealthData: jest.fn(),
+            generateRecommendations: jest.fn(),
+          },
+        },
+        {
+          provide: StructuredEntityService,
+          useValue: {
+            extractEntities: jest.fn(),
+            processStructuredData: jest.fn(),
           },
         },
       ],
@@ -267,7 +319,7 @@ describe('AIMealGenerationService', () => {
       expect(aiRoutingService.routeRequest).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 'test-user-id',
-          requestType: 'MEAL_PLANNING',
+          requestType: 'meal_planning',
           accuracyRequirement: 92,
         }),
       );
@@ -383,7 +435,7 @@ describe('AIMealGenerationService', () => {
 
       expect(aiRoutingService.routeRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          requestType: 'RECIPE_GENERATION',
+          requestType: 'recipe_generation',
           accuracyRequirement: 95,
         }),
       );
@@ -469,7 +521,7 @@ describe('AIMealGenerationService', () => {
       // Verify integration with AI routing (Level 2 for cost optimization)
       expect(aiRoutingService.routeRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          requestType: 'MEAL_PLANNING',
+          requestType: 'meal_planning',
           accuracyRequirement: 92, // Level 2 accuracy requirement
         }),
       );

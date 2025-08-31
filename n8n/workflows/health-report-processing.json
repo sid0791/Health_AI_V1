@@ -1,0 +1,396 @@
+{
+  "name": "Health Report Processing Automation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "webhook-health-reports",
+      "name": "Health Report Upload Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "health-report-upload",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "health-report-upload",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-user-id",
+              "leftValue": "={{$json.userId}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "has-report-data",
+              "leftValue": "={{$json.reportFile}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validate-health-report",
+      "name": "Validate Health Report",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/health-reports/process",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Processing-Priority",
+              "value": "high"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "reportFile",
+              "value": "={{$json.reportFile}}"
+            },
+            {
+              "name": "reportType",
+              "value": "={{$json.reportType}}"
+            },
+            {
+              "name": "processedAt",
+              "value": "={{$now}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "process-health-report",
+      "name": "Process Health Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/health-reports/interpretation",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "reportId",
+              "value": "={{$json.reportId}}"
+            },
+            {
+              "name": "aiAnalysisRequired",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ai-interpretation",
+      "name": "AI Health Interpretation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/meal-planning/adapt-from-health-report",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "healthInsights",
+              "value": "={{$json.interpretation}}"
+            },
+            {
+              "name": "adaptationType",
+              "value": "health_report_based"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adapt-meal-plan",
+      "name": "Adapt Meal Plan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/fitness-planning/adapt-from-health-report", 
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "healthInsights",
+              "value": "={{$json.interpretation}}"
+            },
+            {
+              "name": "adaptationType",
+              "value": "health_report_based"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adapt-fitness-plan",
+      "name": "Adapt Fitness Plan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 320]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/notifications/send",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "type",
+              "value": "health_report_processed"
+            },
+            {
+              "name": "title",
+              "value": "Health Report Analysis Complete"
+            },
+            {
+              "name": "message",
+              "value": "Your health report has been analyzed and your plans have been updated accordingly."
+            },
+            {
+              "name": "priority",
+              "value": "normal"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-user",
+      "name": "Notify User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 260]
+    },
+    {
+      "parameters": {
+        "message": "Health report processing failed: Invalid input data",
+        "responseCode": 400
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "message": "Health report processed successfully",
+        "responseCode": 200
+      },
+      "id": "success-response", 
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 260]
+    }
+  ],
+  "connections": {
+    "webhook-health-reports": {
+      "main": [
+        [
+          {
+            "node": "validate-health-report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validate-health-report": {
+      "main": [
+        [
+          {
+            "node": "process-health-report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process-health-report": {
+      "main": [
+        [
+          {
+            "node": "ai-interpretation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai-interpretation": {
+      "main": [
+        [
+          {
+            "node": "adapt-meal-plan",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "adapt-fitness-plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "adapt-meal-plan": {
+      "main": [
+        [
+          {
+            "node": "notify-user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "adapt-fitness-plan": {
+      "main": [
+        [
+          {
+            "node": "notify-user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "notify-user": {
+      "main": [
+        [
+          {
+            "node": "success-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "health-automation",
+      "name": "Health Automation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

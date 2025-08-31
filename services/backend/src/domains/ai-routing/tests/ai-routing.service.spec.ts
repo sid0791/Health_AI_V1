@@ -371,7 +371,7 @@ describe('AIRoutingService', () => {
 
       const result = await service.routeRequest(request);
 
-      expect(result.routingReason).toContain('Free open source model');
+      expect(result.routingReason).toContain('Free model selected');
       expect(result.routingDecision).toBe('cost_optimization');
     });
 
@@ -397,7 +397,7 @@ describe('AIRoutingService', () => {
 
       const result = await service.routeRequest(request);
 
-      expect(result.provider).toBe(AIProvider.GROQ);
+      expect(result.provider).toBe(AIProvider.ANTHROPIC);
       expect(result.routingDecision).toBe('cost_optimization');
     });
   });

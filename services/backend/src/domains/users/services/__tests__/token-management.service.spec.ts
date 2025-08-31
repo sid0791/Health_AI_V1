@@ -25,6 +25,8 @@ describe('TokenManagementService', () => {
     shouldFallbackToFreeTier: jest.fn(),
     getRemainingDailyTokens: jest.fn(),
     getRemainingMonthlyTokens: jest.fn(),
+    resetDailyTokens: jest.fn(),
+    resetMonthlyTokens: jest.fn(),
   };
 
   beforeEach(async () => {
