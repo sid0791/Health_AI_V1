@@ -15,3 +15,8 @@ coverage
 *.swo
 .nyc_output
 junit.xml
+.next
+apps/web/.next
+**/.next/**
+**/build/**
+**/dist/**

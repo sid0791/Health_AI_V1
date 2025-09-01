@@ -277,33 +277,42 @@ export class OTPService {
       const accountSid = this.configService.get('TWILIO_ACCOUNT_SID');
       const authToken = this.configService.get('TWILIO_AUTH_TOKEN');
       const fromNumber = this.configService.get('TWILIO_FROM_NUMBER');
-      
+
       // Check if we have valid Twilio configuration
-      if (accountSid && authToken && fromNumber && 
-          accountSid.startsWith('AC') && authToken.length > 10) {
+      if (
+        accountSid &&
+        authToken &&
+        fromNumber &&
+        accountSid.startsWith('AC') &&
+        authToken.length > 10
+      ) {
         try {
           const client = require('twilio')(accountSid, authToken);
-          
+
           await client.messages.create({
             body: message,
             from: fromNumber,
             to: phone,
           });
-          
+
           this.logger.log(`SMS sent via Twilio to ${this.maskPhone(phone)}`);
           return;
         } catch (twilioError) {
           this.logger.error('Twilio SMS failed, falling back to logging', twilioError);
         }
       }
-      
+
       // Fallback for production when Twilio not configured or fails
-      this.logger.log(`SMS sent to ${this.maskPhone(phone)} with OTP: ${otpCode.substring(0, 2)}****`);
+      this.logger.log(
+        `SMS sent to ${this.maskPhone(phone)} with OTP: ${otpCode.substring(0, 2)}****`,
+      );
       this.logger.warn(`Twilio not configured properly. Using fallback logging for OTP delivery.`);
     } catch (error) {
       this.logger.error('Failed to send OTP SMS', error);
       // Don't throw error for SMS delivery issues - OTP is still generated and stored
-      this.logger.log(`SMS sent to ${this.maskPhone(phone)} with OTP: ${otpCode.substring(0, 2)}****`);
+      this.logger.log(
+        `SMS sent to ${this.maskPhone(phone)} with OTP: ${otpCode.substring(0, 2)}****`,
+      );
     }
   }
 

@@ -29,7 +29,7 @@ sealed class BottomNavItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainNavigation() {
+fun MainNavigation(onLogout: () -> Unit = {}) {
     val navController = rememberNavController()
     val items = listOf(
         BottomNavItem.Dashboard,
@@ -88,7 +88,7 @@ fun MainNavigation() {
                 FitnessScreen()
             }
             composable(BottomNavItem.Settings.route) {
-                SettingsScreen()
+                SettingsScreen(onLogout = onLogout)
             }
         }
     }

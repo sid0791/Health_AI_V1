@@ -66,7 +66,8 @@ data class Recipe(
     val cuisine: String,
     val tags: List<String>,
     val nutrition: NutritionInfo,
-    val image: String? = null
+    val image: String? = null,
+    val isFavorite: Boolean = false
 )
 
 @Serializable

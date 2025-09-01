@@ -252,7 +252,17 @@ fun ChatScreen() {
                         
                         items(quickActions) { (action, emoji) ->
                             AssistChip(
-                                onClick = { /* TODO: Handle quick action */ },
+                                onClick = { 
+                                    // Send quick action as message
+                                    val quickMessage = when (action) {
+                                        "Nutrition" -> "Can you help me with nutrition advice?"
+                                        "Exercise" -> "I need help with exercise recommendations."
+                                        "Sleep" -> "How can I improve my sleep quality?"
+                                        "Meal Plan" -> "Please suggest a healthy meal plan for me."
+                                        else -> "Tell me about $action"
+                                    }
+                                    onSendMessage(quickMessage)
+                                },
                                 label = {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -384,7 +394,10 @@ fun ChatScreen() {
                 ) {
                     // Quick add button
                     IconButton(
-                        onClick = { /* TODO: Quick add functionality */ }
+                        onClick = { 
+                            // Show quick add options
+                            onSendMessage("Please help me add information about my health status or measurements.")
+                        }
                     ) {
                         Icon(
                             Icons.Default.Add,
@@ -417,7 +430,10 @@ fun ChatScreen() {
                     
                     // Voice input button
                     IconButton(
-                        onClick = { /* TODO: Voice input */ }
+                        onClick = { 
+                            // Voice input placeholder - would integrate with speech-to-text
+                            onSendMessage("Voice input not yet available. Please type your message.")
+                        }
                     ) {
                         Icon(
                             Icons.Default.Mic,
@@ -659,10 +675,21 @@ fun SuggestedQuestionCard(
 }
 
 fun formatTimestamp(timestamp: String): String {
-    // TODO: Implement proper timestamp formatting
     return try {
-        timestamp.substringAfter("T").substring(0, 5)
+        // Parse ISO timestamp and format to display time
+        val instant = java.time.Instant.parse(timestamp)
+        val localDateTime = java.time.LocalDateTime.ofInstant(
+            instant, 
+            java.time.ZoneId.systemDefault()
+        )
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        localDateTime.format(formatter)
     } catch (e: Exception) {
-        "now"
+        // Fallback for simple timestamp formatting
+        try {
+            timestamp.substringAfter("T").substring(0, 5)
+        } catch (e: Exception) {
+            "now"
+        }
     }
 }

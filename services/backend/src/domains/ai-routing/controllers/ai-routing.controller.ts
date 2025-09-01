@@ -246,7 +246,7 @@ export class AIRoutingController {
    */
   private async performProviderHealthChecks(): Promise<Record<string, any>> {
     const providers: Record<string, any> = {};
-    
+
     try {
       // OpenAI health check
       providers.openai = {
@@ -278,7 +278,6 @@ export class AIRoutingController {
           config.status = 'degraded';
         }
       }
-
     } catch (error) {
       this.logger.error('Provider health check failed', error);
       providers.error = {

@@ -430,14 +430,23 @@ export class AIMealPlanningController {
     this.logger.debug(`Generating shopping list for user: ${req.user.id}`);
 
     try {
-      // This would fetch recipes and generate shopping list
-      // For now, return a placeholder response
-      const shoppingList = await this.generateMockShoppingList(shoppingDto);
+      // Generate comprehensive shopping list using AI meal generation service
+      const shoppingList = await this.aiMealGenerationService.generateShoppingList(
+        req.user.id,
+        shoppingDto,
+      );
 
       return {
         success: true,
         data: shoppingList,
         message: 'Shopping list generated successfully',
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          userId: req.user.id,
+          totalItems: shoppingList.totalItems,
+          estimatedCost: shoppingList.totalEstimatedCost,
+          budgetCompliant: shoppingList.budgetCompliance,
+        },
       };
     } catch (error) {
       this.logger.error(`Failed to generate shopping list: ${error.message}`, error.stack);
@@ -445,6 +454,7 @@ export class AIMealPlanningController {
       throw new InternalServerErrorException({
         success: false,
         error: 'Shopping list generation failed',
+        fallbackSuggestion: 'Try generating from a saved meal plan or contact support',
       });
     }
   }
@@ -481,36 +491,6 @@ export class AIMealPlanningController {
         aiGenerationMetadata: generatedPlan.aiGenerationMetadata,
         originalRequest: generatedPlan.originalRequest,
       },
-    };
-  }
-
-  private async generateMockShoppingList(dto: GenerateShoppingListDto): Promise<any> {
-    // Mock implementation - would be replaced with actual shopping list generation
-    return {
-      categorizedItems: {
-        vegetables: [
-          { name: 'Onions', quantity: 2, unit: 'kg', cost: 60 },
-          { name: 'Tomatoes', quantity: 1, unit: 'kg', cost: 40 },
-        ],
-        grains: [
-          { name: 'Brown Rice', quantity: 1, unit: 'kg', cost: 120 },
-          { name: 'Quinoa', quantity: 500, unit: 'g', cost: 200 },
-        ],
-        proteins: [
-          { name: 'Paneer', quantity: 500, unit: 'g', cost: 180 },
-          { name: 'Lentils (Mixed)', quantity: 1, unit: 'kg', cost: 150 },
-        ],
-      },
-      totalCost: 750,
-      substitutionSuggestions: [
-        {
-          original: 'Quinoa',
-          substitute: 'Brown Rice',
-          costSaving: 80,
-          nutritionImpact: 'Slightly lower protein, similar fiber',
-        },
-      ],
-      availabilityWarnings: ['Quinoa may have limited availability in some areas'],
     };
   }
 }

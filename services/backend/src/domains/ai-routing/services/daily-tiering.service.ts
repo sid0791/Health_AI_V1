@@ -272,7 +272,7 @@ export class DailyTieringService {
         this.logger.warn(`Failed to get user tier for ${userId}, using default: ${error.message}`);
       }
     }
-    
+
     // Fallback to environment-based tier or default
     return this.configService.get('DEFAULT_USER_TIER', 'free');
   }
@@ -332,7 +332,7 @@ export class DailyTieringService {
       // Aggregate statistics from cache and user service
       const allKeys = await this.cacheManager.store.keys('daily_usage:*');
       const usersByTier: Record<string, number> = { free: 0, premium: 0, pro: 0 };
-      let totalRequests = { level1: 0, level2: 0 };
+      const totalRequests = { level1: 0, level2: 0 };
       let totalCost = 0;
       let blockedUsers = 0;
 

@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
  * API Client for HealthCoach AI Backend
  * Provides HTTP client with authentication and error handling
  */
-class ApiClient {
+class ApiClient(private val getAccessToken: (() -> String?)? = null) {
     companion object {
         private val BASE_URL = BuildConfig.API_BASE_URL ?: "https://api.healthcoachai.com/api"
         private const val TIMEOUT_SECONDS = 30L
@@ -28,7 +28,7 @@ class ApiClient {
         .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .addInterceptor(AuthInterceptor())
+        .addInterceptor(AuthInterceptor(getAccessToken ?: { null }))
         .addInterceptor(LoggingInterceptor())
         .build()
 
@@ -88,19 +88,66 @@ class ApiClient {
             ApiResult.Error(ApiException(0, "Unexpected error: ${e.message}", endpoint))
         }
     }
+
+    /**
+     * Multipart request method for file uploads
+     */
+    suspend inline fun <reified T> requestWithMultipart(
+        endpoint: String,
+        multipartBody: MultipartBody,
+        headers: Map<String, String> = emptyMap()
+    ): ApiResult<T> = withContext(Dispatchers.IO) {
+        try {
+            val url = "$BASE_URL$endpoint"
+            val requestBuilder = Request.Builder()
+                .url(url)
+                .post(multipartBody)
+
+            // Add headers
+            headers.forEach { (key, value) ->
+                requestBuilder.addHeader(key, value)
+            }
+
+            val request = requestBuilder.build()
+            val response = client.newCall(request).execute()
+
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: ""
+                
+                if (T::class == Unit::class) {
+                    @Suppress("UNCHECKED_CAST")
+                    return@withContext ApiResult.Success(Unit as T)
+                }
+                
+                val data = json.decodeFromString<T>(responseBody)
+                ApiResult.Success(data)
+            } else {
+                val errorBody = response.body?.string() ?: "Unknown error"
+                ApiResult.Error(ApiException(response.code, errorBody, endpoint))
+            }
+        } catch (e: IOException) {
+            ApiResult.Error(ApiException(0, "Network error: ${e.message}", endpoint))
+        } catch (e: Exception) {
+            ApiResult.Error(ApiException(0, "Unexpected error: ${e.message}", endpoint))
+        }
+    }
 }
 
 /**
  * Authentication interceptor for adding auth tokens
  */
-class AuthInterceptor : Interceptor {
+class AuthInterceptor(private val getAccessToken: () -> String?) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
+        val token = getAccessToken()
         
-        // TODO: Add authentication token from secure storage
         val authenticatedRequest = originalRequest.newBuilder()
-            .addHeader("Authorization", "Bearer your-token-here") // TODO: Real token
-            .addHeader("Content-Type", "application/json")
+            .apply {
+                if (token != null) {
+                    addHeader("Authorization", "Bearer $token")
+                }
+                addHeader("Content-Type", "application/json")
+            }
             .build()
             
         return chain.proceed(authenticatedRequest)
