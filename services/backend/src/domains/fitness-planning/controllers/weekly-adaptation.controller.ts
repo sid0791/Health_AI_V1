@@ -8,6 +8,7 @@ import {
   HttpStatus,
   HttpCode,
   Logger,
+  ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
 import {
@@ -127,10 +128,15 @@ export class WeeklyAdaptationController {
     @Body() triggerDto: TriggerWeeklyAdaptationDto,
     @UserDecorator() currentUser: User,
   ): Promise<WeeklyAdaptationResponseDto> {
-    // TODO: Add admin role check
-    // if (!currentUser.roles.includes('admin')) {
-    //   throw new ForbiddenException('Admin access required');
-    // }
+    // Enhanced admin role check with proper validation
+    if (currentUser.role !== 'admin' && currentUser.role !== 'moderator') {
+      throw new ForbiddenException('Admin or moderator access required to trigger user adaptations');
+    }
+    
+    // Additional validation for production safety
+    if (currentUser.id === userId) {
+      this.logger.warn(`Admin ${currentUser.id} triggering adaptation for their own account`);
+    }
 
     try {
       this.logger.log(`Admin ${currentUser.id} triggering weekly adaptation for user ${userId}`);

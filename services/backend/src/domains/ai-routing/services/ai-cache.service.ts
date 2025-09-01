@@ -54,31 +54,31 @@ export class AICacheService {
 
   // Cache configuration for different request types
   private readonly cacheConfigs = {
-    'meal_plan_generation': {
+    meal_plan_generation: {
       ttl: 86400, // 24 hours
       tags: ['meal_planning', 'nutrition'],
       smartMatching: true,
       similarityThreshold: 0.85,
     },
-    'health_report_analysis': {
+    health_report_analysis: {
       ttl: 604800, // 7 days
       tags: ['health_reports', 'analysis'],
       smartMatching: true,
-      similarityThreshold: 0.90,
+      similarityThreshold: 0.9,
     },
-    'fitness_plan_generation': {
+    fitness_plan_generation: {
       ttl: 86400, // 24 hours
       tags: ['fitness', 'planning'],
       smartMatching: true,
-      similarityThreshold: 0.80,
+      similarityThreshold: 0.8,
     },
-    'chat_response': {
+    chat_response: {
       ttl: 3600, // 1 hour
       tags: ['chat', 'conversation'],
       smartMatching: false, // Exact matching only for chat
       similarityThreshold: 1.0,
     },
-    'nutrition_analysis': {
+    nutrition_analysis: {
       ttl: 172800, // 48 hours
       tags: ['nutrition', 'analysis'],
       smartMatching: true,
@@ -86,9 +86,7 @@ export class AICacheService {
     },
   };
 
-  constructor(
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
   /**
    * Check if a cached response exists for the request
@@ -111,7 +109,7 @@ export class AICacheService {
     try {
       const cacheKey = this.generateCacheKey(requestType, prompt, context);
       const config = this.cacheConfigs[requestType];
-      
+
       if (!config) {
         this.logger.debug(`No cache config for request type: ${requestType}`);
         return { hit: false };
@@ -119,7 +117,7 @@ export class AICacheService {
 
       // Try exact match first
       let cacheEntry = await this.cacheManager.get<CacheEntry>(cacheKey);
-      
+
       // If no exact match and smart matching is enabled, try similarity search
       if (!cacheEntry && config.smartMatching && config.similarityThreshold < 1.0) {
         cacheEntry = await this.findSimilarCacheEntry(
@@ -134,15 +132,15 @@ export class AICacheService {
         // Update access metadata
         cacheEntry.lastAccessed = new Date();
         cacheEntry.accessCount += 1;
-        
+
         // Refresh cache with updated metadata
         await this.cacheManager.set(cacheKey, cacheEntry, cacheEntry.ttl);
-        
+
         // Update cache statistics
         await this.updateCacheStats(cacheEntry, true);
-        
+
         this.logger.debug(`Cache hit for ${requestType}: ${cacheEntry.id}`);
-        
+
         return {
           hit: true,
           response: cacheEntry.response,
@@ -157,7 +155,6 @@ export class AICacheService {
 
       this.logger.debug(`Cache miss for ${requestType}`);
       return { hit: false };
-      
     } catch (error) {
       this.logger.error('Error checking cache', error);
       return { hit: false };
@@ -191,7 +188,7 @@ export class AICacheService {
 
       const cacheKey = this.generateCacheKey(requestType, prompt, context);
       const promptHash = this.generatePromptHash(prompt, context);
-      
+
       const cacheEntry: CacheEntry = {
         id: this.generateCacheId(),
         requestHash: cacheKey,
@@ -208,12 +205,11 @@ export class AICacheService {
       };
 
       await this.cacheManager.set(cacheKey, cacheEntry, config.ttl);
-      
+
       // Update cache statistics
       await this.updateCacheStats(cacheEntry, false);
-      
+
       this.logger.debug(`Cached response for ${requestType}: ${cacheEntry.id}`);
-      
     } catch (error) {
       this.logger.error('Error caching response', error);
     }
@@ -230,26 +226,25 @@ export class AICacheService {
   ): Promise<CacheEntry | null> {
     // This is a simplified implementation
     // In production, you'd use vector embeddings and similarity search
-    
+
     try {
       const allKeys = await this.getCacheKeysByPattern();
       const promptWords = this.tokenizePrompt(prompt);
-      
+
       for (const key of allKeys) {
         const entry = await this.cacheManager.get<CacheEntry>(key);
         if (!entry) continue;
-        
+
         const cachedWords = this.tokenizePrompt(entry.prompt);
         const similarity = this.calculateTextSimilarity(promptWords, cachedWords);
-        
+
         if (similarity >= threshold) {
           this.logger.debug(`Found similar cache entry with similarity ${similarity}: ${entry.id}`);
           return entry;
         }
       }
-      
+
       return null;
-      
     } catch (error) {
       this.logger.error('Error finding similar cache entries', error);
       return null;
@@ -262,10 +257,10 @@ export class AICacheService {
   private calculateTextSimilarity(words1: string[], words2: string[]): number {
     const set1 = new Set(words1);
     const set2 = new Set(words2);
-    
-    const intersection = new Set([...set1].filter(x => set2.has(x)));
+
+    const intersection = new Set([...set1].filter((x) => set2.has(x)));
     const union = new Set([...set1, ...set2]);
-    
+
     return intersection.size / union.size;
   }
 
@@ -277,7 +272,7 @@ export class AICacheService {
       .toLowerCase()
       .replace(/[^\w\s]/g, '')
       .split(/\s+/)
-      .filter(word => word.length > 2); // Filter out short words
+      .filter((word) => word.length > 2); // Filter out short words
   }
 
   /**
@@ -316,7 +311,7 @@ export class AICacheService {
   private async updateCacheStats(entry: CacheEntry, isHit: boolean): Promise<void> {
     try {
       let stats = await this.cacheManager.get<CacheStats>(this.STATS_KEY);
-      
+
       if (!stats) {
         stats = {
           totalEntries: 0,
@@ -337,7 +332,7 @@ export class AICacheService {
       }
 
       // Update top cached types
-      const typeIndex = stats.topCachedTypes.findIndex(t => t.type === entry.requestType);
+      const typeIndex = stats.topCachedTypes.findIndex((t) => t.type === entry.requestType);
       if (typeIndex >= 0) {
         stats.topCachedTypes[typeIndex].count += 1;
         if (isHit) {
@@ -352,7 +347,6 @@ export class AICacheService {
       }
 
       await this.cacheManager.set(this.STATS_KEY, stats, 86400); // 24 hours TTL
-      
     } catch (error) {
       this.logger.error('Error updating cache stats', error);
     }
@@ -363,12 +357,14 @@ export class AICacheService {
    */
   async getCacheStats(): Promise<CacheStats> {
     const stats = await this.cacheManager.get<CacheStats>(this.STATS_KEY);
-    return stats || {
-      totalEntries: 0,
-      hitRate: 0,
-      totalSavings: { tokens: 0, cost: 0, responseTime: 0 },
-      topCachedTypes: [],
-    };
+    return (
+      stats || {
+        totalEntries: 0,
+        hitRate: 0,
+        totalSavings: { tokens: 0, cost: 0, responseTime: 0 },
+        topCachedTypes: [],
+      }
+    );
   }
 
   /**
@@ -377,14 +373,15 @@ export class AICacheService {
   async clearCache(requestType?: string): Promise<number> {
     try {
       const keys = await this.getCacheKeysByPattern();
-      
+
       for (const key of keys) {
         await this.cacheManager.del(key);
       }
-      
-      this.logger.log(`Cleared ${keys.length} cache entries${requestType ? ` for ${requestType}` : ''}`);
+
+      this.logger.log(
+        `Cleared ${keys.length} cache entries${requestType ? ` for ${requestType}` : ''}`,
+      );
       return keys.length;
-      
     } catch (error) {
       this.logger.error('Error clearing cache', error);
       return 0;
@@ -406,13 +403,13 @@ export class AICacheService {
    */
   async preloadCommonEntries(): Promise<void> {
     this.logger.log('Starting cache preload for common entries...');
-    
+
     // This would involve identifying frequently requested patterns
     // and pre-generating responses for them during low-traffic periods
-    
+
     // In a real implementation, you'd generate these responses
     // and cache them for faster access
-    
+
     this.logger.log('Cache preload completed');
   }
 }

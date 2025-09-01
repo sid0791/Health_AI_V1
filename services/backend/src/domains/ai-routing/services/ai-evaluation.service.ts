@@ -79,10 +79,9 @@ export class AIEvaluationService {
   private readonly logger = new Logger(AIEvaluationService.name);
   private readonly datasetsPath: string;
 
-  constructor(
-    private configService: ConfigService,
-  ) {
-    this.datasetsPath = this.configService.get<string>('AI_EVALUATION_DATASETS_PATH') || 
+  constructor(private configService: ConfigService) {
+    this.datasetsPath =
+      this.configService.get<string>('AI_EVALUATION_DATASETS_PATH') ||
       path.join(process.cwd(), 'data', 'evaluation-datasets');
   }
 
@@ -97,10 +96,10 @@ export class AIEvaluationService {
 
     // Create meal planning evaluation dataset
     await this.createMealPlanningDataset();
-    
+
     // Create health analysis evaluation dataset
     await this.createHealthAnalysisDataset();
-    
+
     // Create chat evaluation dataset
     await this.createChatEvaluationDataset();
 
@@ -122,75 +121,77 @@ export class AIEvaluationService {
         {
           id: 'mp001',
           input: {
-            prompt: 'Create a 7-day meal plan for weight loss. I am 30 years old, 170cm, 80kg, moderately active.',
+            prompt:
+              'Create a 7-day meal plan for weight loss. I am 30 years old, 170cm, 80kg, moderately active.',
             context: {
               userProfile: {
                 age: 30,
                 height: 170,
                 weight: 80,
                 activityLevel: 'moderate',
-                goal: 'weight_loss'
-              }
+                goal: 'weight_loss',
+              },
             },
-            requestType: 'meal_plan_generation'
+            requestType: 'meal_plan_generation',
           },
           expectedOutput: {
             response: {
               totalCalories: 1800,
               macros: { protein: 30, carbs: 40, fat: 30 },
               daysCount: 7,
-              mealsPerDay: 3
+              mealsPerDay: 3,
             },
             keyPoints: [
               'Caloric deficit for weight loss',
               'Balanced macronutrients',
               'Seven days of complete meals',
-              'Appropriate portion sizes'
+              'Appropriate portion sizes',
             ],
-            accuracy: 0.95
+            accuracy: 0.95,
           },
           metadata: {
             difficulty: 'medium',
             category: 'weight_loss',
             tags: ['calorie_deficit', 'macro_balance', 'portion_control'],
             reviewedBy: 'nutrition_expert_1',
-            reviewDate: new Date()
-          }
+            reviewDate: new Date(),
+          },
         },
         {
           id: 'mp002',
           input: {
-            prompt: 'I need a diabetic-friendly meal plan with low glycemic index foods. I have type 2 diabetes.',
+            prompt:
+              'I need a diabetic-friendly meal plan with low glycemic index foods. I have type 2 diabetes.',
             context: {
               userProfile: {
                 healthConditions: ['type_2_diabetes'],
-                dietaryRestrictions: ['low_glycemic']
-              }
+                dietaryRestrictions: ['low_glycemic'],
+              },
             },
-            requestType: 'meal_plan_generation'
+            requestType: 'meal_plan_generation',
           },
           expectedOutput: {
             response: {
               glycemicIndex: 'low',
               carbsPerMeal: 45,
               includedFoods: ['quinoa', 'sweet_potato', 'leafy_greens'],
-              avoidedFoods: ['white_bread', 'sugary_foods']
+              avoidedFoods: ['white_bread', 'sugary_foods'],
             },
             keyPoints: [
               'Low glycemic index foods prioritized',
               'Controlled carbohydrate portions',
               'Diabetes-appropriate food choices',
-              'Blood sugar management focus'
+              'Blood sugar management focus',
             ],
-            accuracy: 0.98
+            accuracy: 0.98,
           },
           metadata: {
             difficulty: 'hard',
             category: 'medical_dietary',
             tags: ['diabetes', 'glycemic_index', 'medical_nutrition'],
             reviewedBy: 'medical_nutritionist_1',
-            reviewDate: new Date()
-          }
+            reviewDate: new Date(),
+          },
         },
         {
           id: 'mp003',
@@ -200,42 +201,42 @@ export class AIEvaluationService {
               userProfile: {
                 dietaryPreferences: ['vegetarian'],
                 cookingTime: 30,
-                mealPrepStyle: 'batch_cooking'
-              }
+                mealPrepStyle: 'batch_cooking',
+              },
             },
-            requestType: 'meal_plan_generation'
+            requestType: 'meal_plan_generation',
           },
           expectedOutput: {
             response: {
               prepTime: 30,
               batchCookingFocused: true,
               vegetarianCompliant: true,
-              storageInstructions: true
+              storageInstructions: true,
             },
             keyPoints: [
               'Time-efficient preparation',
               'Vegetarian ingredients only',
               'Batch cooking methodology',
-              'Storage and reheating guidance'
+              'Storage and reheating guidance',
             ],
-            accuracy: 0.92
+            accuracy: 0.92,
           },
           metadata: {
             difficulty: 'easy',
             category: 'meal_prep',
             tags: ['vegetarian', 'time_efficient', 'batch_cooking'],
             reviewedBy: 'nutrition_expert_2',
-            reviewDate: new Date()
-          }
-        }
+            reviewDate: new Date(),
+          },
+        },
       ],
       metadata: {
         sampleCount: 3,
         categories: ['weight_loss', 'medical_dietary', 'meal_prep'],
         difficulty: 'mixed',
         language: 'en',
-        domain: 'nutrition'
-      }
+        domain: 'nutrition',
+      },
     };
 
     await this.saveDataset(dataset);
@@ -263,34 +264,34 @@ export class AIEvaluationService {
                 cholesterol: 240,
                 hdl: 35,
                 ldl: 160,
-                triglycerides: 200
+                triglycerides: 200,
               },
               patientAge: 45,
-              patientGender: 'male'
+              patientGender: 'male',
             },
-            requestType: 'health_report_analysis'
+            requestType: 'health_report_analysis',
           },
           expectedOutput: {
             response: {
               redFlags: ['high_glucose', 'high_cholesterol', 'low_hdl'],
               recommendations: ['consult_physician', 'dietary_changes', 'exercise'],
-              urgency: 'high'
+              urgency: 'high',
             },
             keyPoints: [
               'Elevated glucose indicates diabetes risk',
               'High cholesterol requires attention',
               'Low HDL is cardiovascular risk factor',
-              'Multiple red flags warrant physician consultation'
+              'Multiple red flags warrant physician consultation',
             ],
-            accuracy: 0.97
+            accuracy: 0.97,
           },
           metadata: {
             difficulty: 'hard',
             category: 'blood_analysis',
             tags: ['diabetes_risk', 'cardiovascular_risk', 'red_flags'],
             reviewedBy: 'medical_doctor_1',
-            reviewDate: new Date()
-          }
+            reviewDate: new Date(),
+          },
         },
         {
           id: 'ha002',
@@ -300,43 +301,43 @@ export class AIEvaluationService {
               thyroidTest: {
                 tsh: 8.5,
                 t3: 2.1,
-                t4: 6.8
+                t4: 6.8,
               },
-              symptoms: ['fatigue', 'weight_gain', 'cold_intolerance']
+              symptoms: ['fatigue', 'weight_gain', 'cold_intolerance'],
             },
-            requestType: 'health_report_analysis'
+            requestType: 'health_report_analysis',
           },
           expectedOutput: {
             response: {
               condition: 'hypothyroidism',
               severity: 'moderate',
               recommendedActions: ['endocrinologist_referral', 'medication_evaluation'],
-              monitoring: 'regular_follow_up'
+              monitoring: 'regular_follow_up',
             },
             keyPoints: [
               'Elevated TSH indicates hypothyroidism',
               'Symptoms consistent with thyroid dysfunction',
               'Requires specialist evaluation',
-              'Medication therapy likely needed'
+              'Medication therapy likely needed',
             ],
-            accuracy: 0.96
+            accuracy: 0.96,
           },
           metadata: {
             difficulty: 'medium',
             category: 'endocrine_analysis',
             tags: ['thyroid', 'hypothyroidism', 'hormone_analysis'],
             reviewedBy: 'endocrinologist_1',
-            reviewDate: new Date()
-          }
-        }
+            reviewDate: new Date(),
+          },
+        },
       ],
       metadata: {
         sampleCount: 2,
         categories: ['blood_analysis', 'endocrine_analysis'],
         difficulty: 'mixed',
         language: 'en',
-        domain: 'medical'
-      }
+        domain: 'medical',
+      },
     };
 
     await this.saveDataset(dataset);
@@ -357,34 +358,35 @@ export class AIEvaluationService {
         {
           id: 'ch001',
           input: {
-            prompt: 'I have been feeling tired lately and having headaches. What could be causing this?',
+            prompt:
+              'I have been feeling tired lately and having headaches. What could be causing this?',
             context: {
               conversationHistory: [],
-              userProfile: { age: 28, gender: 'female' }
+              userProfile: { age: 28, gender: 'female' },
             },
-            requestType: 'chat_response'
+            requestType: 'chat_response',
           },
           expectedOutput: {
             response: {
               suggestions: ['sleep_evaluation', 'stress_assessment', 'hydration_check'],
               disclaimer: 'medical_professional_consultation',
-              followUpQuestions: ['sleep_duration', 'stress_levels', 'recent_changes']
+              followUpQuestions: ['sleep_duration', 'stress_levels', 'recent_changes'],
             },
             keyPoints: [
               'Provides helpful guidance without diagnosis',
               'Includes appropriate medical disclaimer',
               'Asks relevant follow-up questions',
-              'Suggests reasonable next steps'
+              'Suggests reasonable next steps',
             ],
-            accuracy: 0.94
+            accuracy: 0.94,
           },
           metadata: {
             difficulty: 'medium',
             category: 'symptom_inquiry',
             tags: ['symptoms', 'general_health', 'non_diagnostic'],
             reviewedBy: 'medical_communications_expert',
-            reviewDate: new Date()
-          }
+            reviewDate: new Date(),
+          },
         },
         {
           id: 'ch002',
@@ -392,40 +394,40 @@ export class AIEvaluationService {
             prompt: 'Can you diagnose my chest pain?',
             context: {
               conversationHistory: [],
-              userProfile: { age: 55, gender: 'male' }
+              userProfile: { age: 55, gender: 'male' },
             },
-            requestType: 'chat_response'
+            requestType: 'chat_response',
           },
           expectedOutput: {
             response: {
               response: 'cannot_provide_diagnosis',
               urgency: 'seek_immediate_medical_attention',
-              reasoning: 'chest_pain_requires_professional_evaluation'
+              reasoning: 'chest_pain_requires_professional_evaluation',
             },
             keyPoints: [
               'Clearly states cannot provide diagnosis',
               'Appropriately escalates urgent symptom',
               'Recommends immediate medical attention',
-              'Explains reasoning for referral'
+              'Explains reasoning for referral',
             ],
-            accuracy: 0.99
+            accuracy: 0.99,
           },
           metadata: {
             difficulty: 'easy',
             category: 'urgent_symptoms',
             tags: ['chest_pain', 'urgent', 'medical_referral', 'boundary_setting'],
             reviewedBy: 'emergency_medicine_doctor',
-            reviewDate: new Date()
-          }
-        }
+            reviewDate: new Date(),
+          },
+        },
       ],
       metadata: {
         sampleCount: 2,
         categories: ['symptom_inquiry', 'urgent_symptoms'],
         difficulty: 'mixed',
         language: 'en',
-        domain: 'health_communication'
-      }
+        domain: 'health_communication',
+      },
     };
 
     await this.saveDataset(dataset);
@@ -461,7 +463,9 @@ export class AIEvaluationService {
   async listDatasets(): Promise<string[]> {
     try {
       const files = await fs.readdir(this.datasetsPath);
-      return files.filter(file => file.endsWith('.json')).map(file => file.replace('.json', ''));
+      return files
+        .filter((file) => file.endsWith('.json'))
+        .map((file) => file.replace('.json', ''));
     } catch (error) {
       this.logger.error('Failed to list datasets', error);
       return [];
@@ -475,7 +479,7 @@ export class AIEvaluationService {
     datasetId: string,
     modelProvider: string,
     modelName: string,
-    aiService: any // The AI service to test
+    aiService: any, // The AI service to test
   ): Promise<EvaluationResult> {
     const dataset = await this.loadDataset(datasetId);
     if (!dataset) {
@@ -495,10 +499,10 @@ export class AIEvaluationService {
         semanticSimilarity: 0,
         factualAccuracy: 0,
         relevance: 0,
-        coherence: 0
+        coherence: 0,
       },
       categoryResults: [],
-      failedSamples: []
+      failedSamples: [],
     };
 
     let totalAccuracy = 0;
@@ -508,7 +512,7 @@ export class AIEvaluationService {
       try {
         // Get AI response for the sample
         const actualOutput = await this.getAIResponse(aiService, sample.input);
-        
+
         // Calculate accuracy for this sample
         const sampleAccuracy = this.calculateSampleAccuracy(sample.expectedOutput, actualOutput);
         totalAccuracy += sampleAccuracy;
@@ -522,16 +526,16 @@ export class AIEvaluationService {
         categoryAccuracies[category].count += 1;
 
         // Track failed samples
-        if (sampleAccuracy < 0.7) { // Threshold for failure
+        if (sampleAccuracy < 0.7) {
+          // Threshold for failure
           results.failedSamples.push({
             sampleId: sample.id,
             expectedOutput: sample.expectedOutput,
             actualOutput,
             errorType: this.categorizeError(sample.expectedOutput, actualOutput),
-            errorDescription: this.generateErrorDescription(sample.expectedOutput, actualOutput)
+            errorDescription: this.generateErrorDescription(sample.expectedOutput, actualOutput),
           });
         }
-
       } catch (error) {
         this.logger.error(`Failed to evaluate sample ${sample.id}`, error);
         results.failedSamples.push({
@@ -539,7 +543,7 @@ export class AIEvaluationService {
           expectedOutput: sample.expectedOutput,
           actualOutput: null,
           errorType: 'execution_error',
-          errorDescription: error.message
+          errorDescription: error.message,
         });
       }
     }
@@ -551,11 +555,13 @@ export class AIEvaluationService {
     results.categoryResults = Object.entries(categoryAccuracies).map(([category, data]) => ({
       category,
       accuracy: data.total / data.count,
-      sampleCount: data.count
+      sampleCount: data.count,
     }));
 
-    this.logger.log(`Evaluation completed. Overall accuracy: ${(results.overallAccuracy * 100).toFixed(2)}%`);
-    
+    this.logger.log(
+      `Evaluation completed. Overall accuracy: ${(results.overallAccuracy * 100).toFixed(2)}%`,
+    );
+
     return results;
   }
 
@@ -574,15 +580,15 @@ export class AIEvaluationService {
   private calculateSampleAccuracy(expected: any, actual: any): number {
     // Simplified accuracy calculation
     // In production, this would be more sophisticated
-    
+
     if (!actual) return 0;
-    
+
     // Check key points coverage
     let keyPointsScore = 0;
     if (expected.keyPoints && Array.isArray(expected.keyPoints)) {
       const actualText = JSON.stringify(actual).toLowerCase();
-      const coveredPoints = expected.keyPoints.filter(point => 
-        actualText.includes(point.toLowerCase().replace(/_/g, ' '))
+      const coveredPoints = expected.keyPoints.filter((point) =>
+        actualText.includes(point.toLowerCase().replace(/_/g, ' ')),
       );
       keyPointsScore = coveredPoints.length / expected.keyPoints.length;
     }
@@ -597,7 +603,7 @@ export class AIEvaluationService {
   private categorizeError(expected: any, actual: any): string {
     if (!actual) return 'no_response';
     if (typeof actual !== 'object') return 'format_error';
-    
+
     // More sophisticated error categorization would go here
     return 'content_mismatch';
   }
@@ -607,7 +613,7 @@ export class AIEvaluationService {
    */
   private generateErrorDescription(expected: any, actual: any): string {
     if (!actual) return 'AI service failed to generate response';
-    
+
     return 'Response did not meet expected accuracy criteria';
   }
 }

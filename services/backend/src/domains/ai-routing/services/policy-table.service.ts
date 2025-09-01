@@ -78,10 +78,9 @@ export class PolicyTableService {
   private readonly policyFilePath: string;
   private fileWatcher: fs.FileHandle | null = null;
 
-  constructor(
-    private configService: ConfigService,
-  ) {
-    this.policyFilePath = this.configService.get<string>('AI_POLICY_TABLE_PATH') || 
+  constructor(private configService: ConfigService) {
+    this.policyFilePath =
+      this.configService.get<string>('AI_POLICY_TABLE_PATH') ||
       path.join(process.cwd(), 'data', 'ai-policy-table.json');
   }
 
@@ -97,10 +96,10 @@ export class PolicyTableService {
     try {
       const fileContent = await fs.readFile(this.policyFilePath, 'utf-8');
       const parsedTable = JSON.parse(fileContent);
-      
+
       // Validate policy table structure
       this.validatePolicyTable(parsedTable);
-      
+
       // Convert date strings to Date objects
       parsedTable.lastUpdated = new Date(parsedTable.lastUpdated);
       parsedTable.rules = parsedTable.rules.map((rule: any) => ({
@@ -111,8 +110,9 @@ export class PolicyTableService {
       }));
 
       this.policyTable = parsedTable;
-      this.logger.log(`Loaded policy table v${parsedTable.version} with ${parsedTable.rules.length} rules`);
-      
+      this.logger.log(
+        `Loaded policy table v${parsedTable.version} with ${parsedTable.rules.length} rules`,
+      );
     } catch (error) {
       this.logger.error('Failed to load policy table, using default policies', error);
       this.policyTable = this.getDefaultPolicyTable();
@@ -149,7 +149,7 @@ export class PolicyTableService {
 
     const now = new Date();
     const appliedRules: string[] = [];
-    let decision = {
+    const decision = {
       preferredProviders: [this.policyTable!.globalSettings.fallbackProvider],
       fallbackProviders: ['openai'],
       routingStrategy: this.policyTable!.globalSettings.defaultRoutingStrategy,
@@ -160,16 +160,15 @@ export class PolicyTableService {
     };
 
     // Sort rules by priority (higher first)
-    const sortedRules = this.policyTable!.rules
-      .filter(rule => rule.enabled)
-      .filter(rule => now >= rule.validFrom && (!rule.validUntil || now <= rule.validUntil))
+    const sortedRules = this.policyTable!.rules.filter((rule) => rule.enabled)
+      .filter((rule) => now >= rule.validFrom && (!rule.validUntil || now <= rule.validUntil))
       .sort((a, b) => b.priority - a.priority);
 
     // Apply matching rules
     for (const rule of sortedRules) {
       if (this.ruleMatches(rule, request, now)) {
         appliedRules.push(rule.id);
-        
+
         // Merge rule actions (later rules override earlier ones for conflicts)
         if (rule.actions.preferredProviders?.length) {
           decision.preferredProviders = rule.actions.preferredProviders;
@@ -189,7 +188,7 @@ export class PolicyTableService {
         if (rule.actions.rateLimitOverride) {
           decision.rateLimitOverride = rule.actions.rateLimitOverride;
         }
-        
+
         this.logger.debug(`Applied policy rule: ${rule.name} (${rule.id})`);
       }
     }
@@ -215,35 +214,44 @@ export class PolicyTableService {
     }
 
     // Check user region
-    if (conditions.userRegion && request.userRegion && 
-        !conditions.userRegion.includes(request.userRegion)) {
+    if (
+      conditions.userRegion &&
+      request.userRegion &&
+      !conditions.userRegion.includes(request.userRegion)
+    ) {
       return false;
     }
 
     // Check emergency request
-    if (conditions.emergencyRequest !== undefined && 
-        conditions.emergencyRequest !== request.emergencyRequest) {
+    if (
+      conditions.emergencyRequest !== undefined &&
+      conditions.emergencyRequest !== request.emergencyRequest
+    ) {
       return false;
     }
 
     // Check accuracy requirement
     if (conditions.accuracyRequirement && request.accuracyRequirement !== undefined) {
       const req = conditions.accuracyRequirement;
-      if ((req.min !== undefined && request.accuracyRequirement < req.min) ||
-          (req.max !== undefined && request.accuracyRequirement > req.max)) {
+      if (
+        (req.min !== undefined && request.accuracyRequirement < req.min) ||
+        (req.max !== undefined && request.accuracyRequirement > req.max)
+      ) {
         return false;
       }
     }
 
     // Check privacy level
-    if (conditions.privacyLevel && request.privacyLevel &&
-        !conditions.privacyLevel.includes(request.privacyLevel)) {
+    if (
+      conditions.privacyLevel &&
+      request.privacyLevel &&
+      !conditions.privacyLevel.includes(request.privacyLevel)
+    ) {
       return false;
     }
 
     // Check PHI content
-    if (conditions.containsPHI !== undefined &&
-        conditions.containsPHI !== request.containsPHI) {
+    if (conditions.containsPHI !== undefined && conditions.containsPHI !== request.containsPHI) {
       return false;
     }
 
@@ -257,8 +265,10 @@ export class PolicyTableService {
 
     // Check cost limit
     if (conditions.costLimit && request.estimatedCost !== undefined) {
-      if (conditions.costLimit.maxCostPerRequest !== undefined &&
-          request.estimatedCost > conditions.costLimit.maxCostPerRequest) {
+      if (
+        conditions.costLimit.maxCostPerRequest !== undefined &&
+        request.estimatedCost > conditions.costLimit.maxCostPerRequest
+      ) {
         return false;
       }
     }
@@ -273,10 +283,10 @@ export class PolicyTableService {
     try {
       // Validate new policy table
       this.validatePolicyTable(newTable);
-      
+
       // Update version and timestamps
       newTable.lastUpdated = new Date();
-      newTable.rules.forEach(rule => {
+      newTable.rules.forEach((rule) => {
         if (!rule.lastModified) {
           rule.lastModified = new Date();
           rule.modifiedBy = updatedBy;
@@ -286,12 +296,11 @@ export class PolicyTableService {
       // Write to file
       const fileContent = JSON.stringify(newTable, null, 2);
       await fs.writeFile(this.policyFilePath, fileContent, 'utf-8');
-      
+
       // Reload in memory
       this.policyTable = newTable;
-      
+
       this.logger.log(`Policy table updated to v${newTable.version} by ${updatedBy}`);
-      
     } catch (error) {
       this.logger.error('Failed to update policy table', error);
       throw error;
@@ -316,7 +325,7 @@ export class PolicyTableService {
     rule.lastModified = new Date();
     rule.modifiedBy = updatedBy;
 
-    const existingIndex = this.policyTable!.rules.findIndex(r => r.id === rule.id);
+    const existingIndex = this.policyTable!.rules.findIndex((r) => r.id === rule.id);
     if (existingIndex >= 0) {
       this.policyTable!.rules[existingIndex] = rule;
     } else {
