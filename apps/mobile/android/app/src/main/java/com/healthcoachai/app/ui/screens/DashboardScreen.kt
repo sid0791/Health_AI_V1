@@ -39,7 +39,10 @@ fun DashboardScreen() {
                 title = "Today's Meals",
                 subtitle = "3 of 4 meals completed",
                 icon = Icons.Filled.Restaurant,
-                onClick = { /* Navigate to meal plan */ }
+                onClick = { 
+                    // Navigate to meal plan screen
+                    // In real implementation: navController.navigate("meal_plan")
+                }
             )
         }
         
@@ -54,7 +57,10 @@ fun DashboardScreen() {
                 title = "Today's Activity",
                 subtitle = "7,543 steps • 45 min workout",
                 icon = Icons.Filled.DirectionsWalk,
-                onClick = { /* Navigate to fitness */ }
+                onClick = { 
+                    // Navigate to fitness screen
+                    // In real implementation: navController.navigate("fitness")
+                }
             )
         }
     }
@@ -164,7 +170,10 @@ fun QuickActionsSection() {
                 icon = Icons.Filled.Add,
                 color = Success500,
                 modifier = Modifier.weight(1f),
-                onClick = { /* Log meal action */ }
+                onClick = { 
+                    // Open meal logging dialog or navigate to log screen
+                    // In real implementation: navController.navigate("log_meal")
+                }
             )
             
             QuickActionButton(
@@ -172,7 +181,10 @@ fun QuickActionsSection() {
                 icon = Icons.Filled.FitnessCenter,
                 color = Primary500,
                 modifier = Modifier.weight(1f),
-                onClick = { /* Update weight action */ }
+                onClick = { 
+                    // Open weight update dialog or navigate to profile
+                    // In real implementation: show weight update dialog
+                }
             )
             
             QuickActionButton(
@@ -180,7 +192,10 @@ fun QuickActionsSection() {
                 icon = Icons.Filled.Chat,
                 color = Secondary500,
                 modifier = Modifier.weight(1f),
-                onClick = { /* Chat action */ }
+                onClick = { 
+                    // Navigate to AI chat screen
+                    // In real implementation: navController.navigate("chat")
+                }
             )
         }
     }

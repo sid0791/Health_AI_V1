@@ -186,6 +186,40 @@ class MealPlanViewModel : ViewModel() {
             swappingMeal = null
         )
     }
+    
+    fun toggleFavorite(recipeId: String) {
+        val currentMealPlan = uiState.mealPlan ?: return
+        
+        viewModelScope.launch {
+            when (val result = mealPlanningService.toggleRecipeFavorite("user_123", recipeId)) {
+                is ApiResult.Success -> {
+                    // Update the local state to reflect favorite status change
+                    val updatedDays = currentMealPlan.days.map { day ->
+                        day.copy(
+                            meals = day.meals.map { meal ->
+                                if (meal.recipe.id == recipeId) {
+                                    meal.copy(
+                                        recipe = meal.recipe.copy(
+                                            isFavorite = !meal.recipe.isFavorite
+                                        )
+                                    )
+                                } else meal
+                            }
+                        )
+                    }
+                    
+                    uiState = uiState.copy(
+                        mealPlan = currentMealPlan.copy(days = updatedDays)
+                    )
+                }
+                is ApiResult.Error -> {
+                    uiState = uiState.copy(
+                        error = "Failed to update favorite: ${result.exception.message}"
+                    )
+                }
+            }
+        }
+    }
 }
 
 /**

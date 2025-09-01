@@ -381,11 +381,18 @@ fun MealCard(
                         }
                     }
                     
-                    IconButton(onClick = { /* TODO: Add to favorites */ }) {
+                    IconButton(
+                        onClick = { 
+                            viewModel.toggleFavorite(mealEntry.recipe.id)
+                        }
+                    ) {
                         Icon(
                             Icons.Default.Favorite,
-                            contentDescription = "Add to favorites",
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            contentDescription = if (mealEntry.recipe.isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = if (mealEntry.recipe.isFavorite) 
+                                Color(0xFFE91E63) 
+                            else 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }

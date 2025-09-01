@@ -107,6 +107,23 @@ class MealPlanningService(private val apiClient: ApiClient) {
             body = preferences
         )
     }
+
+    /**
+     * Toggle favorite status for a recipe
+     */
+    suspend fun toggleRecipeFavorite(userId: String, recipeId: String): ApiResult<Boolean> {
+        return apiClient.request(
+            endpoint = "/users/$userId/favorite-recipes/$recipeId/toggle",
+            method = "POST"
+        )
+    }
+
+    /**
+     * Get user's favorite recipes
+     */
+    suspend fun getFavoriteRecipes(userId: String): ApiResult<List<Recipe>> {
+        return apiClient.request("/users/$userId/favorite-recipes")
+    }
 }
 
 // Additional data classes for service
