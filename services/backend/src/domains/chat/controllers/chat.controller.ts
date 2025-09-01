@@ -38,6 +38,7 @@ import {
   ChatResponse,
 } from '../services/domain-scoped-chat.service';
 import { ChatSessionService, CreateSessionOptions } from '../services/chat-session.service';
+import { HealthKnowledgeService } from '../services/health-knowledge.service';
 import { ChatSessionType } from '../entities/chat-session.entity';
 
 // DTOs
@@ -122,6 +123,7 @@ export class ChatController {
     private readonly domainScopedChatService: DomainScopedChatService,
     private readonly chatSessionService: ChatSessionService,
     private readonly tokenManagementService: TokenManagementService,
+    private readonly healthKnowledgeService: HealthKnowledgeService,
   ) {}
 
   /**
@@ -726,5 +728,119 @@ export class ChatController {
     }
 
     return recommendations;
+  }
+
+  /**
+   * Get quick health response from knowledge base
+   */
+  @Get('health/quick-response')
+  @ApiOperation({
+    summary: 'Get quick health response',
+    description: 'Get instant response to common health questions using cached data',
+  })
+  @ApiQuery({ name: 'question', description: 'Health question to answer' })
+  @ApiResponse({
+    status: 200,
+    description: 'Quick response retrieved successfully or AI routing required',
+  })
+  async getQuickHealthResponse(
+    @User() user: UserEntity,
+    @Query('question') question: string,
+  ): Promise<any> {
+    try {
+      this.logger.log(`Getting quick health response for user ${user.id}`);
+
+      if (!question?.trim()) {
+        throw new BadRequestException('Question is required');
+      }
+
+      const quickResponse = await this.healthKnowledgeService.getQuickHealthResponse(
+        user.id,
+        question.trim(),
+      );
+
+      if (quickResponse) {
+        return {
+          success: true,
+          response: quickResponse.answer,
+          source: quickResponse.source,
+          confidence: quickResponse.confidence,
+          userSpecific: quickResponse.userSpecific,
+          relatedQuestions: quickResponse.relatedQuestions,
+          cacheUntil: quickResponse.cacheUntil,
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Question requires AI assistance - use the regular chat endpoint',
+          requiresAI: true,
+        };
+      }
+    } catch (error) {
+      this.logger.error(`Error getting quick health response for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to get health response');
+    }
+  }
+
+  /**
+   * Get user's health metrics summary
+   */
+  @Get('health/metrics')
+  @ApiOperation({
+    summary: 'Get health metrics summary',
+    description: 'Get comprehensive health metrics without external API calls',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Health metrics retrieved successfully',
+  })
+  async getHealthMetrics(@User() user: UserEntity): Promise<any> {
+    try {
+      this.logger.log(`Getting health metrics for user ${user.id}`);
+
+      const metrics = await this.healthKnowledgeService.getUserHealthMetrics(user.id);
+
+      return {
+        success: true,
+        metrics,
+        generatedAt: new Date(),
+        cacheUntil: new Date(Date.now() + 60 * 60 * 1000), // Cache for 1 hour
+      };
+    } catch (error) {
+      this.logger.error(`Error getting health metrics for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to get health metrics');
+    }
+  }
+
+  /**
+   * Get knowledge base statistics
+   */
+  @Get('health/knowledge-stats')
+  @ApiOperation({
+    summary: 'Get knowledge base statistics',
+    description: 'Get statistics about the health knowledge base usage',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Knowledge base statistics retrieved successfully',
+  })
+  async getKnowledgeStats(@User() user: UserEntity): Promise<any> {
+    try {
+      // Only allow admins or specific users to see global stats
+      if (user.role !== 'admin') {
+        throw new BadRequestException('Insufficient permissions');
+      }
+
+      const stats = this.healthKnowledgeService.getKnowledgeBaseStats();
+
+      return {
+        success: true,
+        stats,
+        generatedAt: new Date(),
+      };
+    } catch (error) {
+      this.logger.error(`Error getting knowledge stats:`, error);
+      throw new BadRequestException(error.message || 'Failed to get knowledge statistics');
+    }
   }
 }

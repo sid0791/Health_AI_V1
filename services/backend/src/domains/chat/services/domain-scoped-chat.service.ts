@@ -10,6 +10,7 @@ import { User } from '../../users/entities/user.entity';
 import { RAGService } from './rag.service';
 import { HinglishNLPService } from './hinglish-nlp.service';
 import { ChatSessionService } from './chat-session.service';
+import { HealthKnowledgeService } from './health-knowledge.service';
 
 // AI routing integration
 import { AIRoutingService, AIRoutingRequest } from '../../ai-routing/services/ai-routing.service';
@@ -119,6 +120,7 @@ export class DomainScopedChatService {
     private readonly aiRoutingService: AIRoutingService,
     private readonly dlpService: DLPService,
     private readonly tokenManagementService: TokenManagementService,
+    private readonly healthKnowledgeService: HealthKnowledgeService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -151,6 +153,46 @@ export class DomainScopedChatService {
       // Check if message is in scope
       if (!domainClassification.isInScope) {
         return await this.handleOutOfScopeMessage(session, userMessage, domainClassification);
+      }
+
+      // First, try to get a quick response from knowledge base (saves AI cost)
+      const quickResponse = await this.healthKnowledgeService.getQuickHealthResponse(
+        userId,
+        processedMessage.content,
+      );
+
+      if (quickResponse) {
+        this.logger.log(`Served quick response for user ${userId} from ${quickResponse.source}`);
+
+        // Create assistant message with quick response
+        const assistantMessage = await this.createAssistantMessage(session, quickResponse.answer, {
+          source: quickResponse.source,
+          confidence: quickResponse.confidence,
+          cachedUntil: quickResponse.cacheUntil,
+          userSpecific: quickResponse.userSpecific,
+          quickResponse: true,
+        });
+
+        const processingTime = Date.now() - startTime;
+
+        return {
+          success: true,
+          sessionId: session.id,
+          messageId: assistantMessage.id,
+          response: quickResponse.answer,
+          metadata: {
+            processingTime,
+            domainClassification,
+            languageDetection: processedMessage.languageDetection,
+            followUpQuestions: quickResponse.relatedQuestions,
+            cost: 0, // No AI cost for knowledge base responses
+            routingDecision: {
+              level: 'CACHED' as any,
+              provider: 'knowledge_base',
+              model: 'local_cache',
+            },
+          },
+        };
       }
 
       // Retrieve relevant context using RAG

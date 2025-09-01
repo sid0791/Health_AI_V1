@@ -7,6 +7,7 @@ import { DomainScopedChatService } from './services/domain-scoped-chat.service';
 import { RAGService } from './services/rag.service';
 import { HinglishNLPService } from './services/hinglish-nlp.service';
 import { ChatSessionService } from './services/chat-session.service';
+import { HealthKnowledgeService } from './services/health-knowledge.service';
 import { ChatRateLimitInterceptor } from './interceptors/chat-rate-limit.interceptor';
 
 import { ChatSession } from './entities/chat-session.entity';
@@ -21,6 +22,8 @@ import { MealPlanningModule } from '../meal-planning/meal-planning.module';
 import { FitnessPlanningModule } from '../fitness-planning/fitness-planning.module';
 import { NutritionModule } from '../nutrition/nutrition.module';
 import { RecipeModule } from '../recipes/recipe.module';
+import { IntegrationsModule } from '../integrations/integrations.module';
+import { LogsModule } from '../logs/logs.module';
 
 @Module({
   imports: [
@@ -33,6 +36,8 @@ import { RecipeModule } from '../recipes/recipe.module';
     FitnessPlanningModule,
     NutritionModule,
     RecipeModule,
+    IntegrationsModule,
+    LogsModule,
   ],
   controllers: [ChatController],
   providers: [
@@ -40,6 +45,7 @@ import { RecipeModule } from '../recipes/recipe.module';
     RAGService,
     HinglishNLPService,
     ChatSessionService,
+    HealthKnowledgeService,
     ChatRateLimitInterceptor,
   ],
   exports: [DomainScopedChatService, RAGService, HinglishNLPService, ChatSessionService],
