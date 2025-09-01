@@ -1179,6 +1179,32 @@ Response Hinglish mein dein aur simple language use karein.`,
   }
 
   /**
+   * Sanitize filename to prevent path traversal attacks
+   */
+  private sanitizeFilename(filename: string): string {
+    if (!filename || typeof filename !== 'string') {
+      throw new Error('Invalid filename provided');
+    }
+    
+    // Remove any path traversal sequences and unsafe characters
+    // First replace path traversal sequences specifically
+    let sanitized = filename
+      .replace(/\.\./g, '') // Remove all .. sequences
+      .replace(/[\/\\]/g, '_') // Replace forward and backward slashes
+      .replace(/[^a-zA-Z0-9\-_\.]/g, '_') // Only allow safe characters
+      .replace(/^\.+/, '') // Remove leading dots
+      .replace(/\.+$/, '') // Remove trailing dots
+      .replace(/_+/g, '_') // Collapse multiple underscores
+      .substring(0, 255); // Limit length
+    
+    if (!sanitized || sanitized.length === 0) {
+      throw new Error('Filename becomes empty after sanitization');
+    }
+    
+    return sanitized;
+  }
+
+  /**
    * Enhanced persistent storage implementation for templates
    */
   private async saveTemplateToPersistentStorage(template: PromptTemplate): Promise<void> {
@@ -1196,8 +1222,9 @@ Response Hinglish mein dein aur simple language use karein.`,
         // Ensure directory exists
         await fs.mkdir(templatesDir, { recursive: true });
         
-        // Save template to JSON file
-        const filePath = path.join(templatesDir, `${template.id}.json`);
+        // Sanitize template ID to prevent path traversal
+        const safeFilename = this.sanitizeFilename(template.id);
+        const filePath = path.join(templatesDir, `${safeFilename}.json`);
         await fs.writeFile(filePath, JSON.stringify(template, null, 2));
         
         this.logger.debug(`Template saved to file: ${filePath}`);
