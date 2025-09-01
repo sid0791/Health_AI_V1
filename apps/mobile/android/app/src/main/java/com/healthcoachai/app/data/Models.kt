@@ -211,3 +211,220 @@ data class SuggestedQuestionsRequest(
     val userGoals: List<String>? = null,
     val recentTopics: List<String>? = null
 )
+
+// MARK: - Health Reports Data Models
+
+@Serializable
+data class HealthReport(
+    val id: String,
+    val title: String,
+    val date: String,
+    val summary: String,
+    val keyFindings: List<String>,
+    val hasAIInsights: Boolean,
+    val reportType: String, // "lab_results", "medical_checkup", "imaging", etc.
+    val status: String, // "processed", "pending", "error"
+    val uploadedAt: String,
+    val fileUrl: String? = null
+)
+
+@Serializable
+data class RedFlagAlert(
+    val id: String,
+    val title: String,
+    val description: String,
+    val severity: String, // "critical", "high", "medium", "low"
+    val recommendation: String,
+    val isRead: Boolean,
+    val createdAt: String,
+    val reportId: String? = null,
+    val metricName: String? = null,
+    val alertType: String // "abnormal_value", "trend_concern", "missing_data", etc.
+)
+
+@Serializable
+data class HealthMetric(
+    val id: String,
+    val name: String,
+    val value: String,
+    val unit: String,
+    val trend: String, // "up", "down", "stable"
+    val type: String, // "blood_pressure", "cholesterol", "glucose", etc.
+    val lastUpdated: String,
+    val normalRange: String? = null,
+    val isNormal: Boolean,
+    val changePercent: Double? = null
+)
+
+@Serializable
+data class HealthReportMetadata(
+    val reportType: String,
+    val testDate: String? = null,
+    val labName: String? = null,
+    val physicianName: String? = null,
+    val notes: String? = null
+)
+
+@Serializable
+data class HealthReportUploadResponse(
+    val reportId: String,
+    val status: String,
+    val uploadUrl: String? = null,
+    val processingEstimate: String? = null
+)
+
+@Serializable
+data class HealthReportAnalysis(
+    val reportId: String,
+    val aiInsights: List<String>,
+    val keyMetrics: List<HealthMetric>,
+    val recommendations: List<String>,
+    val redFlags: List<RedFlagAlert>,
+    val comparisonWithPrevious: String? = null,
+    val confidenceScore: Double,
+    val analysisDate: String
+)
+
+@Serializable
+data class PhysicianReviewRequest(
+    val requestId: String,
+    val reportId: String,
+    val urgency: String,
+    val estimatedResponseTime: String,
+    val status: String, // "submitted", "in_review", "completed"
+    val notes: String? = null
+)
+
+@Serializable
+data class HealthTrend(
+    val metricType: String,
+    val metricName: String,
+    val dataPoints: List<TrendDataPoint>,
+    val overallTrend: String, // "improving", "declining", "stable"
+    val trendAnalysis: String,
+    val predictions: List<TrendPrediction>? = null
+)
+
+@Serializable
+data class TrendDataPoint(
+    val date: String,
+    val value: Double,
+    val unit: String,
+    val isNormal: Boolean
+)
+
+@Serializable
+data class TrendPrediction(
+    val date: String,
+    val predictedValue: Double,
+    val confidence: Double,
+    val factors: List<String>
+)
+
+@Serializable
+data class HealthCheckReminder(
+    val id: String,
+    val reminderType: String,
+    val nextDueDate: String,
+    val intervalDays: Int,
+    val customMessage: String? = null,
+    val isActive: Boolean
+)
+
+@Serializable
+data class HealthInsights(
+    val overallHealthScore: Int, // 0-100
+    val insights: List<HealthInsight>,
+    val actionableRecommendations: List<String>,
+    val riskFactors: List<RiskFactor>,
+    val strengths: List<String>,
+    val generatedAt: String
+)
+
+@Serializable
+data class HealthInsight(
+    val category: String,
+    val insight: String,
+    val severity: String,
+    val confidence: Double,
+    val evidencePoints: List<String>
+)
+
+@Serializable
+data class RiskFactor(
+    val name: String,
+    val riskLevel: String, // "low", "medium", "high", "critical"
+    val description: String,
+    val mitigationStrategies: List<String>
+)
+
+@Serializable
+data class PopulationComparison(
+    val userMetrics: List<HealthMetric>,
+    val populationAverages: Map<String, Double>,
+    val percentileRankings: Map<String, Int>,
+    val comparisonInsights: List<String>,
+    val demographicInfo: String
+)
+
+@Serializable
+data class DateRange(
+    val startDate: String,
+    val endDate: String
+)
+
+@Serializable
+data class ExportResponse(
+    val downloadUrl: String,
+    val fileName: String,
+    val format: String,
+    val expiresAt: String
+)
+
+@Serializable
+data class PhysicianRecommendation(
+    val id: String,
+    val category: String,
+    val recommendation: String,
+    val priority: String, // "immediate", "high", "medium", "low"
+    val basedOnReports: List<String>,
+    val specialistType: String? = null,
+    val followUpInDays: Int? = null
+)
+
+@Serializable
+data class HealthQuestionnaire(
+    val id: String,
+    val title: String,
+    val description: String,
+    val category: String,
+    val estimatedMinutes: Int,
+    val questions: List<QuestionnaireQuestion>,
+    val isRequired: Boolean = false
+)
+
+@Serializable
+data class QuestionnaireQuestion(
+    val id: String,
+    val question: String,
+    val type: String, // "multiple_choice", "text", "number", "scale", "yes_no"
+    val options: List<String>? = null,
+    val required: Boolean = true,
+    val validation: QuestionValidation? = null
+)
+
+@Serializable
+data class QuestionValidation(
+    val minValue: Double? = null,
+    val maxValue: Double? = null,
+    val maxLength: Int? = null,
+    val pattern: String? = null
+)
+
+@Serializable
+data class QuestionnaireSubmissionResponse(
+    val submissionId: String,
+    val status: String,
+    val insights: List<String>? = null,
+    val recommendations: List<String>? = null
+)

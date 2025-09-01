@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2024-01-15T00:00:00.000Z",
+  "rules": [
+    {
+      "id": "emergency-critical-priority",
+      "name": "Emergency & Critical Health Requests",
+      "description": "Route emergency health requests to fastest, most reliable providers",
+      "priority": 1000,
+      "conditions": {
+        "emergencyRequest": true
+      },
+      "actions": {
+        "preferredProviders": ["openai", "anthropic"],
+        "fallbackProviders": ["vertex"],
+        "routingStrategy": "performance_optimized",
+        "cacheEnabled": false
+      },
+      "enabled": true,
+      "validFrom": "2024-01-01T00:00:00.000Z",
+      "lastModified": "2024-01-15T00:00:00.000Z",
+      "modifiedBy": "system"
+    },
+    {
+      "id": "default-fallback",
+      "name": "Default Fallback Routing",
+      "description": "Default routing for all other requests",
+      "priority": 100,
+      "conditions": {},
+      "actions": {
+        "preferredProviders": ["openai", "anthropic"],
+        "fallbackProviders": ["vertex", "openrouter"],
+        "routingStrategy": "balanced",
+        "cacheEnabled": true,
+        "cacheTTL": 1800
+      },
+      "enabled": true,
+      "validFrom": "2024-01-01T00:00:00.000Z",
+      "lastModified": "2024-01-15T00:00:00.000Z",
+      "modifiedBy": "system"
+    }
+  ],
+  "globalSettings": {
+    "defaultRoutingStrategy": "balanced",
+    "fallbackProvider": "openai",
+    "maxRetries": 3,
+    "timeoutMs": 30000,
+    "cacheEnabled": true,
+    "cacheTTL": 1800
+  }
+}
