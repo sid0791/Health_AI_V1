@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
  */
 class ApiClient {
     companion object {
-        private const val BASE_URL = "http://localhost:8080/api" // TODO: Make configurable
+        private val BASE_URL = BuildConfig.API_BASE_URL ?: "https://api.healthcoachai.com/api"
         private const val TIMEOUT_SECONDS = 30L
     }
 

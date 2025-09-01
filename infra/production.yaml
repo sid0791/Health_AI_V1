@@ -1,0 +1,159 @@
+# Production Infrastructure Configuration
+# HealthCoachAI - Production Deployment
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: healthcoachai-prod-config
+  namespace: healthcoachai-prod
+data:
+  # API Configuration
+  API_BASE_URL: "https://api.healthcoachai.com"
+  NODE_ENV: "production"
+  PORT: "8080"
+  
+  # Database Configuration
+  DB_HOST: "healthcoachai-prod-db.cluster-xyz.us-east-1.rds.amazonaws.com"
+  DB_PORT: "5432"
+  DB_NAME: "healthcoachai_prod"
+  DB_SSL: "true"
+  DB_MAX_CONNECTIONS: "50"
+  
+  # Redis Configuration
+  REDIS_HOST: "healthcoachai-prod-cache.xyz.cache.amazonaws.com"
+  REDIS_PORT: "6379"
+  REDIS_TTL_DEFAULT: "3600"
+  CACHE_TTL: "300"
+  CACHE_MAX_ITEMS: "10000"
+  
+  # AI Features Configuration
+  AI_POLICY_LEVEL1_DAILY_TIERS: "500,1000,2000"
+  AI_POLICY_LEVEL2_ACCURACY_WINDOW: "0.05"
+  AI_VENDOR_LIST: "openai,anthropic,vertex,openrouter,together"
+  AI_ZERO_RETENTION: "true"
+  
+  # Rate Limiting Configuration
+  THROTTLE_TTL: "60"
+  THROTTLE_LIMIT: "1000"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX_REQUESTS: "1000"
+  RATE_LIMIT_AUTH_MAX_REQUESTS: "5000"
+  
+  # Feature Flags
+  FEATURE_CHAT_ENABLED: "true"
+  FEATURE_PHOTO_LOG_ENABLED: "true"
+  FEATURE_VOICE_INPUT_ENABLED: "true"
+  FEATURE_PREMIUM_FEATURES_ENABLED: "true"
+  
+  # Security Configuration
+  BCRYPT_ROUNDS: "12"
+  HELMET_ENABLED: "true"
+  
+  # Monitoring Configuration
+  SENTRY_ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  DEBUG_SQL: "false"
+  ENABLE_PLAYGROUND: "false"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: healthcoachai-backend-prod
+  namespace: healthcoachai-prod
+  labels:
+    app: healthcoachai-backend
+    environment: production
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: healthcoachai-backend
+      environment: production
+  template:
+    metadata:
+      labels:
+        app: healthcoachai-backend
+        environment: production
+    spec:
+      containers:
+      - name: healthcoachai-backend
+        image: healthcoachai/backend:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NODE_ENV
+          value: "production"
+        envFrom:
+        - configMapRef:
+            name: healthcoachai-prod-config
+        - secretRef:
+            name: healthcoachai-prod-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: healthcoachai-backend-service
+  namespace: healthcoachai-prod
+spec:
+  selector:
+    app: healthcoachai-backend
+    environment: production
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+  type: LoadBalancer
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: healthcoachai-ingress
+  namespace: healthcoachai-prod
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+  - hosts:
+    - api.healthcoachai.com
+    secretName: healthcoachai-tls-secret
+  rules:
+  - host: api.healthcoachai.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: healthcoachai-backend-service
+            port:
+              number: 80
