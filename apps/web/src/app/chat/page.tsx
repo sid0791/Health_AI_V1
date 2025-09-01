@@ -8,44 +8,11 @@ import {
   ClockIcon,
   HeartIcon,
   BeakerIcon,
-  LightBulbIcon
+  LightBulbIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
-
-const suggestedQuestions = [
-  "What should I eat for dinner tonight?",
-  "How can I increase my protein intake?",
-  "What exercises are good for weight loss?",
-  "Can you analyze my recent blood test?",
-  "Suggest a healthy breakfast recipe",
-  "How much water should I drink daily?"
-]
-
-const chatHistory = [
-  {
-    id: 1,
-    type: 'user' as const,
-    message: "I'm feeling tired after lunch. What could be causing this?",
-    timestamp: '2:30 PM'
-  },
-  {
-    id: 2,
-    type: 'assistant' as const,
-    message: "Post-lunch fatigue is common and can be caused by several factors:\n\n1. **Blood sugar fluctuations** - Large, carb-heavy meals can cause energy crashes\n2. **Natural circadian rhythm** - Your body naturally dips in energy around 1-3 PM\n3. **Dehydration** - Not drinking enough water affects energy levels\n\n**Recommendations:**\n- Eat smaller, balanced meals with protein and fiber\n- Take a 10-15 minute walk after eating\n- Stay hydrated throughout the day\n- Consider a 20-minute power nap if possible\n\nWhat did you have for lunch today? I can provide more specific advice based on your meal.",
-    timestamp: '2:31 PM'
-  },
-  {
-    id: 3,
-    type: 'user' as const,
-    message: "I had dal rice and sabzi around 1 PM",
-    timestamp: '2:35 PM'
-  },
-  {
-    id: 4,
-    type: 'assistant' as const,
-    message: "Dal rice with sabzi is a nutritious, balanced meal! However, the timing and portion size might be contributing to your fatigue:\n\n**Analysis of your meal:**\n✅ Good protein from dal\n✅ Complex carbs from rice\n✅ Vitamins and fiber from sabzi\n\n**Possible adjustments:**\n- Try eating a smaller portion of rice\n- Add some yogurt or buttermilk to aid digestion\n- Include a small salad for extra fiber\n- Eat around 12:30 PM instead of 1 PM\n\n**Quick energy boost for now:**\n- Drink a glass of water\n- Take 5 deep breaths\n- Do some light stretching\n\nWould you like me to suggest some energizing afternoon snacks for the future?",
-    timestamp: '2:36 PM'
-  }
-]
+import { useApiCall, useAutoFetch } from '../../hooks/useApi'
+import chatService, { ChatMessage, ChatSession, SuggestedQuestion } from '../../services/chatService'
 
 const quickActions = [
   { icon: BeakerIcon, label: 'Log Food', color: 'bg-blue-100 text-blue-700' },
@@ -56,62 +23,143 @@ const quickActions = [
 
 export default function ChatPage() {
   const [message, setMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [messages, setMessages] = useState(chatHistory)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [selectedQuestionCategory, setSelectedQuestionCategory] = useState<string>('all')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  // Mock user ID - in real app this would come from auth context
+  const userId = 'user_123'
 
+  // Get current chat session
+  const [sessionState, { refetch: refetchSession }] = useAutoFetch(
+    () => currentSessionId ? chatService.getSession(currentSessionId) : Promise.resolve(null),
+    [],
+    { enabled: !!currentSessionId, retryCount: 1 }
+  )
+
+  // Get suggested questions
+  const [suggestedQuestionsState] = useAutoFetch(
+    () => chatService.getSuggestedQuestions(userId, {
+      currentPage: 'chat',
+      userGoals: ['weight_loss', 'muscle_gain']
+    }),
+    [],
+    { enabled: true, retryCount: 1 }
+  )
+
+  // Send message
+  const [messageState, { execute: sendMessage }] = useApiCall(
+    chatService.sendMessage
+  )
+
+  // Create session
+  const [createSessionState, { execute: createSession }] = useApiCall(
+    chatService.createSession
+  )
+
+  const currentSession = sessionState.data
+  const messages = currentSession?.messages || []
+  const suggestedQuestions = suggestedQuestionsState.data || []
+
+  // Create initial session
   useEffect(() => {
-    scrollToBottom()
+    if (!currentSessionId && !createSessionState.loading) {
+      initializeSession()
+    }
+  }, [currentSessionId, createSessionState.loading])
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const sendMessage = async () => {
-    if (!message.trim()) return
-
-    const newMessage = {
-      id: messages.length + 1,
-      type: 'user' as const,
-      message: message.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const initializeSession = async () => {
+    const session = await createSession(userId, 'general_health', {
+      userGoals: ['weight_loss', 'muscle_gain'],
+      currentPage: 'chat'
+    })
+    
+    if (session) {
+      setCurrentSessionId(session.id)
     }
+  }
 
-    setMessages(prev => [...prev, newMessage])
+  const handleSendMessage = async () => {
+    if (!message.trim() || !currentSessionId || messageState.loading) return
+
+    const userMessage = message.trim()
     setMessage('')
-    setIsLoading(true)
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = [
-        "I understand your question about nutrition. Let me provide you with some personalized recommendations based on your health profile and goals.",
-        "That's a great question! Based on your previous meal logs, I can suggest some specific options that align with your dietary preferences.",
-        "Thank you for sharing that information. Let me analyze this and provide you with evidence-based recommendations.",
-        "I can help you with that! Here are some tailored suggestions based on your health data and preferences."
-      ]
-      
-      const aiResponse = {
-        id: messages.length + 2,
-        type: 'assistant' as const,
-        message: responses[Math.floor(Math.random() * responses.length)],
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const response = await sendMessage({
+      message: userMessage,
+      sessionId: currentSessionId,
+      sessionType: 'general_health',
+      userPreferences: {
+        language: 'en',
+        responseStyle: 'friendly'
       }
+    })
 
-      setMessages(prev => [...prev, aiResponse])
-      setIsLoading(false)
-    }, 1500)
+    if (response?.success) {
+      await refetchSession()
+    }
+  }
+
+  const handleSuggestedQuestion = async (question: string) => {
+    if (!currentSessionId || messageState.loading) return
+
+    const response = await sendMessage({
+      message: question,
+      sessionId: currentSessionId,
+      sessionType: 'general_health',
+      userPreferences: {
+        language: 'en',
+        responseStyle: 'detailed'
+      }
+    })
+
+    if (response?.success) {
+      await refetchSession()
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      handleSendMessage()
     }
   }
 
-  const handleSuggestedQuestion = (question: string) => {
-    setMessage(question)
+  // Show loading state while creating session
+  if (createSessionState.loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Initializing AI Health Assistant...</h2>
+          <p className="text-gray-600">Setting up your personalized chat experience.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (createSessionState.error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Start Chat</h2>
+          <p className="text-gray-600 mb-4">{createSessionState.error}</p>
+          <button
+            onClick={initializeSession}
+            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -130,8 +178,16 @@ export default function ChatPage() {
           <div className="flex items-center space-x-2">
             <div className="flex items-center space-x-1">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-600">Online</span>
+              <span className="text-sm text-gray-600">
+                {currentSession ? 'Connected' : 'Connecting...'}
+              </span>
             </div>
+            {messageState.loading && (
+              <div className="flex items-center space-x-1">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+                <span className="text-sm text-gray-600">AI thinking...</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -153,6 +209,22 @@ export default function ChatPage() {
 
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.length === 0 && !messageState.loading && (
+          <div className="text-center py-8">
+            <div className="max-w-md mx-auto">
+              <LightBulbIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Welcome to AI Health Coach!</h3>
+              <p className="text-gray-600 mb-4">
+                I&apos;m here to help with your nutrition, fitness, and health questions. 
+                Ask me anything about your wellness journey!
+              </p>
+              <p className="text-sm text-gray-500">
+                🔒 This chat is domain-restricted to health, nutrition, and fitness topics only.
+              </p>
+            </div>
+          </div>
+        )}
+
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
@@ -164,13 +236,18 @@ export default function ChatPage() {
               <div className={`text-xs mt-2 ${
                 msg.type === 'user' ? 'text-primary-100' : 'text-gray-500'
               }`}>
-                {msg.timestamp}
+                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
+              {msg.metadata?.domainClassification && !msg.metadata.domainClassification.isInScope && (
+                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                  ⚠️ This question is outside my health expertise. I can only help with nutrition, fitness, and wellness topics.
+                </div>
+              )}
             </div>
           </div>
         ))}
 
-        {isLoading && (
+        {messageState.loading && (
           <div className="flex justify-start">
             <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 max-w-xs lg:max-w-md">
               <div className="flex space-x-1">
@@ -178,6 +255,7 @@ export default function ChatPage() {
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
+              <div className="text-xs text-gray-500 mt-1">AI is analyzing your question...</div>
             </div>
           </div>
         )}
@@ -185,24 +263,41 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested Questions (show only when chat is empty) */}
-      {messages.length === 0 && (
+      {/* Suggested Questions */}
+      {(messages.length === 0 || suggestedQuestions.length > 0) && (
         <div className="px-6 py-4 bg-white border-t border-gray-200">
-          <h3 className="text-sm font-medium text-gray-900 mb-3">Suggested questions:</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-900">Suggested questions:</h3>
+            <select 
+              value={selectedQuestionCategory}
+              onChange={(e) => setSelectedQuestionCategory(e.target.value)}
+              className="text-xs border border-gray-300 rounded px-2 py-1"
+            >
+              <option value="all">All Categories</option>
+              <option value="nutrition">Nutrition</option>
+              <option value="fitness">Fitness</option>
+              <option value="health">Health</option>
+              <option value="meal_planning">Meal Planning</option>
+            </select>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {suggestedQuestions.map((question, index) => (
+            {suggestedQuestions
+              .filter(q => selectedQuestionCategory === 'all' || q.category === selectedQuestionCategory)
+              .slice(0, 6)
+              .map((questionObj) => (
               <button
-                key={index}
-                onClick={() => handleSuggestedQuestion(question)}
-                className="text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-sm text-gray-700"
+                key={questionObj.id}
+                onClick={() => handleSuggestedQuestion(questionObj.question)}
+                disabled={messageState.loading}
+                className="text-left p-3 text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
               >
-                {question}
+                <span className="block text-xs text-gray-500 mb-1 capitalize">{questionObj.category}</span>
+                {questionObj.question}
               </button>
             ))}
           </div>
         </div>
       )}
-
       {/* Message Input */}
       <div className="bg-white border-t border-gray-200 px-6 py-4">
         <div className="flex items-end space-x-3">
@@ -214,11 +309,11 @@ export default function ChatPage() {
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask me about nutrition, health, meal planning, or upload a food photo..."
+              onKeyDown={handleKeyPress}
+              placeholder="Ask me about nutrition, health, meal planning, or fitness..."
               className="w-full resize-none border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent max-h-32"
               rows={1}
-              disabled={isLoading}
+              disabled={messageState.loading}
             />
           </div>
 
@@ -227,8 +322,8 @@ export default function ChatPage() {
           </button>
 
           <button
-            onClick={sendMessage}
-            disabled={!message.trim() || isLoading}
+            onClick={handleSendMessage}
+            disabled={!message.trim() || messageState.loading}
             className="flex-shrink-0 inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500"
           >
             <PaperAirplaneIcon className="h-4 w-4" />
@@ -237,8 +332,14 @@ export default function ChatPage() {
         
         <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
           <span>Press Enter to send, Shift+Enter for new line</span>
-          <span>English, Hindi & Hinglish supported</span>
+          <span>🔒 Health-focused AI • English, Hindi & Hinglish supported</span>
         </div>
+
+        {messageState.error && (
+          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+            Failed to send message: {messageState.error}
+          </div>
+        )}
       </div>
     </div>
   )
