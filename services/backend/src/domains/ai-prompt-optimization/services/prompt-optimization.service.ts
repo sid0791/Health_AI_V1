@@ -1185,10 +1185,10 @@ Response Hinglish mein dein aur simple language use karein.`,
     if (!filename || typeof filename !== 'string') {
       throw new Error('Invalid filename provided');
     }
-    
+
     // Remove any path traversal sequences and unsafe characters
     // First replace path traversal sequences specifically
-    let sanitized = filename
+    const sanitized = filename
       .replace(/\.\./g, '') // Remove all .. sequences
       .replace(/[\/\\]/g, '_') // Replace forward and backward slashes
       .replace(/[^a-zA-Z0-9\-_\.]/g, '_') // Only allow safe characters
@@ -1196,11 +1196,11 @@ Response Hinglish mein dein aur simple language use karein.`,
       .replace(/\.+$/, '') // Remove trailing dots
       .replace(/_+/g, '_') // Collapse multiple underscores
       .substring(0, 255); // Limit length
-    
+
     if (!sanitized || sanitized.length === 0) {
       throw new Error('Filename becomes empty after sanitization');
     }
-    
+
     return sanitized;
   }
 
@@ -1218,15 +1218,15 @@ Response Hinglish mein dein aur simple language use karein.`,
         const fs = require('fs').promises;
         const path = require('path');
         const templatesDir = path.join(process.cwd(), 'data', 'templates');
-        
+
         // Ensure directory exists
         await fs.mkdir(templatesDir, { recursive: true });
-        
+
         // Sanitize template ID to prevent path traversal
         const safeFilename = this.sanitizeFilename(template.id);
         const filePath = path.join(templatesDir, `${safeFilename}.json`);
         await fs.writeFile(filePath, JSON.stringify(template, null, 2));
-        
+
         this.logger.debug(`Template saved to file: ${filePath}`);
       }
     } catch (error) {
@@ -1244,7 +1244,7 @@ Response Hinglish mein dein aur simple language use karein.`,
     costEffective: string[];
   } {
     const usageData: Record<string, { count: number; totalTime: number; totalCost: number }> = {};
-    
+
     // Analyze template usage patterns
     for (const [templateId, template] of this.templates.entries()) {
       const templateWithUsage = template as any; // Type assertion for usage tracking
@@ -1257,8 +1257,7 @@ Response Hinglish mein dein aur simple language use karein.`,
     }
 
     // Sort by usage count
-    const sortedByUsage = Object.entries(usageData)
-      .sort(([, a], [, b]) => b.count - a.count);
+    const sortedByUsage = Object.entries(usageData).sort(([, a], [, b]) => b.count - a.count);
 
     const mostUsed = sortedByUsage.slice(0, 5).map(([id]) => id);
     const leastUsed = sortedByUsage.slice(-5).map(([id]) => id);

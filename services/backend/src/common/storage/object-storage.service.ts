@@ -314,7 +314,7 @@ export class ObjectStorageService {
       // Convert the stream to buffer
       const chunks: Uint8Array[] = [];
       const reader = result.Body.transformToWebStream().getReader();
-      
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -356,9 +356,10 @@ export class ObjectStorageService {
         commandParams.ResponseContentDisposition = responseContentDisposition;
       }
 
-      const command = operation === 'getObject' 
-        ? new GetObjectCommand(commandParams)
-        : new PutObjectCommand(commandParams);
+      const command =
+        operation === 'getObject'
+          ? new GetObjectCommand(commandParams)
+          : new PutObjectCommand(commandParams);
 
       const url = await getSignedUrl(this.s3, command, { expiresIn: expirationSeconds });
       this.logger.debug(`Generated signed URL for: ${key}`);
