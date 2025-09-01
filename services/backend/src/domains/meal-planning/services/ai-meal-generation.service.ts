@@ -317,7 +317,7 @@ export class AIMealGenerationService {
       const nutritionData = await this.calculateAccurateNutrition(enhancedRecipes);
 
       // 5. Generate shopping list with substitutions
-      const shoppingList = await this.generateShoppingList(enhancedRecipes, request);
+      const shoppingList = await this.generateShoppingListFromRecipes(enhancedRecipes, request);
 
       // 6. Perform nutritional analysis and compliance checking
       const nutritionalAnalysis = await this.analyzeNutritionalCompliance(
@@ -1100,7 +1100,7 @@ export class AIMealGenerationService {
     return { dailyMeals };
   }
 
-  private async generateShoppingList(
+  private async generateShoppingListFromRecipes(
     recipes: CelebrityStyleRecipe[],
     request: PersonalizedMealPlanRequest,
   ): Promise<any> {
@@ -1808,12 +1808,20 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
       }
 
       // Generate comprehensive shopping list from recipes
-      const shoppingList = await this.generateShoppingList(recipes, {
+      const shoppingList = await this.generateShoppingListFromRecipes(recipes, {
+        userId,
         userProfile,
         planPreferences: {
-          servings,
           duration: days,
-          budgetRange: shoppingDto.budgetRange || userProfile.budgetRange,
+          planType: 'WEIGHT_MANAGEMENT' as any, // Default plan type
+          targetCalories: 2000, // Default calories
+          macroTargets: {
+            proteinPercent: 20,
+            carbPercent: 50,
+            fatPercent: 30,
+          },
+          includeCheatMeals: false,
+          weekendTreats: false,
         },
         contextData: {
           location: shoppingDto.location || userProfile.location || 'Mumbai',
@@ -1831,6 +1839,35 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
       this.logger.error(`Error generating shopping list for user ${userId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Get user profile with related data
+   */
+  private async getUserProfile(userId: string): Promise<any> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['profile', 'preferences', 'goals'],
+    });
+
+    if (!user) {
+      throw new Error(`User not found: ${userId}`);
+    }
+
+    return {
+      ...user.profile,
+      healthConditions: user.profile?.healthConditions || [],
+      allergies: user.preferences?.allergens || [],
+      dietaryPreferences: user.preferences?.dietaryPreference
+        ? [user.preferences.dietaryPreference]
+        : [],
+      cuisinePreferences: user.preferences?.favoriteCuisines || ['NORTH_INDIAN'],
+      budgetRange: {
+        min: user.preferences?.dailyFoodBudget ? user.preferences.dailyFoodBudget - 100 : 100,
+        max: user.preferences?.dailyFoodBudget || 500,
+      },
+      location: user.profile?.city || 'Mumbai',
+    };
   }
 
   /**
@@ -1903,10 +1940,11 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
   }
 
   private calculateTotalItems(shoppingList: any): number {
-    return Object.values(shoppingList.categorizedItems || {}).reduce(
-      (total: number, items: any[]) => total + items.length,
-      0,
-    );
+    const categorizedIngredients = shoppingList.categorizedIngredients || {};
+    const values = Object.values(categorizedIngredients) as any[];
+    return values.reduce((total: number, items: any) => {
+      return total + (Array.isArray(items) ? items.length : 0);
+    }, 0);
   }
 
   private getCurrentSeason(): string {
