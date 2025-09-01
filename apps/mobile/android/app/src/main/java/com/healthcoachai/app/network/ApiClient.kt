@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
  * API Client for HealthCoach AI Backend
  * Provides HTTP client with authentication and error handling
  */
-class ApiClient {
+class ApiClient(private val getAccessToken: (() -> String?)? = null) {
     companion object {
         private val BASE_URL = BuildConfig.API_BASE_URL ?: "https://api.healthcoachai.com/api"
         private const val TIMEOUT_SECONDS = 30L
@@ -28,7 +28,7 @@ class ApiClient {
         .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .addInterceptor(AuthInterceptor())
+        .addInterceptor(AuthInterceptor(getAccessToken ?: { null }))
         .addInterceptor(LoggingInterceptor())
         .build()
 
@@ -93,14 +93,18 @@ class ApiClient {
 /**
  * Authentication interceptor for adding auth tokens
  */
-class AuthInterceptor : Interceptor {
+class AuthInterceptor(private val getAccessToken: () -> String?) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
+        val token = getAccessToken()
         
-        // TODO: Add authentication token from secure storage
         val authenticatedRequest = originalRequest.newBuilder()
-            .addHeader("Authorization", "Bearer your-token-here") // TODO: Real token
-            .addHeader("Content-Type", "application/json")
+            .apply {
+                if (token != null) {
+                    addHeader("Authorization", "Bearer $token")
+                }
+                addHeader("Content-Type", "application/json")
+            }
             .build()
             
         return chain.proceed(authenticatedRequest)

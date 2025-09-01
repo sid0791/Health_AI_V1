@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.healthcoachai.app.ui.theme.HealthCoachAITheme
-import com.healthcoachai.app.ui.navigation.MainNavigation
+import com.healthcoachai.app.ui.navigation.RootNavigation
 
 /**
  * MainActivity - Main entry point for the HealthCoachAI Android app
@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainNavigation()
+                    RootNavigation()
                 }
             }
         }
@@ -41,6 +41,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainPreview() {
     HealthCoachAITheme {
-        MainNavigation()
+        RootNavigation()
     }
 }

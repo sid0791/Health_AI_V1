@@ -44,7 +44,7 @@ sealed class SettingsAction {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onLogout: () -> Unit = {}) {
     var notificationsEnabled by remember { mutableStateOf(true) }
     var darkModeEnabled by remember { mutableStateOf(false) }
     var biometricEnabled by remember { mutableStateOf(true) }
@@ -217,6 +217,18 @@ fun SettingsScreen() {
                     hasArrow = false
                 )
             )
+        ),
+        SettingsSection(
+            title = "Account",
+            items = listOf(
+                SettingsItem(
+                    title = "Sign Out",
+                    subtitle = "Sign out of your account",
+                    icon = Icons.Default.Logout,
+                    action = SettingsAction.Dialog,
+                    hasArrow = false
+                )
+            )
         )
     )
     
@@ -312,7 +324,7 @@ fun SettingsScreen() {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { /* Handle logout */ },
+                    onClick = onLogout,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Error500)
                 ) {
@@ -357,6 +369,12 @@ fun SettingsSectionCard(
                             "Biometric Authentication" -> onBiometricToggle(newValue)
                             "Auto Sync" -> onAutoSyncToggle(newValue)
                         }
+                    },
+                    onClick = {
+                        when (item.title) {
+                            "Sign Out" -> onLogout()
+                            // Add other click actions here
+                        }
                     }
                 )
                 
@@ -374,12 +392,13 @@ fun SettingsSectionCard(
 @Composable
 fun SettingsItemRow(
     item: SettingsItem,
-    onToggle: (Boolean) -> Unit = {}
+    onToggle: (Boolean) -> Unit = {},
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = !item.hasSwitch) { /* Handle click */ }
+            .clickable(enabled = !item.hasSwitch) { onClick() }
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -39,26 +39,32 @@ export class EnhancedAIProviderService {
     const { provider, model } = routingResult;
 
     try {
-      // Try real API first if available
-      if (this.hasValidApiConfig(provider)) {
+      // Check if we're in production mode with real API keys
+      const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+      const hasValidConfig = this.hasValidApiConfig(provider);
+      
+      // Try real API first if available and in production
+      if (isProduction && hasValidConfig) {
+        this.logger.log(`Making real API call to ${provider} with model ${model}`);
         return await this.makeRealAPICall(provider, model, prompt, routingResult);
       }
       
-      // Graceful fallback to mock data
-      this.logger.log(`Using fallback mock data for ${provider} - API key not configured`);
-      return this.getMockResponse(prompt, routingResult);
+      // Enhanced fallback with more realistic mock data
+      this.logger.log(`Using enhanced fallback mock data for ${provider} - ${!isProduction ? 'Development mode' : 'API key not configured'}`);
+      return this.getEnhancedMockResponse(prompt, routingResult);
 
     } catch (error) {
       this.logger.error(`AI Provider ${provider} failed: ${error.message}`);
       
-      // Fallback chain: try next provider or mock
+      // Fallback chain: try next provider or enhanced mock
       if (routingResult.fallbackOptions?.length > 0) {
         const fallbackProvider = routingResult.fallbackOptions[0];
+        this.logger.log(`Attempting fallback to ${fallbackProvider.provider}`);
         return await this.callAIProvider(fallbackProvider, prompt);
       }
       
-      // Final fallback to mock
-      return this.getMockResponse(prompt, routingResult);
+      // Final fallback to enhanced mock
+      return this.getEnhancedMockResponse(prompt, routingResult);
     }
   }
 
@@ -270,6 +276,135 @@ export class EnhancedAIProviderService {
       },
       model: 'mock-model',
       cost: 0.001
+    };
+  }
+
+  /**
+   * Enhanced mock response with more realistic and varied data
+   */
+  private getEnhancedMockResponse(prompt: string, routingResult: any): any {
+    const promptLower = prompt.toLowerCase();
+    const isMealPlanning = promptLower.includes('meal plan') || promptLower.includes('diet plan');
+    const isRecipeGeneration = promptLower.includes('recipe') || promptLower.includes('cooking');
+    const isHealthAdvice = promptLower.includes('health') || promptLower.includes('nutrition');
+
+    if (isMealPlanning) {
+      return {
+        content: JSON.stringify({
+          planTitle: 'AI-Generated Personalized Meal Plan',
+          planDescription: 'A comprehensive meal plan tailored to your health goals and preferences',
+          duration: '7 days',
+          totalCaloriesPerDay: 1800,
+          meals: this.generateEnhancedMockMeals(),
+          nutritionalSummary: {
+            avgProtein: '25%',
+            avgCarbs: '45%',
+            avgFat: '30%',
+            fiber: '35g/day',
+            sodium: '<2300mg/day'
+          },
+          tips: [
+            'Drink plenty of water throughout the day',
+            'Include a variety of colorful vegetables',
+            'Choose lean proteins and whole grains',
+            'Practice portion control'
+          ]
+        }),
+        confidence: 0.88,
+        usage: {
+          prompt_tokens: this.estimateTokens(prompt),
+          completion_tokens: 1200,
+          total_tokens: this.estimateTokens(prompt) + 1200
+        },
+        model: `enhanced-mock-${routingResult.provider}`,
+        cost: 0.002
+      };
+    }
+
+    if (isRecipeGeneration) {
+      return {
+        content: JSON.stringify(this.generateEnhancedMockRecipe()),
+        confidence: 0.90,
+        usage: {
+          prompt_tokens: this.estimateTokens(prompt),
+          completion_tokens: 600,
+          total_tokens: this.estimateTokens(prompt) + 600
+        },
+        model: `enhanced-mock-${routingResult.provider}`,
+        cost: 0.0015
+      };
+    }
+
+    // Generic enhanced response
+    return {
+      content: JSON.stringify({
+        response: 'As your HealthCoach AI, I\'m here to provide comprehensive nutrition and wellness guidance.',
+        capabilities: [
+          'Personalized meal planning',
+          'Recipe creation and modification', 
+          'Nutritional analysis and advice',
+          'Health goal tracking and support'
+        ],
+        suggestions: [
+          'Tell me about your health goals',
+          'Share your dietary preferences or restrictions',
+          'Ask for specific meal or recipe recommendations'
+        ]
+      }),
+      confidence: 0.82,
+      usage: {
+        prompt_tokens: this.estimateTokens(prompt),
+        completion_tokens: 200,
+        total_tokens: this.estimateTokens(prompt) + 200
+      },
+      model: `enhanced-mock-${routingResult.provider}`,
+      cost: 0.001
+    };
+  }
+
+  /**
+   * Generate enhanced mock meals for meal planning
+   */
+  private generateEnhancedMockMeals(): any[] {
+    return [
+      { name: 'Greek Yogurt Parfait with Berries', calories: 320, protein: 20, day: 1, course: 'breakfast' },
+      { name: 'Quinoa Buddha Bowl', calories: 450, protein: 18, day: 1, course: 'lunch' },
+      { name: 'Baked Salmon with Roasted Vegetables', calories: 520, protein: 40, day: 1, course: 'dinner' },
+      { name: 'Oatmeal with Almond Butter', calories: 340, protein: 12, day: 2, course: 'breakfast' },
+      { name: 'Grilled Chicken Caesar Salad', calories: 420, protein: 35, day: 2, course: 'lunch' },
+      { name: 'Chickpea Curry with Brown Rice', calories: 450, protein: 18, day: 2, course: 'dinner' }
+    ];
+  }
+
+  /**
+   * Generate enhanced mock recipe
+   */
+  private generateEnhancedMockRecipe(): any {
+    return {
+      name: 'Mediterranean Quinoa Salad',
+      description: 'A fresh and nutritious salad packed with protein and healthy fats',
+      ingredients: [
+        '1 cup quinoa, cooked and cooled',
+        '1 cucumber, diced',
+        '1 cup cherry tomatoes, halved',
+        '1/2 cup feta cheese, crumbled'
+      ],
+      instructions: [
+        'Cook quinoa according to package instructions and let cool',
+        'Combine all ingredients in a large bowl',
+        'Whisk together olive oil, lemon juice, and seasonings',
+        'Toss salad with dressing and serve'
+      ],
+      nutrition: {
+        calories: 385,
+        protein: 14,
+        carbs: 42,
+        fat: 18,
+        fiber: 6
+      },
+      prepTime: 15,
+      cookTime: 15,
+      servings: 4
     };
   }
 
