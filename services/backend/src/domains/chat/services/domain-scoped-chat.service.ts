@@ -10,6 +10,7 @@ import { User } from '../../users/entities/user.entity';
 import { RAGService } from './rag.service';
 import { HinglishNLPService } from './hinglish-nlp.service';
 import { ChatSessionService } from './chat-session.service';
+import { SmartQueryCacheService } from './smart-query-cache.service';
 
 // AI routing integration
 import { AIRoutingService, AIRoutingRequest } from '../../ai-routing/services/ai-routing.service';
@@ -120,6 +121,7 @@ export class DomainScopedChatService {
     private readonly dlpService: DLPService,
     private readonly tokenManagementService: TokenManagementService,
     private readonly configService: ConfigService,
+    private readonly smartQueryCacheService: SmartQueryCacheService,
   ) {}
 
   /**
@@ -136,6 +138,102 @@ export class DomainScopedChatService {
 
       // Process the user's message with Hinglish NLP
       const processedMessage = await this.hinglishNLPService.processMessage(request.message);
+
+      // **ENHANCEMENT: Check smart query cache first**
+      const smartResponse = await this.smartQueryCacheService.processQuery(
+        userId,
+        processedMessage.content,
+        session.id,
+      );
+
+      if (smartResponse) {
+        // Record that query was answered locally
+        await this.smartQueryCacheService.recordQuery(userId, request.message, true);
+
+        // Create user message record
+        const userMessage = await this.createUserMessage(session, request.message, {
+          processedContent: processedMessage.content,
+          languageDetection: processedMessage.languageDetection,
+          smartCacheResult: smartResponse,
+          hinglishProcessing: processedMessage.metadata,
+        });
+
+        // Create assistant message with cached response
+        const assistantMessage = await this.createAssistantMessage(
+          session,
+          smartResponse.response,
+          {
+            smartQueryCache: {
+              fromCache: smartResponse.fromCache,
+              dataSource: smartResponse.dataSource,
+              confidence: smartResponse.confidence,
+              category: smartResponse.category,
+            },
+            domainClassification: {
+              domain: smartResponse.category,
+              confidence: smartResponse.confidence,
+              isInScope: true,
+            },
+            languageDetection: processedMessage.languageDetection,
+            performance: {
+              processingTimeMs: Date.now() - startTime,
+              tokenCount: 0, // No AI tokens used
+              retrievalTimeMs: 50, // Fast local retrieval
+              generationTimeMs: 0,
+            },
+            tokenUsage: {
+              tokensUsed: 0,
+              usedFreeTier: true,
+              cost: 0,
+            },
+            routingDecision: {
+              level: 'L2',
+              provider: 'local_cache',
+              model: 'smart_query_cache',
+            },
+          },
+        );
+
+        // Update session activity
+        session.incrementMessageCount();
+        await this.chatSessionRepository.save(session);
+
+        this.logger.log(
+          `Smart cache response provided for user ${userId} in ${Date.now() - startTime}ms`,
+        );
+
+        return {
+          success: true,
+          sessionId: session.id,
+          messageId: assistantMessage.id,
+          response: smartResponse.response,
+          metadata: {
+            processingTime: Date.now() - startTime,
+            domainClassification: {
+              domain: smartResponse.category,
+              confidence: smartResponse.confidence,
+              isInScope: true,
+            },
+            languageDetection: processedMessage.languageDetection,
+            ragContext: {
+              documentsUsed: 0,
+              sources: [],
+            },
+            actionRequests: [],
+            cost: 0,
+            routingDecision: {
+              level: 'L2',
+              provider: 'local_cache',
+              model: 'smart_query_cache',
+            },
+          },
+          citations: smartResponse.dataSource === 'local' ? ['Local health data'] : [],
+          followUpQuestions: this.generateSmartFollowUps(smartResponse.category),
+        };
+      }
+
+      // Record that query was not answered locally (will go to AI)
+      await this.smartQueryCacheService.recordQuery(userId, request.message, false);
 
       // Classify domain and check scope
       const domainClassification = await this.classifyDomain(processedMessage.content);
@@ -728,6 +826,36 @@ export class DomainScopedChatService {
     const outputTokens = Math.ceil(outputContent.length / 4);
 
     return inputTokens + outputTokens;
+  }
+
+  /**
+   * Generate follow-up questions based on smart query category
+   */
+  private generateSmartFollowUps(category: string): string[] {
+    const followUpMap = {
+      fitness: [
+        'How can I improve my daily activity?',
+        'What exercises would be best for me?',
+        'Can you suggest a workout plan?',
+      ],
+      health: [
+        'How can I improve this health metric?',
+        'What should I monitor regularly?',
+        'Are there any trends in my health data?',
+      ],
+      nutrition: [
+        'What foods should I focus on?',
+        'How can I improve my nutrition?',
+        'Can you suggest healthy meal ideas?',
+      ],
+      general: [
+        'What other health metrics should I track?',
+        'How can I improve my overall wellness?',
+        'Can you help me set health goals?',
+      ],
+    };
+
+    return followUpMap[category] || followUpMap.general;
   }
 
   /**

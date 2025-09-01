@@ -38,6 +38,7 @@ import {
   ChatResponse,
 } from '../services/domain-scoped-chat.service';
 import { ChatSessionService, CreateSessionOptions } from '../services/chat-session.service';
+import { SmartQueryCacheService } from '../services/smart-query-cache.service';
 import { ChatSessionType } from '../entities/chat-session.entity';
 
 // DTOs
@@ -122,6 +123,7 @@ export class ChatController {
     private readonly domainScopedChatService: DomainScopedChatService,
     private readonly chatSessionService: ChatSessionService,
     private readonly tokenManagementService: TokenManagementService,
+    private readonly smartQueryCacheService: SmartQueryCacheService,
   ) {}
 
   /**
@@ -695,6 +697,93 @@ export class ChatController {
       this.logger.error(`Error retrieving token usage history for user ${user.id}:`, error);
       throw new BadRequestException(error.message || 'Failed to retrieve token usage history');
     }
+  }
+
+  /**
+   * Pre-compute common responses for the user
+   */
+  @Post('cache/precompute')
+  @ApiOperation({
+    summary: 'Pre-compute common responses',
+    description: 'Pre-compute and cache responses for frequently asked questions',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Pre-computation completed successfully',
+  })
+  async preComputeResponses(@User() user: UserEntity): Promise<any> {
+    try {
+      this.logger.log(`Pre-computing smart cache responses for user ${user.id}`);
+
+      await this.smartQueryCacheService.preComputeCommonResponses(user.id);
+
+      return {
+        success: true,
+        message: 'Common responses pre-computed successfully',
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      this.logger.error(`Error pre-computing responses for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to pre-compute responses');
+    }
+  }
+
+  /**
+   * Get smart query cache analytics
+   */
+  @Get('cache/analytics')
+  @ApiOperation({
+    summary: 'Get smart cache analytics',
+    description: 'Get analytics about cached queries and performance',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Analytics retrieved successfully',
+  })
+  async getCacheAnalytics(@User() user: UserEntity): Promise<any> {
+    try {
+      this.logger.log(`Retrieving cache analytics for user ${user.id}`);
+
+      const analytics = await this.smartQueryCacheService.getQueryAnalytics();
+
+      return {
+        success: true,
+        analytics,
+        recommendations: this.getCacheRecommendations(analytics),
+      };
+    } catch (error) {
+      this.logger.error(`Error retrieving cache analytics for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to retrieve cache analytics');
+    }
+  }
+
+  /**
+   * Get cache recommendations based on analytics
+   */
+  private getCacheRecommendations(analytics: any): string[] {
+    const recommendations = [];
+
+    if (analytics.localDataCoverage > 0.7) {
+      recommendations.push(
+        'Great! Your health data is helping us answer most questions quickly without AI calls.',
+      );
+    } else if (analytics.localDataCoverage < 0.3) {
+      recommendations.push(
+        'Consider syncing more health data from your devices for faster responses.',
+      );
+    }
+
+    if (analytics.cacheHitRate > 0.8) {
+      recommendations.push(
+        'Excellent cache performance! Your frequently asked questions are being answered instantly.',
+      );
+    } else if (analytics.cacheHitRate < 0.5) {
+      recommendations.push(
+        "Cache performance could be better. We're learning your patterns to improve response times.",
+      );
+    }
+
+    return recommendations;
   }
 
   /**
