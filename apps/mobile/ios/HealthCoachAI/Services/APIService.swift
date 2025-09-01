@@ -302,6 +302,42 @@ class APIService: ObservableObject {
             responseType: MacroBreakdownResponse.self
         )
     }
+    
+    // MARK: - AI Cost Optimization
+    
+    func getCostMetrics(userId: String) async throws -> CostMetrics? {
+        return try await request(
+            endpoint: "/ai-prompt-optimization/cost-metrics?userId=\(userId)",
+            method: .GET,
+            responseType: CostMetrics.self
+        )
+    }
+    
+    func getQuotaStatus(userId: String) async throws -> QuotaStatus? {
+        return try await request(
+            endpoint: "/ai-prompt-optimization/quota-status?userId=\(userId)",
+            method: .GET,
+            responseType: QuotaStatus.self
+        )
+    }
+    
+    func executeOptimizedPrompt(request: OptimizedPromptRequest) async throws -> OptimizedPromptResponse? {
+        return try await self.request(
+            endpoint: "/ai-prompt-optimization/execute",
+            method: .POST,
+            body: request,
+            responseType: OptimizedPromptResponse.self
+        )
+    }
+    
+    func trackUsage(request: UsageTrackingRequest) async throws {
+        _ = try await self.request(
+            endpoint: "/ai-prompt-optimization/track-usage",
+            method: .POST,
+            body: request,
+            responseType: EmptyResponse.self
+        )
+    }
 }
 
 // MARK: - Supporting Types
@@ -366,6 +402,77 @@ struct DailyNutritionData: Codable {
     let protein: Double
     let carbs: Double
     let fat: Double
+}
+
+// MARK: - Cost Optimization Request Models
+
+struct OptimizedPromptRequest: Codable {
+    let userId: String
+    let templateId: String
+    let variables: [String: AnyCodable]
+    let category: String
+}
+
+struct UsageTrackingRequest: Codable {
+    let userId: String
+    let endpoint: String
+    let method: String
+    let tokenCount: Int?
+    let cost: Double?
+    let timestamp: String
+}
+
+// MARK: - Helper for Any Codable
+
+struct AnyCodable: Codable {
+    let value: Any
+    
+    init(_ value: Any) {
+        self.value = value
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        
+        if let intValue = try? container.decode(Int.self) {
+            value = intValue
+        } else if let doubleValue = try? container.decode(Double.self) {
+            value = doubleValue
+        } else if let stringValue = try? container.decode(String.self) {
+            value = stringValue
+        } else if let boolValue = try? container.decode(Bool.self) {
+            value = boolValue
+        } else if let arrayValue = try? container.decode([AnyCodable].self) {
+            value = arrayValue.map { $0.value }
+        } else if let dictValue = try? container.decode([String: AnyCodable].self) {
+            value = dictValue.mapValues { $0.value }
+        } else {
+            value = NSNull()
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        
+        switch value {
+        case let intValue as Int:
+            try container.encode(intValue)
+        case let doubleValue as Double:
+            try container.encode(doubleValue)
+        case let stringValue as String:
+            try container.encode(stringValue)
+        case let boolValue as Bool:
+            try container.encode(boolValue)
+        case let arrayValue as [Any]:
+            let codableArray = arrayValue.map { AnyCodable($0) }
+            try container.encode(codableArray)
+        case let dictValue as [String: Any]:
+            let codableDict = dictValue.mapValues { AnyCodable($0) }
+            try container.encode(codableDict)
+        default:
+            try container.encodeNil()
+        }
+    }
 }
 
 // MARK: - Keychain Helper

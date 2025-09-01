@@ -374,3 +374,117 @@ struct QuantityOption {
         QuantityOption(multiplier: 2.0, displayText: "2×"),
     ]
 }
+
+// MARK: - Chat Data Models
+
+struct ChatSession: Codable, Identifiable {
+    let id: String
+    let userId: String
+    let sessionType: String
+    let title: String?
+    let isActive: Bool
+    let createdAt: Date
+    let updatedAt: Date
+    let messages: [ChatMessage]?
+    let context: [String: String]?
+}
+
+struct ChatMessage: Codable, Identifiable {
+    let id: String
+    let type: String // "user" or "assistant"
+    let message: String
+    let timestamp: Date
+    let processingStatus: String?
+    let metadata: ChatMessageMetadata?
+    let ragSources: [String]?
+    let actionRequests: [String]?
+    let tokenCount: Int?
+    let costUsd: Double?
+}
+
+struct ChatMessageMetadata: Codable {
+    let domainClassification: String?
+    let confidence: Double?
+    let isInScope: Bool?
+    let reason: String?
+}
+
+struct SendMessageRequest: Codable {
+    let message: String
+    let sessionId: String?
+    let sessionType: String?
+    let context: [String: String]?
+    let userPreferences: UserPreferences?
+}
+
+struct SendMessageResponse: Codable {
+    let success: Bool
+    let messageId: String
+    let sessionId: String
+    let response: ChatMessage
+    let quotaStatus: QuotaStatus?
+    let suggestedActions: [String]?
+}
+
+struct UserPreferences: Codable {
+    let language: String?
+    let responseStyle: String?
+    let domainFocus: [String]?
+}
+
+struct SuggestedQuestion: Codable, Identifiable {
+    let id: String
+    let question: String
+    let category: String
+    let description: String?
+}
+
+struct SuggestedQuestionsRequest: Codable {
+    let currentGoals: [String]?
+    let healthConditions: [String]?
+    let preferences: [String]?
+    let currentPage: String?
+}
+
+struct AiCapabilities: Codable {
+    let allowedTopics: [String]
+    let restrictedTopics: [String]
+    let supportedLanguages: [String]
+    let features: [String]
+}
+
+// MARK: - AI Cost Optimization Models
+
+struct CostMetrics: Codable {
+    let totalRequests: Int
+    let totalTokens: Int
+    let totalCost: Double
+    let averageTokensPerRequest: Double
+    let averageCostPerRequest: Double
+    let costByModel: [String: Double]
+    let tokensByModel: [String: Int]
+    let requestsByCategory: [String: Int]
+    let dailyCost: Double
+    let monthlyCost: Double
+    let projectedMonthlyCost: Double
+}
+
+struct QuotaStatus: Codable {
+    let userId: String
+    let dailyQuota: Int
+    let dailyUsed: Int
+    let monthlyQuota: Int
+    let monthlyUsed: Int
+    let isNearLimit: Bool
+    let isOverLimit: Bool
+    let resetTime: Date
+}
+
+struct CostOptimizationSettings: Codable {
+    let enableBatching: Bool
+    let maxBatchSize: Int
+    let batchTimeoutSeconds: Int
+    let enableTemplateOptimization: Bool
+    let costThresholdUsd: Double
+    let preferredModel: String?
+}

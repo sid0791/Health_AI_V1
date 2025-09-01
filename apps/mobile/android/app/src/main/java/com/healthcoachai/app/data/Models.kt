@@ -147,21 +147,21 @@ data class ChatMessage(
     val type: String, // 'user' | 'assistant'
     val message: String,
     val timestamp: String,
-    val metadata: ChatMetadata? = null
+    val processingStatus: String? = null,
+    val metadata: ChatMetadata? = null,
+    val ragSources: List<String>? = null,
+    val actionRequests: List<String>? = null,
+    val tokenCount: Int? = null,
+    val costUsd: Double? = null
 )
 
 @Serializable
 data class ChatMetadata(
-    val domainClassification: DomainClassification? = null,
-    val references: List<String>? = null,
-    val confidence: Double? = null
-)
-
-@Serializable
-data class DomainClassification(
-    val isInScope: Boolean,
-    val category: String? = null,
-    val reason: String? = null
+    val domainClassification: String? = null,
+    val confidence: Double? = null,
+    val isInScope: Boolean? = null,
+    val reason: String? = null,
+    val references: List<String>? = null
 )
 
 @Serializable
@@ -169,31 +169,38 @@ data class ChatSession(
     val id: String,
     val userId: String,
     val sessionType: String,
-    val messages: List<ChatMessage>,
-    val metadata: Map<String, String>? = null,
+    val title: String? = null,
+    val isActive: Boolean = true,
     val createdAt: String,
-    val lastActivity: String
+    val updatedAt: String,
+    val messages: List<ChatMessage>,
+    val context: Map<String, String>? = null
 )
 
 @Serializable
 data class SendMessageRequest(
     val message: String,
-    val sessionId: String,
-    val sessionType: String,
+    val sessionId: String? = null,
+    val sessionType: String? = null,
+    val context: Map<String, String>? = null,
     val userPreferences: UserPreferences? = null
 )
 
 @Serializable
 data class UserPreferences(
     val language: String = "en",
-    val responseStyle: String = "friendly"
+    val responseStyle: String = "friendly",
+    val domainFocus: List<String>? = null
 )
 
 @Serializable
 data class SendMessageResponse(
     val success: Boolean,
-    val messageId: String? = null,
-    val assistantResponse: String? = null,
+    val messageId: String,
+    val sessionId: String,
+    val response: ChatMessage,
+    val quotaStatus: QuotaStatus? = null,
+    val suggestedActions: List<String>? = null,
     val error: String? = null
 )
 
@@ -202,11 +209,15 @@ data class SuggestedQuestion(
     val id: String,
     val question: String,
     val category: String,
+    val description: String? = null,
     val priority: Int = 0
 )
 
 @Serializable
 data class SuggestedQuestionsRequest(
+    val currentGoals: List<String>? = null,
+    val healthConditions: List<String>? = null,
+    val preferences: List<String>? = null,
     val currentPage: String? = null,
     val userGoals: List<String>? = null,
     val recentTopics: List<String>? = null

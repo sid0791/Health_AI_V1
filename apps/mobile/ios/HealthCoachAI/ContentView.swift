@@ -19,26 +19,33 @@ struct ContentView: View {
                 }
                 .tag(1)
             
+            ChatView()
+                .tabItem {
+                    Image(systemName: "brain.head.profile")
+                    Text("AI Chat")
+                }
+                .tag(2)
+            
             LogView()
                 .tabItem {
                     Image(systemName: "note.text")
                     Text("Log")
                 }
-                .tag(2)
+                .tag(3)
             
             FitnessView()
                 .tabItem {
                     Image(systemName: "figure.run")
                     Text("Fitness")
                 }
-                .tag(3)
+                .tag(4)
             
             SettingsView()
                 .tabItem {
                     Image(systemName: "gearshape.fill")
                     Text("Settings")
                 }
-                .tag(4)
+                .tag(5)
         }
         .accentColor(Color(hex: "#14b8a6")) // Primary turquoise from design system
         .preferredColorScheme(.automatic) // Support both light and dark mode
