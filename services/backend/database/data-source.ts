@@ -85,6 +85,4 @@ export const AppDataSource = new DataSource({
   
   // Connection retry configuration
   connectTimeoutMS: parseInt(process.env.DB_CONNECT_TIMEOUT || '30000'),
-  maxReconnectTries: parseInt(process.env.DB_MAX_RECONNECT_TRIES || '3'),
-  reconnectInterval: parseInt(process.env.DB_RECONNECT_INTERVAL || '1000'),
 });
