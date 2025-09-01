@@ -26,8 +26,12 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     
-    // HTTP client for ConfigManager
+    // HTTP client and networking
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    
+    // ViewModel support (basic JVM version)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     
     // Testing
     testImplementation("junit:junit:4.13.2")
