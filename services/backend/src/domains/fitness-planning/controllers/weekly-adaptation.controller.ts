@@ -130,9 +130,11 @@ export class WeeklyAdaptationController {
   ): Promise<WeeklyAdaptationResponseDto> {
     // Enhanced admin role check with proper validation
     if (currentUser.role !== 'admin' && currentUser.role !== 'moderator') {
-      throw new ForbiddenException('Admin or moderator access required to trigger user adaptations');
+      throw new ForbiddenException(
+        'Admin or moderator access required to trigger user adaptations',
+      );
     }
-    
+
     // Additional validation for production safety
     if (currentUser.id === userId) {
       this.logger.warn(`Admin ${currentUser.id} triggering adaptation for their own account`);
@@ -174,16 +176,29 @@ export class WeeklyAdaptationController {
   })
   async getLatestAdaptation(@UserDecorator() user: User): Promise<any> {
     try {
-      // This would retrieve from a stored adaptations table
-      // For now, return a placeholder response
+      // Get the most recent adaptation for this user
+      const latestAdaptation = await this.weeklyAdaptationService.getLatestAdaptationForUser(
+        user.id,
+      );
+
+      if (!latestAdaptation) {
+        return {
+          success: true,
+          data: null,
+          message: 'No adaptation results found for this user',
+          timestamp: new Date(),
+        };
+      }
+
       return {
         success: true,
-        message: 'Latest adaptation endpoint - implementation pending',
+        data: latestAdaptation,
+        message: 'Latest adaptation result retrieved successfully',
         timestamp: new Date(),
       };
     } catch (error) {
       this.logger.error(`Error retrieving latest adaptation for user ${user.id}:`, error);
-      throw new BadRequestException('Failed to retrieve adaptation history');
+      throw new BadRequestException('Failed to retrieve latest adaptation');
     }
   }
 
@@ -201,12 +216,18 @@ export class WeeklyAdaptationController {
   })
   async getAdaptationHistory(@UserDecorator() user: User): Promise<any> {
     try {
-      // This would retrieve from a stored adaptations table
-      // For now, return a placeholder response
+      // Get adaptation history for this user
+      const adaptationHistory = await this.weeklyAdaptationService.getAdaptationHistory(user.id);
+
       return {
         success: true,
-        data: [],
-        message: 'Adaptation history endpoint - implementation pending',
+        data: adaptationHistory || [],
+        message: 'Adaptation history retrieved successfully',
+        metadata: {
+          total: adaptationHistory?.length || 0,
+          userId: user.id,
+          retrievedAt: new Date(),
+        },
         timestamp: new Date(),
       };
     } catch (error) {

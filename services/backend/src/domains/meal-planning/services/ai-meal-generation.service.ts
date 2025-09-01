@@ -1788,4 +1788,132 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
       .filter((item) => item.availability === 'low')
       .map((item) => `${item.name} may have limited availability`);
   }
+
+  /**
+   * Generate standalone shopping list for user
+   */
+  async generateShoppingList(userId: string, shoppingDto: any): Promise<any> {
+    try {
+      // Get user profile and preferences
+      const userProfile = await this.getUserProfile(userId);
+
+      // Create recipes from the shopping request
+      const recipes = shoppingDto.recipes || [];
+      const servings = shoppingDto.servings || 4;
+      const days = shoppingDto.days || 7;
+
+      // If no recipes provided, generate a basic shopping list
+      if (recipes.length === 0) {
+        return this.generateBasicShoppingList(userProfile, servings, days);
+      }
+
+      // Generate comprehensive shopping list from recipes
+      const shoppingList = await this.generateShoppingList(recipes, {
+        userProfile,
+        planPreferences: {
+          servings,
+          duration: days,
+          budgetRange: shoppingDto.budgetRange || userProfile.budgetRange,
+        },
+        contextData: {
+          location: shoppingDto.location || userProfile.location || 'Mumbai',
+          currentSeason: this.getCurrentSeason(),
+        },
+      });
+
+      return {
+        ...shoppingList,
+        totalItems: this.calculateTotalItems(shoppingList),
+        generatedAt: new Date().toISOString(),
+        userId,
+      };
+    } catch (error) {
+      this.logger.error(`Error generating shopping list for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate basic shopping list when no recipes are provided
+   */
+  private generateBasicShoppingList(userProfile: any, servings: number, days: number): any {
+    const basicIngredients = [
+      // Vegetables
+      { name: 'Onions', category: 'vegetables', quantity: 2, unit: 'kg', costPerUnit: 30 },
+      { name: 'Tomatoes', category: 'vegetables', quantity: 1.5, unit: 'kg', costPerUnit: 40 },
+      { name: 'Potatoes', category: 'vegetables', quantity: 2, unit: 'kg', costPerUnit: 25 },
+      { name: 'Carrots', category: 'vegetables', quantity: 1, unit: 'kg', costPerUnit: 35 },
+
+      // Grains & Pulses
+      { name: 'Brown Rice', category: 'grains', quantity: 1, unit: 'kg', costPerUnit: 120 },
+      { name: 'Whole Wheat', category: 'grains', quantity: 1, unit: 'kg', costPerUnit: 50 },
+      { name: 'Lentils (Mixed)', category: 'proteins', quantity: 1, unit: 'kg', costPerUnit: 150 },
+
+      // Proteins
+      { name: 'Paneer', category: 'proteins', quantity: 500, unit: 'g', costPerUnit: 180 },
+      { name: 'Greek Yogurt', category: 'dairy', quantity: 500, unit: 'g', costPerUnit: 150 },
+
+      // Healthy Fats
+      { name: 'Olive Oil', category: 'oils', quantity: 500, unit: 'ml', costPerUnit: 300 },
+      { name: 'Almonds', category: 'nuts', quantity: 250, unit: 'g', costPerUnit: 250 },
+
+      // Spices & Herbs
+      { name: 'Turmeric', category: 'spices', quantity: 100, unit: 'g', costPerUnit: 50 },
+      { name: 'Cumin', category: 'spices', quantity: 100, unit: 'g', costPerUnit: 80 },
+    ];
+
+    // Adjust quantities based on servings and days
+    const adjustedIngredients = basicIngredients.map((item) => ({
+      ...item,
+      adjustedQuantity: item.quantity * (servings / 4) * (days / 7),
+      totalCost: item.quantity * item.costPerUnit * (servings / 4) * (days / 7),
+    }));
+
+    // Group by category
+    const categorizedItems = adjustedIngredients.reduce((acc, item) => {
+      if (!acc[item.category]) acc[item.category] = [];
+      acc[item.category].push({
+        name: item.name,
+        quantity: Math.round(item.adjustedQuantity * 100) / 100,
+        unit: item.unit,
+        cost: Math.round(item.totalCost),
+      });
+      return acc;
+    }, {});
+
+    const totalEstimatedCost = adjustedIngredients.reduce((sum, item) => sum + item.totalCost, 0);
+
+    return {
+      categorizedItems,
+      totalEstimatedCost: Math.round(totalEstimatedCost),
+      totalItems: adjustedIngredients.length,
+      budgetCompliance: userProfile.budgetRange
+        ? totalEstimatedCost <= userProfile.budgetRange.max
+        : true,
+      substitutionSuggestions: [
+        { original: 'Paneer', alternative: 'Tofu', savingsPercent: 25 },
+        { original: 'Olive Oil', alternative: 'Mustard Oil', savingsPercent: 40 },
+      ],
+      nutritionalHighlights: [
+        'High in fiber from whole grains and vegetables',
+        'Rich in plant-based proteins from lentils',
+        'Contains healthy fats from nuts and oils',
+      ],
+    };
+  }
+
+  private calculateTotalItems(shoppingList: any): number {
+    return Object.values(shoppingList.categorizedItems || {}).reduce(
+      (total: number, items: any[]) => total + items.length,
+      0,
+    );
+  }
+
+  private getCurrentSeason(): string {
+    const month = new Date().getMonth() + 1;
+    if (month >= 3 && month <= 5) return 'spring';
+    if (month >= 6 && month <= 8) return 'summer';
+    if (month >= 9 && month <= 11) return 'autumn';
+    return 'winter';
+  }
 }

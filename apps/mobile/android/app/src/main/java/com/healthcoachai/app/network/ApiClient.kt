@@ -88,6 +88,49 @@ class ApiClient(private val getAccessToken: (() -> String?)? = null) {
             ApiResult.Error(ApiException(0, "Unexpected error: ${e.message}", endpoint))
         }
     }
+
+    /**
+     * Multipart request method for file uploads
+     */
+    suspend inline fun <reified T> requestWithMultipart(
+        endpoint: String,
+        multipartBody: MultipartBody,
+        headers: Map<String, String> = emptyMap()
+    ): ApiResult<T> = withContext(Dispatchers.IO) {
+        try {
+            val url = "$BASE_URL$endpoint"
+            val requestBuilder = Request.Builder()
+                .url(url)
+                .post(multipartBody)
+
+            // Add headers
+            headers.forEach { (key, value) ->
+                requestBuilder.addHeader(key, value)
+            }
+
+            val request = requestBuilder.build()
+            val response = client.newCall(request).execute()
+
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: ""
+                
+                if (T::class == Unit::class) {
+                    @Suppress("UNCHECKED_CAST")
+                    return@withContext ApiResult.Success(Unit as T)
+                }
+                
+                val data = json.decodeFromString<T>(responseBody)
+                ApiResult.Success(data)
+            } else {
+                val errorBody = response.body?.string() ?: "Unknown error"
+                ApiResult.Error(ApiException(response.code, errorBody, endpoint))
+            }
+        } catch (e: IOException) {
+            ApiResult.Error(ApiException(0, "Network error: ${e.message}", endpoint))
+        } catch (e: Exception) {
+            ApiResult.Error(ApiException(0, "Unexpected error: ${e.message}", endpoint))
+        }
+    }
 }
 
 /**
