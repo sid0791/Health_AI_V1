@@ -13,7 +13,7 @@ export interface UserTier {
   tier: 'free' | 'basic' | 'premium' | 'enterprise';
   dailyLimits: {
     level1Requests: number; // High-cost AI requests
-    level2Requests: number; // Standard AI requests  
+    level2Requests: number; // Standard AI requests
     totalTokens: number;
   };
   costLimits: {
@@ -47,7 +47,7 @@ export interface DailyUsage {
 @Injectable()
 export class DailyTieringService {
   private readonly logger = new Logger(DailyTieringService.name);
-  
+
   private readonly tierConfigs: Record<string, UserTier> = {
     free: {
       tier: 'free',
@@ -123,17 +123,17 @@ export class DailyTieringService {
     remainingTokens?: number;
     resetTime?: Date;
   }> {
-    const userTier = await this.getUserTier(userId);
+    const userTier = await this.getUserTier();
     const dailyUsage = await this.getDailyUsage(userId);
 
     // Check request limits
-    const currentRequests = requestLevel === 'level1' 
-      ? dailyUsage.usage.level1Requests 
-      : dailyUsage.usage.level2Requests;
-    
-    const requestLimit = requestLevel === 'level1'
-      ? dailyUsage.limits.level1Requests
-      : dailyUsage.limits.level2Requests;
+    const currentRequests =
+      requestLevel === 'level1' ? dailyUsage.usage.level1Requests : dailyUsage.usage.level2Requests;
+
+    const requestLimit =
+      requestLevel === 'level1'
+        ? dailyUsage.limits.level1Requests
+        : dailyUsage.limits.level2Requests;
 
     if (currentRequests >= requestLimit) {
       return {
@@ -166,7 +166,8 @@ export class DailyTieringService {
     return {
       allowed: true,
       remainingRequests: requestLimit - currentRequests - 1,
-      remainingTokens: dailyUsage.limits.totalTokens - dailyUsage.usage.totalTokens - estimatedTokens,
+      remainingTokens:
+        dailyUsage.limits.totalTokens - dailyUsage.usage.totalTokens - estimatedTokens,
     };
   }
 
@@ -180,14 +181,14 @@ export class DailyTieringService {
     actualCost: number,
   ): Promise<void> {
     const dailyUsage = await this.getDailyUsage(userId);
-    
+
     // Update usage counters
     if (requestLevel === 'level1') {
       dailyUsage.usage.level1Requests += 1;
     } else {
       dailyUsage.usage.level2Requests += 1;
     }
-    
+
     dailyUsage.usage.totalTokens += tokensUsed;
     dailyUsage.usage.totalCost += actualCost;
 
@@ -207,7 +208,9 @@ export class DailyTieringService {
     const cacheKey = `daily_usage:${userId}:${dailyUsage.date}`;
     await this.cacheManager.set(cacheKey, dailyUsage, 86400); // 24 hours TTL
 
-    this.logger.log(`Recorded usage for user ${userId}: ${requestLevel}, ${tokensUsed} tokens, $${actualCost}`);
+    this.logger.log(
+      `Recorded usage for user ${userId}: ${requestLevel}, ${tokensUsed} tokens, $${actualCost}`,
+    );
   }
 
   /**
@@ -216,13 +219,13 @@ export class DailyTieringService {
   async getDailyUsage(userId: string): Promise<DailyUsage> {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const cacheKey = `daily_usage:${userId}:${today}`;
-    
+
     let dailyUsage = await this.cacheManager.get<DailyUsage>(cacheKey);
-    
+
     if (!dailyUsage) {
       const userTier = await this.getUserTier();
       const tierConfig = this.tierConfigs[userTier];
-      
+
       // Create new daily usage record
       dailyUsage = {
         userId,
@@ -243,10 +246,10 @@ export class DailyTieringService {
         resetTime: this.getNextResetTime(),
         isBlocked: false,
       };
-      
+
       await this.cacheManager.set(cacheKey, dailyUsage, 86400);
     }
-    
+
     return dailyUsage;
   }
 
@@ -275,17 +278,17 @@ export class DailyTieringService {
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async resetDailyLimits(): Promise<void> {
     this.logger.log('Starting daily limits reset...');
-    
+
     try {
       // Clear all cached daily usage records
       // In a real implementation, you'd want to be more selective
       // and possibly store historical data before clearing
-      
+
       const cacheKeys = await this.getCacheKeysByPattern();
       for (const key of cacheKeys) {
         await this.cacheManager.del(key);
       }
-      
+
       this.logger.log(`Reset ${cacheKeys.length} daily usage records`);
     } catch (error) {
       this.logger.error('Failed to reset daily limits', error);
