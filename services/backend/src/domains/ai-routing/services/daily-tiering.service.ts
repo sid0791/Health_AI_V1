@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ModuleRef } from '@nestjs/core';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -106,6 +107,7 @@ export class DailyTieringService {
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private configService: ConfigService,
+    private moduleRef: ModuleRef,
   ) {}
 
   /**
@@ -254,12 +256,25 @@ export class DailyTieringService {
   }
 
   /**
-   * Get user tier (would integrate with user service in real implementation)
+   * Get user tier with enhanced integration capabilities
    */
-  private async getUserTier(): Promise<string> {
-    // TODO: Integrate with user service to get actual tier
-    // For now, return default tier
-    return 'free';
+  private async getUserTier(userId?: string): Promise<string> {
+    // Enhanced user service integration with fallback logic
+    if (userId && this.configService.get('USER_SERVICE_ENABLED')) {
+      try {
+        // Integration point for user service
+        const userService = this.moduleRef?.get('UsersService', { strict: false });
+        if (userService && typeof userService.getUserTier === 'function') {
+          const tier = await userService.getUserTier(userId);
+          if (tier) return tier;
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to get user tier for ${userId}, using default: ${error.message}`);
+      }
+    }
+    
+    // Fallback to environment-based tier or default
+    return this.configService.get('DEFAULT_USER_TIER', 'free');
   }
 
   /**
@@ -308,15 +323,53 @@ export class DailyTieringService {
     totalCost: number;
     blockedUsers: number;
   }> {
-    // TODO: Implement admin statistics aggregation
-    // This would involve querying historical usage data
-    return {
-      totalUsers: 0,
-      usersByTier: {},
-      totalRequests: { level1: 0, level2: 0 },
-      totalCost: 0,
-      blockedUsers: 0,
-    };
+    // Enhanced admin statistics aggregation with caching
+    try {
+      const cacheKey = 'admin_usage_stats';
+      const cached: any = await this.cacheManager.get(cacheKey);
+      if (cached) return cached;
+
+      // Aggregate statistics from cache and user service
+      const allKeys = await this.cacheManager.store.keys('daily_usage:*');
+      const usersByTier: Record<string, number> = { free: 0, premium: 0, pro: 0 };
+      let totalRequests = { level1: 0, level2: 0 };
+      let totalCost = 0;
+      let blockedUsers = 0;
+
+      for (const key of allKeys) {
+        const usage: any = await this.cacheManager.get(key);
+        if (usage) {
+          const tier = await this.getUserTier(key.split(':')[1]);
+          usersByTier[tier] = (usersByTier[tier] || 0) + 1;
+          totalRequests.level1 += usage.level1 || 0;
+          totalRequests.level2 += usage.level2 || 0;
+          totalCost += usage.cost || 0;
+          if (usage.blocked) blockedUsers++;
+        }
+      }
+
+      const stats = {
+        totalUsers: allKeys.length,
+        usersByTier,
+        totalRequests,
+        totalCost,
+        blockedUsers,
+      };
+
+      // Cache for 5 minutes
+      await this.cacheManager.set(cacheKey, stats, 300);
+      return stats;
+    } catch (error) {
+      this.logger.error('Failed to aggregate admin statistics', error);
+      // Return fallback stats
+      return {
+        totalUsers: 0,
+        usersByTier: { free: 0, premium: 0, pro: 0 },
+        totalRequests: { level1: 0, level2: 0 },
+        totalCost: 0,
+        blockedUsers: 0,
+      };
+    }
   }
 
   /**

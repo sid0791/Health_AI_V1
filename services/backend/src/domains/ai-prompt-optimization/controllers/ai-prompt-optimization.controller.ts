@@ -270,7 +270,7 @@ export class AIPromptOptimizationController {
   async getEnhancedCostOptimization(@CurrentUser() user: User): Promise<any> {
     // Get enhanced optimization metrics targeting >80% savings
     const enhancedMetrics = this.costOptimizationService.getEnhancedOptimizationMetrics();
-    const userMetrics = this.costOptimizationService.getCostMetrics(user.id);
+    const userMetrics = await this.costOptimizationService.getCostMetrics(user.id);
 
     return {
       optimization: {

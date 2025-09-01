@@ -273,10 +273,24 @@ export class OTPService {
       }
 
       // In production, use actual SMS service
-      // TODO: Implement actual Twilio SMS sending
-      this.logger.log(
-        `SMS sent to ${this.maskPhone(phone)} with OTP: ${otpCode.substring(0, 2)}****`,
-      );
+      // Enhanced Twilio SMS implementation
+      if (this.configService.get('TWILIO_ACCOUNT_SID') && this.configService.get('TWILIO_AUTH_TOKEN')) {
+        const client = require('twilio')(
+          this.configService.get('TWILIO_ACCOUNT_SID'),
+          this.configService.get('TWILIO_AUTH_TOKEN')
+        );
+        
+        await client.messages.create({
+          body: message,
+          from: this.configService.get('TWILIO_FROM_NUMBER'),
+          to: phone,
+        });
+        
+        this.logger.log(`SMS sent via Twilio to ${this.maskPhone(phone)}`);
+      } else {
+        // Fallback for production when Twilio not configured
+        this.logger.warn(`SMS service not configured. Would send OTP ${otpCode.substring(0, 2)}**** to ${this.maskPhone(phone)}`);
+      }
     } catch (error) {
       this.logger.error('Failed to send OTP SMS', error);
       throw new BadRequestException('Failed to send OTP. Please try again.');
