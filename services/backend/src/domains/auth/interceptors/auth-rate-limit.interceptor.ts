@@ -7,6 +7,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLog, AuditEventType, AuditSeverity } from '../entities/audit-log.entity';
@@ -45,7 +46,7 @@ export class AuthRateLimitInterceptor implements NestInterceptor {
     },
   ) {}
 
-  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const ipAddress = request.ip || request.connection.remoteAddress;
     const userAgent = request.headers['user-agent'];
@@ -72,8 +73,8 @@ export class AuthRateLimitInterceptor implements NestInterceptor {
 
     // Check if limit exceeded
     if (rateLimitData.count > this.config.maxRequests) {
-      // Log security event
-      await this.auditService.logSecurityEvent(
+      // Log security event asynchronously (fire and forget)
+      this.auditService.logSecurityEvent(
         AuditEventType.RATE_LIMIT_EXCEEDED,
         `Rate limit exceeded for ${endpoint}`,
         AuditSeverity.HIGH,
@@ -87,7 +88,9 @@ export class AuthRateLimitInterceptor implements NestInterceptor {
           windowMs: this.config.windowMs,
           maxRequests: this.config.maxRequests,
         },
-      );
+      ).catch(() => {
+        // Ignore audit logging errors - don't block rate limiting
+      });
 
       throw new TooManyRequestsException({
         message: this.config.message,

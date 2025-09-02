@@ -20,6 +20,7 @@ const timeRanges = [
   { id: '30d', name: '30 Days' },
   { id: '3m', name: '3 Months' },
   { id: '1y', name: '1 Year' },
+  { id: 'custom', name: 'Custom Range' },
 ]
 
 const keyMetrics = [
@@ -178,20 +179,35 @@ export default function AnalyticsPage() {
           </div>
           
           {/* Time Range Selector */}
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            {timeRanges.map((range) => (
-              <button
-                key={range.id}
-                onClick={() => setSelectedRange(range.id)}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  selectedRange === range.id
-                    ? 'bg-white text-primary-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {range.name}
-              </button>
-            ))}
+          <div className="flex items-center space-x-2">
+            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+              {timeRanges.filter(range => range.id !== 'custom').map((range) => (
+                <button
+                  key={range.id}
+                  onClick={() => setSelectedRange(range.id)}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    selectedRange === range.id
+                      ? 'bg-white text-primary-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {range.name}
+                </button>
+              ))}
+            </div>
+            
+            {/* Custom Date Range Button */}
+            <button
+              onClick={() => setSelectedRange('custom')}
+              className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                selectedRange === 'custom'
+                  ? 'bg-primary-50 text-primary-700 border border-primary-200'
+                  : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <CalendarDaysIcon className="h-4 w-4 mr-1.5" />
+              Custom
+            </button>
           </div>
         </div>
       </div>
