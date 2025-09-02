@@ -189,17 +189,18 @@ export class EnhancedAIProviderService {
   private async callCohere(model: string, prompt: string): Promise<any> {
     // Would implement Cohere API here
     const enhancedPrompt = `You are HealthCoachAI, an expert nutritionist. ${prompt}\n\nPlease respond with valid JSON format.`;
-    
+
     // Simulate Cohere API response with high accuracy
     return {
       content: JSON.stringify({
-        response: "Cohere provides excellent reasoning capabilities for health and nutrition analysis.",
-        reasoning: "Advanced language model with strong enterprise features",
+        response:
+          'Cohere provides excellent reasoning capabilities for health and nutrition analysis.',
+        reasoning: 'Advanced language model with strong enterprise features',
         recommendations: [
-          "Personalized meal planning based on health goals",
-          "Evidence-based nutrition advice",
-          "Dietary restriction accommodations"
-        ]
+          'Personalized meal planning based on health goals',
+          'Evidence-based nutrition advice',
+          'Dietary restriction accommodations',
+        ],
       }),
       confidence: 0.96,
       usage: {
@@ -218,12 +219,13 @@ export class EnhancedAIProviderService {
   private async callTogether(model: string, prompt: string): Promise<any> {
     // Would implement Together AI API here
     const enhancedPrompt = `You are HealthCoachAI, an expert nutritionist. ${prompt}\n\nPlease respond with valid JSON format.`;
-    
+
     return {
       content: JSON.stringify({
-        response: "Together AI provides access to the latest open source models with excellent cost efficiency.",
+        response:
+          'Together AI provides access to the latest open source models with excellent cost efficiency.',
         model_info: `Using ${model || 'qwen-2.5-72b'} for optimal performance and cost`,
-        health_advice: "Utilizing advanced open source AI for personalized health recommendations"
+        health_advice: 'Utilizing advanced open source AI for personalized health recommendations',
       }),
       confidence: 0.94,
       usage: {
@@ -242,12 +244,13 @@ export class EnhancedAIProviderService {
   private async callFireworks(model: string, prompt: string): Promise<any> {
     // Would implement Fireworks AI API here
     const enhancedPrompt = `You are HealthCoachAI, an expert nutritionist. ${prompt}\n\nPlease respond with valid JSON format.`;
-    
+
     return {
       content: JSON.stringify({
-        response: "Fireworks AI provides ultra-fast inference for real-time health recommendations.",
-        speed_optimization: "Optimized for low-latency responses",
-        health_focus: "Fast, accurate health and nutrition guidance"
+        response:
+          'Fireworks AI provides ultra-fast inference for real-time health recommendations.',
+        speed_optimization: 'Optimized for low-latency responses',
+        health_focus: 'Fast, accurate health and nutrition guidance',
       }),
       confidence: 0.92,
       usage: {
@@ -266,12 +269,12 @@ export class EnhancedAIProviderService {
   private async callPerplexity(model: string, prompt: string): Promise<any> {
     // Would implement Perplexity API here
     const enhancedPrompt = `You are HealthCoachAI with real-time web access. ${prompt}\n\nPlease respond with valid JSON format and include current health information if relevant.`;
-    
+
     return {
       content: JSON.stringify({
-        response: "Perplexity AI provides real-time web-enhanced health recommendations.",
-        web_enhanced: "Access to latest health research and guidelines",
-        current_info: "Real-time health data and trends integration"
+        response: 'Perplexity AI provides real-time web-enhanced health recommendations.',
+        web_enhanced: 'Access to latest health research and guidelines',
+        current_info: 'Real-time health data and trends integration',
       }),
       confidence: 0.91,
       usage: {
@@ -290,12 +293,12 @@ export class EnhancedAIProviderService {
   private async callDeepSeek(model: string, prompt: string): Promise<any> {
     // Would implement DeepSeek API here
     const enhancedPrompt = `You are HealthCoachAI, an expert nutritionist. ${prompt}\n\nPlease respond with valid JSON format.`;
-    
+
     return {
       content: JSON.stringify({
-        response: "DeepSeek provides high-accuracy AI analysis with excellent privacy protection.",
-        privacy_focus: "Zero data retention policy for maximum health data privacy",
-        cost_efficiency: "Ultra-low cost with competitive accuracy for health analysis"
+        response: 'DeepSeek provides high-accuracy AI analysis with excellent privacy protection.',
+        privacy_focus: 'Zero data retention policy for maximum health data privacy',
+        cost_efficiency: 'Ultra-low cost with competitive accuracy for health analysis',
       }),
       confidence: 0.95,
       usage: {

@@ -182,7 +182,7 @@ export class UserHealthProfile {
   // Helper methods for health profile management
   updateMicronutrient(nutrient: string, profile: Partial<MicronutrientProfile>): void {
     if (!this.micronutrients) this.micronutrients = {};
-    
+
     const existing = this.micronutrients[nutrient.toLowerCase()];
     this.micronutrients[nutrient.toLowerCase()] = {
       nutrient: nutrient,
@@ -201,7 +201,7 @@ export class UserHealthProfile {
 
   updateBiomarker(biomarker: string, profile: Partial<BiomarkerProfile>): void {
     if (!this.biomarkers) this.biomarkers = {};
-    
+
     const existing = this.biomarkers[biomarker.toLowerCase()];
     this.biomarkers[biomarker.toLowerCase()] = {
       biomarker: biomarker,
@@ -228,14 +228,14 @@ export class UserHealthProfile {
       });
 
       // Keep only last 10 historical values
-      this.biomarkers[biomarker.toLowerCase()].historicalValues = 
+      this.biomarkers[biomarker.toLowerCase()].historicalValues =
         this.biomarkers[biomarker.toLowerCase()].historicalValues.slice(-10);
     }
   }
 
   updateHealthCondition(condition: string, profile: Partial<HealthConditionProfile>): void {
     if (!this.healthConditions) this.healthConditions = {};
-    
+
     const existing = this.healthConditions[condition.toLowerCase()];
     this.healthConditions[condition.toLowerCase()] = {
       condition: condition,
@@ -254,7 +254,7 @@ export class UserHealthProfile {
 
   addHealthTimelineEvent(event: Partial<HealthTimeline>): void {
     if (!this.healthTimeline) this.healthTimeline = [];
-    
+
     this.healthTimeline.push({
       date: new Date(),
       event: '',
@@ -281,7 +281,7 @@ export class UserHealthProfile {
     dataSource?: DataSource;
   }): void {
     if (!this.aiAnalysisHistory) this.aiAnalysisHistory = [];
-    
+
     this.aiAnalysisHistory.push({
       analysisDate: new Date(),
       ...analysis,
@@ -299,7 +299,10 @@ export class UserHealthProfile {
     // Check micronutrients
     for (const [key, profile] of Object.entries(this.micronutrients || {})) {
       if (queryLower.includes(key) || queryLower.includes(profile.nutrient.toLowerCase())) {
-        if (profile.status === HealthMetricStatus.DEFICIENT || profile.status === HealthMetricStatus.LOW) {
+        if (
+          profile.status === HealthMetricStatus.DEFICIENT ||
+          profile.status === HealthMetricStatus.LOW
+        ) {
           return `According to your health profile, your ${profile.nutrient} levels are ${profile.status.toLowerCase()} (${profile.currentValue} ${profile.unit}). The ideal range is ${profile.idealRange.min}-${profile.idealRange.max} ${profile.unit}. ${profile.recommendations.join(' ')}`;
         }
       }
@@ -380,7 +383,8 @@ export class UserHealthProfile {
           totalScore += 75;
           break;
         case 'active':
-          totalScore += profile.severity === 'mild' ? 60 : profile.severity === 'moderate' ? 40 : 20;
+          totalScore +=
+            profile.severity === 'mild' ? 60 : profile.severity === 'moderate' ? 40 : 20;
           break;
         case 'risk':
           totalScore += 50;

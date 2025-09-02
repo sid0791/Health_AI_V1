@@ -32,7 +32,11 @@ import { UserHealthProfileService } from '../../users/services/user-health-profi
 import { DataSource } from '../../users/entities/user-health-profile.entity';
 
 // Health insights integration
-import { HealthInsight, InsightCategory, InsightSeverity } from '../entities/health-insights.entity';
+import {
+  HealthInsight,
+  InsightCategory,
+  InsightSeverity,
+} from '../entities/health-insights.entity';
 import { DietPlan } from '../entities/diet-plan.entity';
 
 export interface ChatRequest {
@@ -278,13 +282,20 @@ export class DomainScopedChatService {
       const dlpProcessedContent = await this.dlpService.processText(processedMessage.content);
 
       // Determine AI routing level based on domain and message content
-      const routingLevel = this.determineRoutingLevel(domainClassification.domain, processedMessage.content);
+      const routingLevel = this.determineRoutingLevel(
+        domainClassification.domain,
+        processedMessage.content,
+      );
 
       // Level 1 routing for health-critical queries (rate limiting removed as per user request)
 
       // **LEVEL 1 HEALTH PROFILE LOOKUP**: Check personalized health profile for Level 1 queries
       if (routingLevel === 'L1') {
-        const healthProfileResponse = await this.checkHealthProfileForQuery(userId, processedMessage.content, domainClassification);
+        const healthProfileResponse = await this.checkHealthProfileForQuery(
+          userId,
+          processedMessage.content,
+          domainClassification,
+        );
         if (healthProfileResponse) {
           // Return health profile response (instant, 0 cost!)
           const assistantMessage = await this.createAssistantMessage(
@@ -321,7 +332,9 @@ export class DomainScopedChatService {
           session.incrementMessageCount();
           await this.chatSessionRepository.save(session);
 
-          this.logger.log(`Health profile response provided for user ${userId} - ZERO COST using personalized data!`);
+          this.logger.log(
+            `Health profile response provided for user ${userId} - ZERO COST using personalized data!`,
+          );
 
           return {
             success: true,
@@ -345,7 +358,9 @@ export class DomainScopedChatService {
               },
             },
             citations: ['Your personalized health profile'],
-            followUpQuestions: this.generateHealthProfileFollowUps(healthProfileResponse.insightType),
+            followUpQuestions: this.generateHealthProfileFollowUps(
+              healthProfileResponse.insightType,
+            ),
           };
         }
       }
@@ -386,9 +401,20 @@ export class DomainScopedChatService {
       // **LEVEL 1 VALUE EXTRACTION**: Extract and store structured health data from AI response
       if (routingLevel === 'L1') {
         const aiCost = aiResponse.estimatedCost || 0.02; // Typical Level 1 cost
-        const analysisType = this.getAnalysisType(domainClassification.domain, processedMessage.content);
-        await this.extractAndStoreHealthValues(userId, processedMessage.content, processedResponse.content, analysisType, aiCost);
-        this.logger.debug(`Extracted and stored health values for user ${userId} - Building personalized health profile!`);
+        const analysisType = this.getAnalysisType(
+          domainClassification.domain,
+          processedMessage.content,
+        );
+        await this.extractAndStoreHealthValues(
+          userId,
+          processedMessage.content,
+          processedResponse.content,
+          analysisType,
+          aiCost,
+        );
+        this.logger.debug(
+          `Extracted and stored health values for user ${userId} - Building personalized health profile!`,
+        );
       }
 
       // Record token consumption
@@ -696,61 +722,114 @@ export class DomainScopedChatService {
 
   private determineRoutingLevel(domain: string, message: string): 'L1' | 'L2' {
     // Enhanced Level 1/Level 2 routing based on user requirements
-    
+
     // Level 1 API triggers (Health-critical queries)
     const level1Keywords = [
       // Health report specific
-      'health report', 'report says', 'my report', 'summarize report', 'report summary',
-      // Micronutrient questions  
-      'micronutrient', 'vitamin deficiency', 'mineral deficiency', 'lacking', 'deficient',
-      'vitamin d', 'iron deficiency', 'b12', 'folate', 'calcium', 
+      'health report',
+      'report says',
+      'my report',
+      'summarize report',
+      'report summary',
+      // Micronutrient questions
+      'micronutrient',
+      'vitamin deficiency',
+      'mineral deficiency',
+      'lacking',
+      'deficient',
+      'vitamin d',
+      'iron deficiency',
+      'b12',
+      'folate',
+      'calcium',
       // Biomarker interpretation
-      'blood test', 'lab results', 'biomarker', 'cholesterol', 'blood sugar', 'hba1c',
-      'liver function', 'kidney function', 'thyroid', 'hemoglobin',
+      'blood test',
+      'lab results',
+      'biomarker',
+      'cholesterol',
+      'blood sugar',
+      'hba1c',
+      'liver function',
+      'kidney function',
+      'thyroid',
+      'hemoglobin',
       // Health condition analysis
-      'health condition', 'medical condition', 'diagnosis', 'what condition',
-      'health issue', 'health problem', 'medical issue',
+      'health condition',
+      'medical condition',
+      'diagnosis',
+      'what condition',
+      'health issue',
+      'health problem',
+      'medical issue',
       // Health summaries
-      'health summary', 'overall health', 'health status', 'health assessment',
+      'health summary',
+      'overall health',
+      'health status',
+      'health assessment',
     ];
 
-    // Level 2 API triggers (Cost-optimized queries) 
+    // Level 2 API triggers (Cost-optimized queries)
     const level2Keywords = [
       // Diet and meal planning
-      'diet plan', 'meal plan', 'diet recommendation', 'what to eat', 'food suggestion',
-      'menu', 'recipe', 'cooking', 'meal prep', 'nutrition plan',
+      'diet plan',
+      'meal plan',
+      'diet recommendation',
+      'what to eat',
+      'food suggestion',
+      'menu',
+      'recipe',
+      'cooking',
+      'meal prep',
+      'nutrition plan',
       // General goals and lifestyle
-      'fitness goal', 'weight loss', 'weight gain', 'muscle gain', 'goal',
-      'exercise', 'workout', 'fitness', 'activity', 'lifestyle',
-      'wellness', 'general health', 'healthy living', 'habit',
+      'fitness goal',
+      'weight loss',
+      'weight gain',
+      'muscle gain',
+      'goal',
+      'exercise',
+      'workout',
+      'fitness',
+      'activity',
+      'lifestyle',
+      'wellness',
+      'general health',
+      'healthy living',
+      'habit',
       // General wellness advice
-      'advice', 'suggestion', 'tip', 'recommendation', 'how to',
-      'should i', 'can i', 'general question',
+      'advice',
+      'suggestion',
+      'tip',
+      'recommendation',
+      'how to',
+      'should i',
+      'can i',
+      'general question',
     ];
 
     const messageLower = message.toLowerCase();
-    
+
     // Check for Level 1 keywords (health report analysis)
-    const hasLevel1Keywords = level1Keywords.some(keyword => messageLower.includes(keyword));
-    
-    // Check for Level 2 keywords (general wellness)  
-    const hasLevel2Keywords = level2Keywords.some(keyword => messageLower.includes(keyword));
-    
+    const hasLevel1Keywords = level1Keywords.some((keyword) => messageLower.includes(keyword));
+
+    // Check for Level 2 keywords (general wellness)
+    const hasLevel2Keywords = level2Keywords.some((keyword) => messageLower.includes(keyword));
+
     // Health reports domain always uses Level 1
     if (domain === 'health_reports' || hasLevel1Keywords) {
       return 'L1';
     }
-    
+
     // Nutrition/meal planning domains use Level 2 unless health-report specific
     if (domain === 'nutrition' || domain === 'meal_planning' || hasLevel2Keywords) {
       return 'L2';
     }
-    
+
     // Default: If health domain but not specific enough, use Level 1 for safety
     if (domain === 'health') {
       return 'L1';
     }
-    
+
     // All other general queries use Level 2
     return 'L2';
   }
@@ -1023,7 +1102,7 @@ export class DomainScopedChatService {
   private async checkHealthProfileForQuery(
     userId: string,
     message: string,
-    domainClassification: any
+    domainClassification: any,
   ): Promise<{
     response: string;
     insightType: string;
@@ -1032,14 +1111,19 @@ export class DomainScopedChatService {
   } | null> {
     try {
       // Get personalized response from user's health profile
-      const profileResponse = await this.userHealthProfileService.getHealthInsightForQuery(userId, message);
-      
+      const profileResponse = await this.userHealthProfileService.getHealthInsightForQuery(
+        userId,
+        message,
+      );
+
       if (profileResponse) {
-        this.logger.debug(`Health profile match found for user ${userId} - Using personalized data!`);
-        
+        this.logger.debug(
+          `Health profile match found for user ${userId} - Using personalized data!`,
+        );
+
         // Get stats for metadata
         const stats = await this.userHealthProfileService.getHealthProfileStats(userId);
-        
+
         return {
           response: profileResponse,
           insightType: this.determineInsightType(message),
@@ -1074,48 +1158,52 @@ export class DomainScopedChatService {
         analysisType,
         0.9, // High confidence for AI analysis
         aiCost,
-        DataSource.AI_ANALYSIS
+        DataSource.AI_ANALYSIS,
       );
-      
-      this.logger.debug(`Successfully extracted health values for user ${userId} - Profile enhanced!`);
+
+      this.logger.debug(
+        `Successfully extracted health values for user ${userId} - Profile enhanced!`,
+      );
     } catch (error) {
       this.logger.error(`Error extracting health values: ${error.message}`);
     }
   }
 
   /**
-   * Generate follow-up questions based on health profile insight type  
+   * Generate follow-up questions based on health profile insight type
    */
   private generateHealthProfileFollowUps(insightType: string): string[] {
     const followUpMap = {
-      'micronutrient_deficiency': [
+      micronutrient_deficiency: [
         'How can I improve this nutrient level naturally?',
         'What foods are rich in this nutrient?',
         'Should I consider supplements?',
-        'How long will it take to improve this deficiency?'
+        'How long will it take to improve this deficiency?',
       ],
-      'biomarker_analysis': [
+      biomarker_analysis: [
         'How often should I test this biomarker?',
         'What factors can affect this biomarker?',
-        'Are there any trends I should watch?'
+        'Are there any trends I should watch?',
       ],
-      'health_condition': [
+      health_condition: [
         'What lifestyle changes can help with this condition?',
         'How can I monitor this condition at home?',
-        'What diet modifications would be beneficial?'
+        'What diet modifications would be beneficial?',
       ],
-      'health_summary': [
+      health_summary: [
         'What are my priority health areas to focus on?',
         'How can I track my overall health progress?',
-        'What should I discuss with my doctor?'
-      ]
+        'What should I discuss with my doctor?',
+      ],
     };
 
-    return followUpMap[insightType] || [
-      'Can you create a diet plan based on my health profile?',
-      'What other health insights can you share from my data?',
-      'How can I improve my overall health score?'
-    ];
+    return (
+      followUpMap[insightType] || [
+        'Can you create a diet plan based on my health profile?',
+        'What other health insights can you share from my data?',
+        'How can I improve my overall health score?',
+      ]
+    );
   }
 
   /**
@@ -1123,20 +1211,36 @@ export class DomainScopedChatService {
    */
   private getAnalysisType(domain: string, message: string): string {
     const messageLower = message.toLowerCase();
-    
-    if (messageLower.includes('micronutrient') || messageLower.includes('vitamin') || messageLower.includes('mineral')) {
+
+    if (
+      messageLower.includes('micronutrient') ||
+      messageLower.includes('vitamin') ||
+      messageLower.includes('mineral')
+    ) {
       return 'micronutrient_analysis';
     }
-    if (messageLower.includes('biomarker') || messageLower.includes('blood test') || messageLower.includes('lab result')) {
+    if (
+      messageLower.includes('biomarker') ||
+      messageLower.includes('blood test') ||
+      messageLower.includes('lab result')
+    ) {
       return 'biomarker_analysis';
     }
-    if (messageLower.includes('condition') || messageLower.includes('diagnosis') || messageLower.includes('disease')) {
+    if (
+      messageLower.includes('condition') ||
+      messageLower.includes('diagnosis') ||
+      messageLower.includes('disease')
+    ) {
       return 'health_condition_analysis';
     }
-    if (messageLower.includes('summary') || messageLower.includes('overall') || messageLower.includes('report says')) {
+    if (
+      messageLower.includes('summary') ||
+      messageLower.includes('overall') ||
+      messageLower.includes('report says')
+    ) {
       return 'health_summary';
     }
-    
+
     return domain === 'health_reports' ? 'health_report_analysis' : 'general_health_analysis';
   }
 
@@ -1145,17 +1249,25 @@ export class DomainScopedChatService {
    */
   private determineInsightType(message: string): string {
     const messageLower = message.toLowerCase();
-    
-    if (messageLower.includes('deficient') || messageLower.includes('vitamin') || messageLower.includes('mineral')) {
+
+    if (
+      messageLower.includes('deficient') ||
+      messageLower.includes('vitamin') ||
+      messageLower.includes('mineral')
+    ) {
       return 'micronutrient_deficiency';
     }
-    if (messageLower.includes('biomarker') || messageLower.includes('blood') || messageLower.includes('test')) {
+    if (
+      messageLower.includes('biomarker') ||
+      messageLower.includes('blood') ||
+      messageLower.includes('test')
+    ) {
       return 'biomarker_analysis';
     }
     if (messageLower.includes('condition') || messageLower.includes('disease')) {
       return 'health_condition';
     }
-    
+
     return 'health_summary';
   }
 }

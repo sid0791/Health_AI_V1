@@ -20,12 +20,24 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum, IsArray, IsNumber, Min, Max, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsArray,
+  IsNumber,
+  Min,
+  Max,
+  IsBoolean,
+} from 'class-validator';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User } from '../../auth/decorators/user.decorator';
 import { User as UserEntity } from '../../users/entities/user.entity';
-import { HealthInsightsService, DietPlanCreationRequest } from '../services/health-insights.service';
+import {
+  HealthInsightsService,
+  DietPlanCreationRequest,
+} from '../services/health-insights.service';
 import { DietPhase } from '../entities/diet-plan.entity';
 
 // DTOs
@@ -122,8 +134,8 @@ export class HealthInsightsController {
       return {
         success: true,
         data: insights,
-        message: insights.cacheHit 
-          ? 'Health insights retrieved from cache - zero cost!' 
+        message: insights.cacheHit
+          ? 'Health insights retrieved from cache - zero cost!'
           : 'Health insights retrieved from database',
       };
     } catch (error) {
@@ -138,7 +150,8 @@ export class HealthInsightsController {
   @Get('diet-plan')
   @ApiOperation({
     summary: 'Get current diet plan with timeline progress',
-    description: 'Retrieve active timeline-based diet plan with progress tracking and milestone updates',
+    description:
+      'Retrieve active timeline-based diet plan with progress tracking and milestone updates',
   })
   @ApiResponse({
     status: 200,
@@ -156,7 +169,10 @@ export class HealthInsightsController {
                 id: { type: 'string' },
                 title: { type: 'string' },
                 description: { type: 'string' },
-                phase: { type: 'string', enum: ['correction', 'maintenance', 'optimization', 'balanced'] },
+                phase: {
+                  type: 'string',
+                  enum: ['correction', 'maintenance', 'optimization', 'balanced'],
+                },
                 status: { type: 'string' },
                 targetConditions: { type: 'object' },
                 planDetails: { type: 'object' },
@@ -186,7 +202,8 @@ export class HealthInsightsController {
         return {
           success: true,
           data: null,
-          message: 'No active diet plan found. Consider creating one based on your health insights.',
+          message:
+            'No active diet plan found. Consider creating one based on your health insights.',
         };
       }
 
@@ -212,7 +229,8 @@ export class HealthInsightsController {
   @Post('diet-plan/generate')
   @ApiOperation({
     summary: 'Generate personalized diet plan using cached health insights',
-    description: 'Create timeline-based diet plan using cached Level 1 health analysis (cost-optimized)',
+    description:
+      'Create timeline-based diet plan using cached Level 1 health analysis (cost-optimized)',
   })
   @ApiBody({ type: CreateDietPlanDto })
   @ApiResponse({
@@ -268,9 +286,10 @@ export class HealthInsightsController {
           healthInsightsUsed: healthInsights.insights.length,
           costSavings,
         },
-        message: request.useHealthInsights && healthInsights.cacheHit
-          ? 'Diet plan generated using cached health insights - significant cost savings achieved!'
-          : 'Diet plan generated successfully',
+        message:
+          request.useHealthInsights && healthInsights.cacheHit
+            ? 'Diet plan generated using cached health insights - significant cost savings achieved!'
+            : 'Diet plan generated successfully',
       };
     } catch (error) {
       this.logger.error(`Error generating diet plan: ${error.message}`);
@@ -284,7 +303,8 @@ export class HealthInsightsController {
   @Post('diet-plan/:planId/transition')
   @ApiOperation({
     summary: 'Transition diet plan phase with user choice',
-    description: 'Handle diet plan phase transitions (correction → maintenance → balanced) with user choice',
+    description:
+      'Handle diet plan phase transitions (correction → maintenance → balanced) with user choice',
   })
   @ApiParam({
     name: 'planId',
@@ -365,7 +385,8 @@ export class HealthInsightsController {
   @Get('health-cache/stats')
   @ApiOperation({
     summary: 'Get health insights cache performance statistics',
-    description: 'View cache hit rates, cost savings, and performance metrics for Level 1 AI responses',
+    description:
+      'View cache hit rates, cost savings, and performance metrics for Level 1 AI responses',
   })
   @ApiResponse({
     status: 200,

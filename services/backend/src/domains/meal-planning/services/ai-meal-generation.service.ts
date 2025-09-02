@@ -1427,12 +1427,12 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
     try {
       // Use the enhanced AI provider service for real API calls
       const result = await this.enhancedAIProviderService.callAIProvider(routingResult, prompt);
-      
+
       // Log the successful routing decision
       this.logger.debug(
-        `Successfully called ${routingResult.provider}/${routingResult.model} - Cost: $${result.cost?.toFixed(4) || routingResult.estimatedCost}`
+        `Successfully called ${routingResult.provider}/${routingResult.model} - Cost: $${result.cost?.toFixed(4) || routingResult.estimatedCost}`,
       );
-      
+
       // Update routing decision with completion data
       if (routingResult.decisionId) {
         await this.aiRoutingService.updateCompletion(routingResult.decisionId, {
@@ -1442,26 +1442,26 @@ Return a detailed recipe with ingredients, instructions, nutrition facts, and me
           processingDuration: Date.now() - (routingResult.startTime || Date.now()),
         });
       }
-      
+
       return result;
     } catch (error) {
       this.logger.error(`AI Provider call failed: ${error.message}`);
-      
+
       // Update routing decision with failure data
       if (routingResult.decisionId) {
         await this.aiRoutingService.updateFailure(
           routingResult.decisionId,
           'API_CALL_FAILED',
-          error.message
+          error.message,
         );
       }
-      
+
       // Return fallback mock response to maintain system reliability
       this.logger.warn('Falling back to mock response due to AI provider failure');
       return this.getFallbackMockResponse(routingResult);
     }
   }
-  
+
   /**
    * Fallback mock response when AI providers are unavailable
    */
