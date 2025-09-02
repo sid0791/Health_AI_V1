@@ -34,6 +34,9 @@ importers:
       prettier:
         specifier: ^3.2.4
         version: 3.6.2
+      rxjs:
+        specifier: ^7.8.1
+        version: 7.8.2
       turbo:
         specifier: ^1.12.0
         version: 1.13.4
@@ -266,9 +269,6 @@ importers:
       reflect-metadata:
         specifier: ^0.2.1
         version: 0.2.2
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
       twilio:
         specifier: ^5.8.2
         version: 5.8.2

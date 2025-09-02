@@ -4,7 +4,11 @@ import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 
-import { HealthInsight, InsightCategory, InsightSeverity } from '../entities/health-insights.entity';
+import {
+  HealthInsight,
+  InsightCategory,
+  InsightSeverity,
+} from '../entities/health-insights.entity';
 import { DietPlan, DietPhase, DietPlanStatus } from '../entities/diet-plan.entity';
 import { User } from '../../users/entities/user.entity';
 import { HealthReport } from '../../health-reports/entities/health-report.entity';
@@ -187,10 +191,7 @@ export class HealthInsightsService {
 
     // Deactivate old insights and save merged ones
     if (existingInsights.length > 0) {
-      await this.healthInsightsRepository.update(
-        { userId, isActive: true },
-        { isActive: false },
-      );
+      await this.healthInsightsRepository.update({ userId, isActive: true }, { isActive: false });
     }
 
     const savedInsights = await this.healthInsightsRepository.save(mergedInsights);
@@ -198,7 +199,9 @@ export class HealthInsightsService {
     // Update cache
     await this.invalidateAndUpdateCache(userId, savedInsights);
 
-    this.logger.debug(`Updated ${savedInsights.length} insights from new report for user: ${userId}`);
+    this.logger.debug(
+      `Updated ${savedInsights.length} insights from new report for user: ${userId}`,
+    );
     return savedInsights;
   }
 
@@ -273,7 +276,9 @@ export class HealthInsightsService {
     planId: string,
     userChoice: 'continue' | 'maintain' | 'balanced' | 'recheck',
   ): Promise<DietPlan> {
-    this.logger.debug(`Transitioning diet plan ${planId} for user: ${userId}, choice: ${userChoice}`);
+    this.logger.debug(
+      `Transitioning diet plan ${planId} for user: ${userId}, choice: ${userChoice}`,
+    );
 
     const currentPlan = await this.dietPlanRepository.findOne({
       where: { id: planId, userId },
@@ -315,7 +320,8 @@ export class HealthInsightsService {
     // Create new plan for next phase
     const newPlan = await this.createTimelineDietPlan({
       userId,
-      targetConditions: userChoice === 'balanced' ? [] : currentPlan.targetConditions.primaryConditions,
+      targetConditions:
+        userChoice === 'balanced' ? [] : currentPlan.targetConditions.primaryConditions,
       phase: newPhase,
       durationDays,
       useHealthInsights: userChoice !== 'balanced',
@@ -331,7 +337,7 @@ export class HealthInsightsService {
   async getCacheStats(userId: string): Promise<any> {
     const cacheKey = `${this.CACHE_PREFIX}${userId}`;
     const cachedInsights = await this.cacheManager.get<CachedHealthAnalysis>(cacheKey);
-    
+
     if (!cachedInsights) {
       return { cacheHit: false, totalInsights: 0, costSavings: 0 };
     }
@@ -352,9 +358,9 @@ export class HealthInsightsService {
 
   private categorizeInsights(insights: HealthInsight[]): any {
     const categories = {};
-    
+
     for (const category of Object.values(InsightCategory)) {
-      const categoryInsights = insights.filter(i => i.category === category);
+      const categoryInsights = insights.filter((i) => i.category === category);
       if (categoryInsights.length > 0) {
         categories[category] = {
           count: categoryInsights.length,
@@ -466,7 +472,10 @@ export class HealthInsightsService {
     return insights;
   }
 
-  private mergeInsights(existing: HealthInsight[], newInsights: Partial<HealthInsight>[]): Partial<HealthInsight>[] {
+  private mergeInsights(
+    existing: HealthInsight[],
+    newInsights: Partial<HealthInsight>[],
+  ): Partial<HealthInsight>[] {
     const merged = [...newInsights];
 
     // Add existing insights that don't conflict with new ones
@@ -488,10 +497,15 @@ export class HealthInsightsService {
     return merged;
   }
 
-  private buildDietPlanFromInsights(insights: HealthInsight[], request: DietPlanCreationRequest): any {
-    const deficiencies = insights.filter(i => i.category === InsightCategory.MICRONUTRIENT_DEFICIENCY);
-    const conditions = insights.filter(i => i.category === InsightCategory.HEALTH_CONDITION);
-    
+  private buildDietPlanFromInsights(
+    insights: HealthInsight[],
+    request: DietPlanCreationRequest,
+  ): any {
+    const deficiencies = insights.filter(
+      (i) => i.category === InsightCategory.MICRONUTRIENT_DEFICIENCY,
+    );
+    const conditions = insights.filter((i) => i.category === InsightCategory.HEALTH_CONDITION);
+
     const dietaryFocus = [];
     const keyNutrients = [];
     const recommendedFoods = [];
@@ -500,7 +514,7 @@ export class HealthInsightsService {
     // Build diet plan based on deficiencies
     for (const deficiency of deficiencies) {
       const nutrient = deficiency.metadata?.deficiencyInfo?.nutrient?.toLowerCase();
-      
+
       switch (nutrient) {
         case 'iron':
           dietaryFocus.push('high_iron');
@@ -509,12 +523,22 @@ export class HealthInsightsService {
           break;
         case 'vitamin_d':
           dietaryFocus.push('high_vitamin_d');
-          keyNutrients.push({ nutrient: 'Vitamin D', targetAmount: 600, unit: 'IU', priority: 'high' });
+          keyNutrients.push({
+            nutrient: 'Vitamin D',
+            targetAmount: 600,
+            unit: 'IU',
+            priority: 'high',
+          });
           recommendedFoods.push('fatty_fish', 'fortified_milk', 'mushrooms', 'egg_yolks');
           break;
         case 'vitamin_b12':
           dietaryFocus.push('high_b12');
-          keyNutrients.push({ nutrient: 'Vitamin B12', targetAmount: 2.4, unit: 'mcg', priority: 'high' });
+          keyNutrients.push({
+            nutrient: 'Vitamin B12',
+            targetAmount: 2.4,
+            unit: 'mcg',
+            priority: 'high',
+          });
           recommendedFoods.push('fish', 'meat', 'dairy', 'fortified_cereals');
           break;
       }
@@ -523,7 +547,7 @@ export class HealthInsightsService {
     // Add condition-specific modifications
     for (const condition of conditions) {
       const conditionName = condition.metadata?.conditionInfo?.condition?.toLowerCase();
-      
+
       switch (conditionName) {
         case 'diabetes':
         case 'high_blood_sugar':
@@ -563,10 +587,10 @@ export class HealthInsightsService {
     const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
     const milestones = [];
-    
+
     // Add milestones based on expected improvement timelines
     const quarterDays = Math.floor(durationDays / 4);
-    
+
     milestones.push({
       day: quarterDays,
       title: 'First Quarter Check',
@@ -612,10 +636,13 @@ export class HealthInsightsService {
     return `${phase.charAt(0).toUpperCase()}${phase.slice(1)} Plan for ${conditionStr}`;
   }
 
-  private generatePlanDescription(insights: HealthInsight[], request: DietPlanCreationRequest): string {
+  private generatePlanDescription(
+    insights: HealthInsight[],
+    request: DietPlanCreationRequest,
+  ): string {
     const primaryIssues = insights
-      .filter(i => i.severity === InsightSeverity.HIGH || i.severity === InsightSeverity.URGENT)
-      .map(i => i.title)
+      .filter((i) => i.severity === InsightSeverity.HIGH || i.severity === InsightSeverity.URGENT)
+      .map((i) => i.title)
       .slice(0, 3);
 
     if (primaryIssues.length === 0) {
@@ -627,8 +654,8 @@ export class HealthInsightsService {
 
   private extractSecondaryConditions(insights: HealthInsight[]): string[] {
     return insights
-      .filter(i => i.severity === InsightSeverity.MEDIUM)
-      .map(i => i.title)
+      .filter((i) => i.severity === InsightSeverity.MEDIUM)
+      .map((i) => i.title)
       .slice(0, 3);
   }
 
@@ -636,9 +663,10 @@ export class HealthInsightsService {
     const criteria = [];
 
     for (const condition of primaryConditions) {
-      const matchingInsight = insights.find(i => 
-        i.title.toLowerCase().includes(condition.toLowerCase()) ||
-        i.metadata?.deficiencyInfo?.nutrient?.toLowerCase().includes(condition.toLowerCase())
+      const matchingInsight = insights.find(
+        (i) =>
+          i.title.toLowerCase().includes(condition.toLowerCase()) ||
+          i.metadata?.deficiencyInfo?.nutrient?.toLowerCase().includes(condition.toLowerCase()),
       );
 
       if (matchingInsight?.metadata?.deficiencyInfo) {
@@ -660,7 +688,9 @@ export class HealthInsightsService {
   }
 
   private calculateTotalPlannedMeals(dietPlan: DietPlan): number {
-    const daysPassed = Math.floor((Date.now() - dietPlan.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    const daysPassed = Math.floor(
+      (Date.now() - dietPlan.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+    );
     const mealsPerDay = dietPlan.planDetails.mealsPerDay + dietPlan.planDetails.snacksPerDay;
     return Math.max(1, daysPassed * mealsPerDay);
   }
@@ -682,14 +712,14 @@ export class HealthInsightsService {
 
   private calculateNutrientTimeline(deficiency: any): any {
     const nutrient = deficiency.nutrient.toLowerCase();
-    
+
     // Default timelines for different nutrients
     const timelines = {
-      'iron': 60, // 8-12 weeks for iron stores to normalize
-      'vitamin_d': 45, // 6-8 weeks for vitamin D levels to improve
-      'vitamin_b12': 30, // 4-6 weeks for B12 levels to improve
-      'folate': 21, // 3-4 weeks for folate levels to improve
-      'default': 30,
+      iron: 60, // 8-12 weeks for iron stores to normalize
+      vitamin_d: 45, // 6-8 weeks for vitamin D levels to improve
+      vitamin_b12: 30, // 4-6 weeks for B12 levels to improve
+      folate: 21, // 3-4 weeks for folate levels to improve
+      default: 30,
     };
 
     const expectedDays = timelines[nutrient] || timelines['default'];
@@ -698,7 +728,10 @@ export class HealthInsightsService {
       expectedImprovementDays: expectedDays,
       milestones: [
         { day: Math.floor(expectedDays / 3), description: 'Initial improvements in symptoms' },
-        { day: Math.floor(expectedDays / 2), description: 'Measurable improvements in blood levels' },
+        {
+          day: Math.floor(expectedDays / 2),
+          description: 'Measurable improvements in blood levels',
+        },
         { day: expectedDays, description: 'Target levels should be achieved' },
       ],
     };

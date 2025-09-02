@@ -11,15 +11,15 @@ import {
 import { User } from '../../users/entities/user.entity';
 
 export enum DietPhase {
-  CORRECTION = 'correction',     // Address specific deficiencies/issues
-  MAINTENANCE = 'maintenance',   // Maintain improvements achieved
+  CORRECTION = 'correction', // Address specific deficiencies/issues
+  MAINTENANCE = 'maintenance', // Maintain improvements achieved
   OPTIMIZATION = 'optimization', // Further optimize health parameters
-  BALANCED = 'balanced',         // General balanced diet
+  BALANCED = 'balanced', // General balanced diet
 }
 
 export enum DietPlanStatus {
   ACTIVE = 'active',
-  COMPLETED = 'completed', 
+  COMPLETED = 'completed',
   TRANSITIONED = 'transitioned',
   PAUSED = 'paused',
 }
@@ -74,7 +74,7 @@ export class DietPlan {
     targetCalories: number;
     macroTargets: {
       proteinPercent: number;
-      carbPercent: number; 
+      carbPercent: number;
       fatPercent: number;
     };
     // Special dietary focus
@@ -150,23 +150,25 @@ export class DietPlan {
   // Helper methods
   isReadyForTransition(): boolean {
     if (this.status !== DietPlanStatus.ACTIVE) return false;
-    
+
     const daysSinceStart = (Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24);
     return daysSinceStart >= this.targetConditions.expectedImprovementDays;
   }
 
   getNextMilestone(): any {
     const daysSinceStart = (Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24);
-    return this.timeline.milestones.find(m => m.day > daysSinceStart && !m.completed) || null;
+    return this.timeline.milestones.find((m) => m.day > daysSinceStart && !m.completed) || null;
   }
 
   getCompletedMilestones(): any[] {
-    return this.timeline.milestones.filter(m => m.completed);
+    return this.timeline.milestones.filter((m) => m.completed);
   }
 
   calculateAdherenceScore(): number {
     if (!this.progressTracking) return 0;
-    return Math.round((this.progressTracking.mealsLogged / this.progressTracking.totalPlannedMeals) * 100);
+    return Math.round(
+      (this.progressTracking.mealsLogged / this.progressTracking.totalPlannedMeals) * 100,
+    );
   }
 
   shouldShowTransitionNotification(): boolean {
@@ -177,7 +179,7 @@ export class DietPlan {
   getRecommendedNextPhase(): DietPhase {
     const currentPhase = this.phase;
     const adherenceScore = this.calculateAdherenceScore();
-    
+
     // Logic for phase progression
     if (currentPhase === DietPhase.CORRECTION && adherenceScore >= 80) {
       return DietPhase.MAINTENANCE;
@@ -186,7 +188,7 @@ export class DietPlan {
     } else if (currentPhase === DietPhase.OPTIMIZATION) {
       return DietPhase.BALANCED;
     }
-    
+
     return DietPhase.BALANCED;
   }
 }

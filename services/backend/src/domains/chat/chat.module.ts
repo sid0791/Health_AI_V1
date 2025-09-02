@@ -33,8 +33,8 @@ import { IntegrationsModule } from '../integrations/integrations.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      ChatSession, 
-      ChatMessage, 
+      ChatSession,
+      ChatMessage,
       ChatContext,
       HealthInsight,
       DietPlan,
@@ -50,10 +50,7 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     RecipeModule,
     IntegrationsModule,
   ],
-  controllers: [
-    ChatController,
-    HealthInsightsController,
-  ],
+  controllers: [ChatController, HealthInsightsController],
   providers: [
     DomainScopedChatService,
     RAGService,

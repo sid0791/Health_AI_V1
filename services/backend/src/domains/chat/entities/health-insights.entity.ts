@@ -13,7 +13,7 @@ import { HealthReport } from '../../health-reports/entities/health-report.entity
 
 export enum InsightCategory {
   MICRONUTRIENT_DEFICIENCY = 'micronutrient_deficiency',
-  BIOMARKER_ANALYSIS = 'biomarker_analysis', 
+  BIOMARKER_ANALYSIS = 'biomarker_analysis',
   HEALTH_CONDITION = 'health_condition',
   DIETARY_RECOMMENDATION = 'dietary_recommendation',
   HEALTH_SUMMARY = 'health_summary',
@@ -22,7 +22,7 @@ export enum InsightCategory {
 
 export enum InsightSeverity {
   LOW = 'low',
-  MEDIUM = 'medium', 
+  MEDIUM = 'medium',
   HIGH = 'high',
   URGENT = 'urgent',
 }
@@ -121,16 +121,20 @@ export class HealthInsight {
 
   shouldTriggerRecheck(): boolean {
     if (!this.metadata?.timeline) return false;
-    
+
     const daysSinceCreated = (Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24);
     return daysSinceCreated >= this.metadata.timeline.expectedImprovementDays;
   }
 
   getNextMilestone(): { day: number; description: string; expectedValue?: number } | null {
     if (!this.metadata?.timeline?.milestones) return null;
-    
+
     const daysSinceCreated = (Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24);
-    const milestones = this.metadata.timeline.milestones as Array<{ day: number; description: string; expectedValue?: number }>;
-    return milestones.find(m => m.day > daysSinceCreated) || null;
+    const milestones = this.metadata.timeline.milestones as Array<{
+      day: number;
+      description: string;
+      expectedValue?: number;
+    }>;
+    return milestones.find((m) => m.day > daysSinceCreated) || null;
   }
 }
