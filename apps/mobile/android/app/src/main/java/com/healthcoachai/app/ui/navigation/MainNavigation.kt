@@ -25,6 +25,8 @@ sealed class BottomNavItem(
     object Chat : BottomNavItem("chat", "AI Chat", Icons.Filled.Chat)
     object Log : BottomNavItem("log", "Log", Icons.Filled.Edit)
     object Fitness : BottomNavItem("fitness", "Fitness", Icons.Filled.FitnessCenter)
+    object Analytics : BottomNavItem("analytics", "Analytics", Icons.Filled.Analytics)
+    object HealthReports : BottomNavItem("health_reports", "Health Reports", Icons.Filled.Assessment)
     object Settings : BottomNavItem("settings", "Settings", Icons.Filled.Settings)
 }
 
@@ -38,6 +40,8 @@ fun MainNavigation(onLogout: () -> Unit = {}) {
         BottomNavItem.Chat,
         BottomNavItem.Log,
         BottomNavItem.Fitness,
+        BottomNavItem.Analytics,
+        BottomNavItem.HealthReports,
         BottomNavItem.Settings
     )
 
@@ -92,8 +96,11 @@ fun MainNavigation(onLogout: () -> Unit = {}) {
             composable(BottomNavItem.Fitness.route) {
                 FitnessScreen()
             }
-            composable(BottomNavItem.Fitness.route) {
-                FitnessScreen()
+            composable(BottomNavItem.Analytics.route) {
+                AnalyticsScreen()
+            }
+            composable(BottomNavItem.HealthReports.route) {
+                HealthReportsScreen()
             }
             composable(BottomNavItem.Settings.route) {
                 SettingsScreen(onLogout = onLogout)

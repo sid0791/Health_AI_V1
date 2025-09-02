@@ -40,12 +40,26 @@ struct ContentView: View {
                 }
                 .tag(4)
             
+            AnalyticsView()
+                .tabItem {
+                    Image(systemName: "chart.bar.fill")
+                    Text("Analytics")
+                }
+                .tag(5)
+            
+            HealthReportsView()
+                .tabItem {
+                    Image(systemName: "doc.text.fill")
+                    Text("Reports")
+                }
+                .tag(6)
+            
             SettingsView()
                 .tabItem {
                     Image(systemName: "gearshape.fill")
                     Text("Settings")
                 }
-                .tag(5)
+                .tag(7)
         }
         .accentColor(Color(hex: "#14b8a6")) // Primary turquoise from design system
         .preferredColorScheme(.automatic) // Support both light and dark mode
