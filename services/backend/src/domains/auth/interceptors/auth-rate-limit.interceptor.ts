@@ -74,23 +74,25 @@ export class AuthRateLimitInterceptor implements NestInterceptor {
     // Check if limit exceeded
     if (rateLimitData.count > this.config.maxRequests) {
       // Log security event asynchronously (fire and forget)
-      this.auditService.logSecurityEvent(
-        AuditEventType.RATE_LIMIT_EXCEEDED,
-        `Rate limit exceeded for ${endpoint}`,
-        AuditSeverity.HIGH,
-        {
-          ipAddress,
-          userAgent,
-        },
-        {
-          endpoint,
-          requests: rateLimitData.count,
-          windowMs: this.config.windowMs,
-          maxRequests: this.config.maxRequests,
-        },
-      ).catch(() => {
-        // Ignore audit logging errors - don't block rate limiting
-      });
+      this.auditService
+        .logSecurityEvent(
+          AuditEventType.RATE_LIMIT_EXCEEDED,
+          `Rate limit exceeded for ${endpoint}`,
+          AuditSeverity.HIGH,
+          {
+            ipAddress,
+            userAgent,
+          },
+          {
+            endpoint,
+            requests: rateLimitData.count,
+            windowMs: this.config.windowMs,
+            maxRequests: this.config.maxRequests,
+          },
+        )
+        .catch(() => {
+          // Ignore audit logging errors - don't block rate limiting
+        });
 
       throw new TooManyRequestsException({
         message: this.config.message,

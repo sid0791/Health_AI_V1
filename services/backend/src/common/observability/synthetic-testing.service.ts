@@ -422,7 +422,7 @@ export class SyntheticTestingService {
         data: config.body,
         timeout: config.timeout || 10000,
       });
-      
+
       // Type assertion to work around RxJS version conflicts
       const response: AxiosResponse = await firstValueFrom(httpRequest as any);
 
