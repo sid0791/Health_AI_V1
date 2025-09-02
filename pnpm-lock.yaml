@@ -128,6 +128,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.478.0
         version: 3.879.0
+      '@google/generative-ai':
+        specifier: ^0.24.1
+        version: 0.24.1
       '@nestjs/axios':
         specifier: ^3.0.1
         version: 3.1.3(@nestjs/common@10.4.20)(axios@1.11.0)(rxjs@7.8.2)
@@ -233,6 +236,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
+      openai:
+        specifier: ^5.16.0
+        version: 5.16.0
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -312,6 +318,12 @@ importers:
       '@types/uuid':
         specifier: ^9.0.7
         version: 9.0.8
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.41.0
+        version: 8.41.0(@typescript-eslint/parser@8.41.0)(eslint@8.57.1)(typescript@5.9.2)
+      '@typescript-eslint/parser':
+        specifier: ^8.41.0
+        version: 8.41.0(eslint@8.57.1)(typescript@5.9.2)
       dotenv:
         specifier: ^16.3.1
         version: 16.6.1
@@ -2119,6 +2131,14 @@ packages:
       {
         integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==,
       }
+    dev: false
+
+  /@google/generative-ai@0.24.1:
+    resolution:
+      {
+        integrity: sha512-MqO+MLfM6kjxcKoy0p1wRzG3b4ZZXtPI+z2IE26UogS2Cm/XHO+7gGRBh6gcJsOiIVoH93UwKvW4HdgiOZCy9Q==,
+      }
+    engines: { node: '>=18.0.0' }
     dev: false
 
   /@headlessui/react@2.2.7(react-dom@19.1.0)(react@19.1.0):
@@ -7541,6 +7561,7 @@ packages:
       {
         integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==,
       }
+    requiresBuild: true
 
   /color-string@1.9.1:
     resolution:
@@ -12819,6 +12840,22 @@ packages:
     dependencies:
       mimic-function: 5.0.1
     dev: true
+
+  /openai@5.16.0:
+    resolution:
+      {
+        integrity: sha512-hoEH8ZNvg1HXjU9mp88L/ZH8O082Z8r6FHCXGiWAzVRrEv443aI57qhch4snu07yQydj+AUAWLenAiBXhu89Tw==,
+      }
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.23.8
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+    dev: false
 
   /openid-client@5.7.1:
     resolution:
