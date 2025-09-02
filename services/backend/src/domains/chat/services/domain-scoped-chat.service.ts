@@ -12,7 +12,6 @@ import { HinglishNLPService } from './hinglish-nlp.service';
 import { ChatSessionService } from './chat-session.service';
 import { SmartQueryCacheService } from './smart-query-cache.service';
 import { HealthInsightsService } from './health-insights.service';
-import { Level1RateLimitService } from './level1-rate-limit.service';
 
 // AI routing integration
 import { AIRoutingService, AIRoutingRequest } from '../../ai-routing/services/ai-routing.service';
@@ -28,8 +27,12 @@ import { TokenUsageType, TokenProvider } from '../../users/entities/user-token-u
 // DLP integration for privacy
 import { DLPService } from '../../auth/services/dlp.service';
 
+// Health profile integration - NEW APPROACH
+import { UserHealthProfileService } from '../../users/services/user-health-profile.service';
+import { DataSource } from '../../users/entities/user-health-profile.entity';
+
 // Health insights integration
-import { HealthInsight, InsightCategory } from '../entities/health-insights.entity';
+import { HealthInsight, InsightCategory, InsightSeverity } from '../entities/health-insights.entity';
 import { DietPlan } from '../entities/diet-plan.entity';
 
 export interface ChatRequest {
@@ -129,7 +132,7 @@ export class DomainScopedChatService {
     private readonly configService: ConfigService,
     private readonly smartQueryCacheService: SmartQueryCacheService,
     private readonly healthInsightsService: HealthInsightsService,
-    private readonly level1RateLimitService: Level1RateLimitService,
+    private readonly userHealthProfileService: UserHealthProfileService,
   ) {}
 
   /**
@@ -277,48 +280,40 @@ export class DomainScopedChatService {
       // Determine AI routing level based on domain and message content
       const routingLevel = this.determineRoutingLevel(domainClassification.domain, processedMessage.content);
 
-      // **LEVEL 1 RATE LIMITING**: Apply strict rate limits for health-critical queries
-      if (routingLevel === 'L1') {
-        const rateLimitInfo = await this.level1RateLimitService.checkRateLimit(userId);
-        if (rateLimitInfo.blocked) {
-          // Rate limit exceeded - return error response
-          this.level1RateLimitService.throwRateLimitException(userId, rateLimitInfo);
-        }
-      }
+      // Level 1 routing for health-critical queries (rate limiting removed as per user request)
 
-      // **LEVEL 1 CACHING**: Check health insights cache for Level 1 queries
+      // **LEVEL 1 HEALTH PROFILE LOOKUP**: Check personalized health profile for Level 1 queries
       if (routingLevel === 'L1') {
-        const cachedResponse = await this.checkLevel1Cache(userId, processedMessage.content, domainClassification);
-        if (cachedResponse) {
-          // Return cached Level 1 response (major cost savings!)
+        const healthProfileResponse = await this.checkHealthProfileForQuery(userId, processedMessage.content, domainClassification);
+        if (healthProfileResponse) {
+          // Return health profile response (instant, 0 cost!)
           const assistantMessage = await this.createAssistantMessage(
             session,
-            cachedResponse.response,
+            healthProfileResponse.response,
             {
-              healthInsightsCache: {
-                fromCache: true,
-                insightId: cachedResponse.insightId,
-                confidence: cachedResponse.confidence,
-                category: cachedResponse.category,
-                originalCost: cachedResponse.originalCost,
+              healthProfileLookup: {
+                fromProfile: true,
+                profileInsight: healthProfileResponse.insightType,
+                confidence: healthProfileResponse.confidence,
+                lastUpdated: healthProfileResponse.lastUpdated,
               },
               domainClassification,
               languageDetection: processedMessage.languageDetection,
               performance: {
                 processingTimeMs: Date.now() - startTime,
                 tokenCount: 0, // No new AI tokens used
-                retrievalTimeMs: 25, // Fast cache retrieval
+                retrievalTimeMs: 15, // Fast profile lookup
                 generationTimeMs: 0,
               },
               tokenUsage: {
                 tokensUsed: 0,
                 usedFreeTier: true,
-                cost: 0, // ZERO COST - Major savings!
+                cost: 0, // ZERO COST - Using stored health data!
               },
               routingDecision: {
                 level: 'L1',
-                provider: 'cached_health_insights',
-                model: 'health_insights_cache',
+                provider: 'health_profile',
+                model: 'personalized_health_profile',
               },
             },
           );
@@ -326,13 +321,13 @@ export class DomainScopedChatService {
           session.incrementMessageCount();
           await this.chatSessionRepository.save(session);
 
-          this.logger.log(`Level 1 cached response provided for user ${userId} - ZERO COST!`);
+          this.logger.log(`Health profile response provided for user ${userId} - ZERO COST using personalized data!`);
 
           return {
             success: true,
             sessionId: session.id,
             messageId: assistantMessage.id,
-            response: cachedResponse.response,
+            response: healthProfileResponse.response,
             metadata: {
               processingTime: Date.now() - startTime,
               domainClassification,
@@ -345,12 +340,12 @@ export class DomainScopedChatService {
               cost: 0, // ZERO COST!
               routingDecision: {
                 level: 'L1',
-                provider: 'cached_health_insights',
-                model: 'health_insights_cache',
+                provider: 'health_profile',
+                model: 'personalized_health_profile',
               },
             },
-            citations: ['Cached health insights from previous analysis'],
-            followUpQuestions: this.generateHealthInsightFollowUps(cachedResponse.category),
+            citations: ['Your personalized health profile'],
+            followUpQuestions: this.generateHealthProfileFollowUps(healthProfileResponse.insightType),
           };
         }
       }
@@ -388,16 +383,12 @@ export class DomainScopedChatService {
         domainClassification,
       );
 
-      // **LEVEL 1 CACHING**: Store Level 1 AI responses for future reuse
+      // **LEVEL 1 VALUE EXTRACTION**: Extract and store structured health data from AI response
       if (routingLevel === 'L1') {
         const aiCost = aiResponse.estimatedCost || 0.02; // Typical Level 1 cost
-        const category = this.mapDomainToInsightCategory(domainClassification.domain);
-        await this.storeLevel1Response(userId, processedMessage.content, processedResponse.content, category, aiCost);
-        this.logger.debug(`Stored Level 1 response for user ${userId} - Future queries will have ZERO cost!`);
-        
-        // Record the Level 1 request for rate limiting
-        await this.level1RateLimitService.recordRequest(userId);
-        this.logger.debug(`Recorded Level 1 API usage for rate limiting - user ${userId}`);
+        const analysisType = this.getAnalysisType(domainClassification.domain, processedMessage.content);
+        await this.extractAndStoreHealthValues(userId, processedMessage.content, processedResponse.content, analysisType, aiCost);
+        this.logger.debug(`Extracted and stored health values for user ${userId} - Building personalized health profile!`);
       }
 
       // Record token consumption
@@ -1026,276 +1017,145 @@ export class DomainScopedChatService {
   }
 
   /**
-   * Check Level 1 health insights cache for previous AI responses
-   * This implements the major cost-saving feature requested
+   * Check user's health profile for query insights
+   * Replaces the old Level 1 cache lookup with smart health profile querying
    */
-  private async checkLevel1Cache(
+  private async checkHealthProfileForQuery(
     userId: string,
     message: string,
     domainClassification: any
   ): Promise<{
     response: string;
-    insightId: string;
+    insightType: string;
     confidence: number;
-    category: string;
-    originalCost: number;
+    lastUpdated: Date;
   } | null> {
     try {
-      // Get cached health insights
-      const healthInsights = await this.healthInsightsService.getHealthInsights(userId);
+      // Get personalized response from user's health profile
+      const profileResponse = await this.userHealthProfileService.getHealthInsightForQuery(userId, message);
       
-      if (!healthInsights.cacheHit || healthInsights.insights.length === 0) {
-        return null; // No cache hit
-      }
-
-      // Find matching insight based on query content
-      const matchingInsight = this.findMatchingHealthInsight(message, healthInsights.insights);
-      
-      if (matchingInsight) {
-        this.logger.debug(`Level 1 cache hit for user ${userId} - Cost savings achieved!`);
+      if (profileResponse) {
+        this.logger.debug(`Health profile match found for user ${userId} - Using personalized data!`);
+        
+        // Get stats for metadata
+        const stats = await this.userHealthProfileService.getHealthProfileStats(userId);
         
         return {
-          response: this.formatHealthInsightResponse(matchingInsight, message),
-          insightId: matchingInsight.id,
-          confidence: matchingInsight.metadata?.aiMetadata?.confidence || 0.9,
-          category: matchingInsight.category,
-          originalCost: matchingInsight.metadata?.aiMetadata?.cost || 0.02,
+          response: profileResponse,
+          insightType: this.determineInsightType(message),
+          confidence: 0.95, // High confidence since it's user's own data
+          lastUpdated: stats.lastUpdated,
         };
       }
 
       return null;
     } catch (error) {
-      this.logger.error(`Error checking Level 1 cache: ${error.message}`);
+      this.logger.error(`Error checking health profile for query: ${error.message}`);
       return null;
     }
   }
 
   /**
-   * Find health insight that matches the user's query
+   * Extract and store health values from Level 1 AI response
+   * This builds the user's personalized health profile over time
    */
-  private findMatchingHealthInsight(message: string, insights: HealthInsight[]): HealthInsight | null {
-    const messageLower = message.toLowerCase();
-    
-    // Direct matches for different query types
-    const queryPatterns = [
-      // Micronutrient queries
-      { pattern: ['vitamin d', 'deficient', 'lacking'], category: InsightCategory.MICRONUTRIENT_DEFICIENCY },
-      { pattern: ['iron', 'deficiency', 'anemia'], category: InsightCategory.MICRONUTRIENT_DEFICIENCY },
-      { pattern: ['b12', 'vitamin b12', 'deficiency'], category: InsightCategory.MICRONUTRIENT_DEFICIENCY },
-      { pattern: ['micronutrient', 'nutrient', 'lacking', 'deficient'], category: InsightCategory.MICRONUTRIENT_DEFICIENCY },
+  private async extractAndStoreHealthValues(
+    userId: string,
+    query: string,
+    aiResponse: string,
+    analysisType: string,
+    aiCost: number,
+  ): Promise<void> {
+    try {
+      // Extract structured health data from AI response
+      await this.userHealthProfileService.extractAndStoreHealthValues(
+        userId,
+        aiResponse,
+        analysisType,
+        0.9, // High confidence for AI analysis
+        aiCost,
+        DataSource.AI_ANALYSIS
+      );
       
-      // Health condition queries
-      { pattern: ['health condition', 'condition', 'diagnosis'], category: InsightCategory.HEALTH_CONDITION },
-      { pattern: ['cholesterol', 'high cholesterol'], category: InsightCategory.HEALTH_CONDITION },
-      { pattern: ['diabetes', 'blood sugar'], category: InsightCategory.HEALTH_CONDITION },
-      
-      // Biomarker queries
-      { pattern: ['blood test', 'lab results', 'biomarker'], category: InsightCategory.BIOMARKER_ANALYSIS },
-      { pattern: ['liver function', 'alt', 'ast'], category: InsightCategory.BIOMARKER_ANALYSIS },
-      
-      // Health summary queries
-      { pattern: ['health summary', 'overall health', 'health status'], category: InsightCategory.HEALTH_SUMMARY },
-      { pattern: ['report says', 'my report', 'summarize'], category: InsightCategory.HEALTH_SUMMARY },
-    ];
-
-    // Find best matching insight
-    for (const pattern of queryPatterns) {
-      const hasPatternMatch = pattern.pattern.some(p => messageLower.includes(p));
-      if (hasPatternMatch) {
-        const matchingInsights = insights.filter(i => i.category === pattern.category && i.isActive);
-        if (matchingInsights.length > 0) {
-          // Return most recent matching insight
-          return matchingInsights.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
-        }
-      }
+      this.logger.debug(`Successfully extracted health values for user ${userId} - Profile enhanced!`);
+    } catch (error) {
+      this.logger.error(`Error extracting health values: ${error.message}`);
     }
-
-    // Fallback: find any relevant insight based on title/content matching
-    for (const insight of insights) {
-      if (!insight.isActive) continue;
-      
-      const titleLower = insight.title.toLowerCase();
-      const insightLower = insight.insight.toLowerCase();
-      
-      // Check if query relates to this insight
-      const queryWords = messageLower.split(' ').filter(word => word.length > 3);
-      const relevanceScore = queryWords.reduce((score, word) => {
-        if (titleLower.includes(word) || insightLower.includes(word)) {
-          return score + 1;
-        }
-        return score;
-      }, 0);
-      
-      if (relevanceScore >= 2) { // At least 2 matching words
-        return insight;
-      }
-    }
-
-    return null;
   }
 
   /**
-   * Format cached health insight as a natural response
+   * Generate follow-up questions based on health profile insight type  
    */
-  private formatHealthInsightResponse(insight: HealthInsight, originalQuery: string): string {
-    const queryLower = originalQuery.toLowerCase();
-    
-    // Customize response based on query type
-    if (queryLower.includes('report says') || queryLower.includes('summarize')) {
-      return `Based on your health report analysis: ${insight.insight}\n\n${insight.recommendation ? `Recommendation: ${insight.recommendation}` : ''}`;
-    }
-    
-    if (queryLower.includes('deficient') || queryLower.includes('lacking')) {
-      if (insight.category === InsightCategory.MICRONUTRIENT_DEFICIENCY) {
-        return `According to your health report, ${insight.insight}\n\n${insight.recommendation ? `To address this: ${insight.recommendation}` : ''}`;
-      }
-    }
-    
-    if (queryLower.includes('condition') || queryLower.includes('health issue')) {
-      return `Based on your health analysis: ${insight.insight}\n\n${insight.recommendation ? `Management advice: ${insight.recommendation}` : ''}`;
-    }
-    
-    // Default formatting
-    return `From your health report analysis:\n\n**${insight.title}**\n${insight.insight}\n\n${insight.recommendation ? `💡 **Recommendation:** ${insight.recommendation}` : ''}`;
-  }
-
-  /**
-   * Generate follow-up questions based on health insight category  
-   */
-  private generateHealthInsightFollowUps(category: string): string[] {
+  private generateHealthProfileFollowUps(insightType: string): string[] {
     const followUpMap = {
-      [InsightCategory.MICRONUTRIENT_DEFICIENCY]: [
+      'micronutrient_deficiency': [
         'How can I improve this nutrient level naturally?',
         'What foods are rich in this nutrient?',
         'Should I consider supplements?',
         'How long will it take to improve this deficiency?'
       ],
-      [InsightCategory.HEALTH_CONDITION]: [
-        'What lifestyle changes can help with this condition?',
-        'How can I monitor this condition at home?',
-        'What diet modifications would be beneficial?'
-      ],
-      [InsightCategory.BIOMARKER_ANALYSIS]: [
+      'biomarker_analysis': [
         'How often should I test this biomarker?',
         'What factors can affect this biomarker?',
         'Are there any trends I should watch?'
       ],
-      [InsightCategory.HEALTH_SUMMARY]: [
+      'health_condition': [
+        'What lifestyle changes can help with this condition?',
+        'How can I monitor this condition at home?',
+        'What diet modifications would be beneficial?'
+      ],
+      'health_summary': [
         'What are my priority health areas to focus on?',
         'How can I track my overall health progress?',
         'What should I discuss with my doctor?'
       ]
     };
 
-    return followUpMap[category] || [
-      'Can you create a diet plan based on my health report?',
-      'What other health insights can you share?',
-      'How can I improve my overall health?'
+    return followUpMap[insightType] || [
+      'Can you create a diet plan based on my health profile?',
+      'What other health insights can you share from my data?',
+      'How can I improve my overall health score?'
     ];
   }
 
   /**
-   * Store Level 1 AI response for future caching
-   * Called after new Level 1 AI responses are generated
+   * Determine the type of analysis based on domain and query content
    */
-  private async storeLevel1Response(
-    userId: string, 
-    message: string, 
-    aiResponse: string,
-    category: InsightCategory,
-    aiCost: number
-  ): Promise<void> {
-    try {
-      // Extract key insights from AI response to store as structured data
-      const insights = this.extractInsightsFromAIResponse(aiResponse, message, category);
-      
-      if (insights.length > 0) {
-        await this.healthInsightsService.storeHealthAnalysis(userId, insights, undefined, aiCost);
-        this.logger.debug(`Stored ${insights.length} Level 1 insights for future caching`);
-      }
-    } catch (error) {
-      this.logger.error(`Error storing Level 1 response: ${error.message}`);
+  private getAnalysisType(domain: string, message: string): string {
+    const messageLower = message.toLowerCase();
+    
+    if (messageLower.includes('micronutrient') || messageLower.includes('vitamin') || messageLower.includes('mineral')) {
+      return 'micronutrient_analysis';
     }
+    if (messageLower.includes('biomarker') || messageLower.includes('blood test') || messageLower.includes('lab result')) {
+      return 'biomarker_analysis';
+    }
+    if (messageLower.includes('condition') || messageLower.includes('diagnosis') || messageLower.includes('disease')) {
+      return 'health_condition_analysis';
+    }
+    if (messageLower.includes('summary') || messageLower.includes('overall') || messageLower.includes('report says')) {
+      return 'health_summary';
+    }
+    
+    return domain === 'health_reports' ? 'health_report_analysis' : 'general_health_analysis';
   }
 
   /**
-   * Extract structured insights from AI response text
+   * Determine insight type from query for follow-up generation
    */
-  private extractInsightsFromAIResponse(
-    response: string, 
-    originalQuery: string, 
-    category: InsightCategory
-  ): Partial<HealthInsight>[] {
-    // This is a simplified extraction - in production would use more sophisticated NLP
-    const insights: Partial<HealthInsight>[] = [];
+  private determineInsightType(message: string): string {
+    const messageLower = message.toLowerCase();
     
-    // Extract main insight and recommendation
-    const sentences = response.split('.').map(s => s.trim()).filter(s => s.length > 10);
-    
-    if (sentences.length >= 2) {
-      const insight = sentences.slice(0, Math.ceil(sentences.length / 2)).join('. ');
-      const recommendation = sentences.slice(Math.ceil(sentences.length / 2)).join('. ');
-      
-      insights.push({
-        category,
-        title: this.generateInsightTitle(originalQuery, category),
-        insight: insight + '.',
-        recommendation: recommendation ? recommendation + '.' : undefined,
-        severity: this.determineSeverityFromResponse(response),
-      });
+    if (messageLower.includes('deficient') || messageLower.includes('vitamin') || messageLower.includes('mineral')) {
+      return 'micronutrient_deficiency';
+    }
+    if (messageLower.includes('biomarker') || messageLower.includes('blood') || messageLower.includes('test')) {
+      return 'biomarker_analysis';
+    }
+    if (messageLower.includes('condition') || messageLower.includes('disease')) {
+      return 'health_condition';
     }
     
-    return insights;
-  }
-
-  private generateInsightTitle(query: string, category: InsightCategory): string {
-    const queryLower = query.toLowerCase();
-    
-    if (queryLower.includes('vitamin d')) return 'Vitamin D Analysis';
-    if (queryLower.includes('iron')) return 'Iron Status Analysis';
-    if (queryLower.includes('b12')) return 'Vitamin B12 Analysis';
-    if (queryLower.includes('cholesterol')) return 'Cholesterol Analysis';
-    if (queryLower.includes('diabetes') || queryLower.includes('blood sugar')) return 'Blood Sugar Analysis';
-    
-    // Default titles by category
-    const defaultTitles = {
-      [InsightCategory.MICRONUTRIENT_DEFICIENCY]: 'Nutrient Analysis',
-      [InsightCategory.BIOMARKER_ANALYSIS]: 'Biomarker Analysis', 
-      [InsightCategory.HEALTH_CONDITION]: 'Health Condition Analysis',
-      [InsightCategory.DIETARY_RECOMMENDATION]: 'Dietary Recommendations',
-      [InsightCategory.HEALTH_SUMMARY]: 'Health Summary'
-    };
-    
-    return defaultTitles[category] || 'Health Analysis';
-  }
-
-  private determineSeverityFromResponse(response: string): InsightSeverity {
-    const responseLower = response.toLowerCase();
-    
-    if (responseLower.includes('urgent') || responseLower.includes('critical') || responseLower.includes('severe')) {
-      return InsightSeverity.URGENT;
-    }
-    if (responseLower.includes('high') || responseLower.includes('elevated') || responseLower.includes('concerning')) {
-      return InsightSeverity.HIGH;
-    }
-    if (responseLower.includes('moderate') || responseLower.includes('mild')) {
-      return InsightSeverity.MEDIUM;
-    }
-    
-    return InsightSeverity.LOW;
-  }
-
-  /**
-   * Map domain classification to insight category
-   */
-  private mapDomainToInsightCategory(domain: string): InsightCategory {
-    const domainMap = {
-      'health_reports': InsightCategory.HEALTH_SUMMARY,
-      'health': InsightCategory.BIOMARKER_ANALYSIS,
-      'nutrition': InsightCategory.DIETARY_RECOMMENDATION,
-      'micronutrients': InsightCategory.MICRONUTRIENT_DEFICIENCY,
-    };
-    
-    return domainMap[domain] || InsightCategory.HEALTH_SUMMARY;
+    return 'health_summary';
   }
 }

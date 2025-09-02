@@ -11,7 +11,6 @@ import { ChatSessionService } from './services/chat-session.service';
 import { SmartQueryCacheService } from './services/smart-query-cache.service';
 import { SmartCacheSchedulerService } from './services/smart-cache-scheduler.service';
 import { HealthInsightsService } from './services/health-insights.service';
-import { Level1RateLimitService } from './services/level1-rate-limit.service';
 import { ChatRateLimitInterceptor } from './interceptors/chat-rate-limit.interceptor';
 
 import { ChatSession } from './entities/chat-session.entity';
@@ -63,7 +62,6 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     SmartQueryCacheService,
     SmartCacheSchedulerService,
     HealthInsightsService,
-    Level1RateLimitService,
     ChatRateLimitInterceptor,
   ],
   exports: [
@@ -74,7 +72,6 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     SmartQueryCacheService,
     SmartCacheSchedulerService,
     HealthInsightsService,
-    Level1RateLimitService,
   ],
 })
 export class ChatModule {}

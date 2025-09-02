@@ -12,6 +12,7 @@ import { UserProfile } from './user-profile.entity';
 import { UserConsent } from './user-consent.entity';
 import { UserPreferences } from './user-preferences.entity';
 import { UserGoals } from './user-goals.entity';
+import { UserHealthProfile } from './user-health-profile.entity';
 
 export enum UserRole {
   USER = 'user',
@@ -150,6 +151,9 @@ export class User {
 
   @OneToOne(() => UserGoals, (goals) => goals.user, { cascade: true })
   goals: UserGoals;
+
+  @OneToOne(() => UserHealthProfile, (healthProfile) => healthProfile.user, { cascade: true })
+  healthProfile: UserHealthProfile;
 
   // OAuth accounts relationship - using lazy loading to avoid circular dependencies
   @OneToMany('UserOAuthAccount', (oauthAccount: any) => oauthAccount.user, { cascade: true })
