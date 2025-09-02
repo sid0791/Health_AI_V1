@@ -30,7 +30,6 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User } from '../../auth/decorators/user.decorator';
 import { User as UserEntity } from '../../users/entities/user.entity';
 import { ChatRateLimitInterceptor } from '../interceptors/chat-rate-limit.interceptor';
-import { Level1AIRateLimitInterceptor } from '../interceptors/level1-ai-rate-limit.interceptor';
 import { TokenManagementService } from '../../users/services/token-management.service';
 
 import {
@@ -132,19 +131,19 @@ export class ChatController {
   ) {}
 
   /**
-   * Send a message to the AI assistant with Level 1/Level 2 routing
+   * Send a message to the AI assistant
    */
   @Post('message')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(ChatRateLimitInterceptor)
   @ApiOperation({
-    summary: 'Send message to AI assistant with Level 1/Level 2 routing',
-    description: 'Send a message to the AI assistant. Health-critical queries use Level 1 (highest accuracy, rate limited), general queries use Level 2 (cost-optimized)',
+    summary: 'Send message to AI assistant',
+    description: 'Send a message to the domain-scoped AI assistant with RAG context',
   })
   @ApiBody({ type: SendMessageDto })
   @ApiResponse({
     status: 200,
-    description: 'Message processed successfully with appropriate AI routing level',
+    description: 'Message processed successfully',
   })
   @ApiResponse({
     status: 400,
@@ -152,7 +151,7 @@ export class ChatController {
   })
   @ApiResponse({
     status: 429,
-    description: 'Rate limit exceeded (Level 1 health queries have stricter limits)',
+    description: 'Rate limit exceeded',
   })
   async sendMessage(
     @User() user: UserEntity,
@@ -173,268 +172,6 @@ export class ChatController {
     } catch (error) {
       this.logger.error(`Error processing message for user ${user.id}:`, error);
       throw new BadRequestException(error.message || 'Failed to process message');
-    }
-  }
-
-  /**
-   * Send a health analysis message (Level 1 routing with enhanced rate limiting)
-   */
-  @Post('health-analysis')
-  @HttpCode(HttpStatus.OK)
-  @UseInterceptors(Level1AIRateLimitInterceptor)
-  @ApiOperation({
-    summary: 'Send health analysis message (Level 1 AI with enhanced rate limiting)',
-    description: 'Send a health-critical analysis request. Uses Level 1 AI routing (highest accuracy) with strict rate limiting for health data protection.',
-  })
-  @ApiBody({ type: SendMessageDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Health analysis completed successfully',
-  })
-  @ApiResponse({
-    status: 429,
-    description: 'Level 1 AI rate limit exceeded - health analysis requests are strictly limited',
-  })
-  async sendHealthAnalysisMessage(
-    @User() user: UserEntity,
-    @Body(ValidationPipe) sendMessageDto: SendMessageDto,
-  ): Promise<ChatResponse> {
-    try {
-      this.logger.log(`Processing Level 1 health analysis for user ${user.id}`);
-
-      const chatRequest: ChatRequest = {
-        message: sendMessageDto.message,
-        sessionId: sendMessageDto.sessionId,
-        sessionType: sendMessageDto.sessionType || ChatSessionType.HEALTH_CONSULTATION,
-        context: { ...sendMessageDto.context, forceLevel1: true },
-        userPreferences: sendMessageDto.userPreferences,
-      };
-
-      const response = await this.domainScopedChatService.processMessage(user.id, chatRequest);
-      
-      // Ensure Level 1 routing was used
-      if (response.metadata.routingDecision.level !== 'L1') {
-        this.logger.warn(`Health analysis request did not use Level 1 routing for user ${user.id}`);
-      }
-
-      return response;
-    } catch (error) {
-      this.logger.error(`Error processing Level 1 health analysis for user ${user.id}:`, error);
-      throw new BadRequestException(error.message || 'Failed to process health analysis');
-    }
-  }
-
-  /**
-   * Get user's health insights from cached analysis
-   */
-  @Get('health-insights')
-  @ApiOperation({
-    summary: 'Get cached health insights',
-    description: 'Retrieve all cached health analysis insights for the user',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Health insights retrieved successfully',
-  })
-  async getHealthInsights(@User() user: UserEntity): Promise<any> {
-    try {
-      this.logger.log(`Retrieving health insights for user ${user.id}`);
-
-      const insights = await this.healthAnalysisCacheService.getUserHealthInsights(user.id);
-      const nutritionData = await this.healthAnalysisCacheService.getNutritionDeficiencies(user.id);
-      const cacheStats = this.healthAnalysisCacheService.getCacheStats();
-
-      return {
-        success: true,
-        insights: Object.fromEntries(insights),
-        nutritionDeficiencies: nutritionData.deficiencies,
-        nutritionExcesses: nutritionData.excesses,
-        timelinedRecommendations: nutritionData.timelinedRecommendations,
-        cacheStats,
-        recommendations: this.getHealthInsightsRecommendations(nutritionData),
-      };
-    } catch (error) {
-      this.logger.error(`Error retrieving health insights for user ${user.id}:`, error);
-      throw new BadRequestException(error.message || 'Failed to retrieve health insights');
-    }
-  }
-
-  /**
-   * Get user's timeline diet plan
-   */
-  @Get('diet-plan')
-  @ApiOperation({
-    summary: 'Get timeline-based diet plan',
-    description: 'Retrieve the user\'s personalized timeline diet plan based on health analysis',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Diet plan retrieved successfully',
-  })
-  async getDietPlan(@User() user: UserEntity): Promise<any> {
-    try {
-      this.logger.log(`Retrieving diet plan for user ${user.id}`);
-
-      const dietPlan = await this.timelineDietPlanningService.getCurrentDietPlan(user.id);
-      
-      if (!dietPlan) {
-        return {
-          success: true,
-          hasPlan: false,
-          message: 'No active diet plan found. Complete a health analysis to generate a personalized plan.',
-          suggestedActions: [
-            'Upload health reports for analysis',
-            'Complete health questionnaire',
-            'Schedule health consultation',
-          ],
-        };
-      }
-
-      const transitionCheck = await this.timelineDietPlanningService.checkMaintenanceTransition(user.id);
-
-      return {
-        success: true,
-        hasPlan: true,
-        dietPlan: {
-          id: dietPlan.id,
-          planName: dietPlan.planName,
-          healthGoals: dietPlan.healthGoals,
-          currentPhase: this.getCurrentPhaseInfo(dietPlan),
-          totalDuration: dietPlan.totalDuration,
-          expectedOutcomes: dietPlan.expectedOutcomes,
-          upcomingReminders: this.getUpcomingReminders(dietPlan),
-          progress: this.calculateDietPlanProgress(dietPlan),
-        },
-        transitionStatus: transitionCheck,
-        recommendations: this.getDietPlanRecommendations(dietPlan, transitionCheck),
-      };
-    } catch (error) {
-      this.logger.error(`Error retrieving diet plan for user ${user.id}:`, error);
-      throw new BadRequestException(error.message || 'Failed to retrieve diet plan');
-    }
-  }
-
-  /**
-   * Generate new timeline diet plan
-   */
-  @Post('diet-plan/generate')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: 'Generate new timeline diet plan',
-    description: 'Generate a new personalized timeline diet plan based on current health analysis',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Diet plan generated successfully',
-  })
-  async generateDietPlan(@User() user: UserEntity): Promise<any> {
-    try {
-      this.logger.log(`Generating new diet plan for user ${user.id}`);
-
-      const dietPlan = await this.timelineDietPlanningService.generateTimelineDietPlan(user.id);
-
-      return {
-        success: true,
-        message: 'Personalized timeline diet plan generated successfully',
-        dietPlan: {
-          id: dietPlan.id,
-          planName: dietPlan.planName,
-          healthGoals: dietPlan.healthGoals,
-          totalDuration: dietPlan.totalDuration,
-          phases: dietPlan.phases.length,
-          basedOnInsights: dietPlan.basedOnInsights,
-          expectedOutcomes: dietPlan.expectedOutcomes,
-        },
-        nextSteps: [
-          'Review your personalized diet plan phases',
-          'Start with Phase 1 dietary guidelines',
-          'Track your adherence and progress',
-          'Follow up on scheduled health reminders',
-        ],
-      };
-    } catch (error) {
-      this.logger.error(`Error generating diet plan for user ${user.id}:`, error);
-      throw new BadRequestException(error.message || 'Failed to generate diet plan');
-    }
-  }
-
-  /**
-   * Get health analysis cache statistics
-   */
-  @Get('health-cache/stats')
-  @ApiOperation({
-    summary: 'Get health analysis cache statistics',
-    description: 'Get statistics about cached health analyses and cost savings',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Cache statistics retrieved successfully',
-  })
-  async getHealthCacheStats(@User() user: UserEntity): Promise<any> {
-    try {
-      this.logger.log(`Retrieving health cache stats for user ${user.id}`);
-
-      const cacheStats = this.healthAnalysisCacheService.getCacheStats();
-      const userInsights = await this.healthAnalysisCacheService.getUserHealthInsights(user.id);
-
-      // Calculate estimated cost savings
-      const estimatedSavings = cacheStats.hitRate * cacheStats.activeEntries * 0.05; // Assume $0.05 per Level 1 analysis
-
-      return {
-        success: true,
-        cacheStats,
-        userStats: {
-          cachedAnalyses: userInsights.size,
-          estimatedCostSavings: estimatedSavings,
-        },
-        performance: {
-          description: 'Health analysis cache provides instant responses for previously analyzed health data',
-          benefits: [
-            'Instant health insights without AI processing delays',
-            'Significant cost savings on repeated health queries',
-            'Consistent analysis results for same health data',
-            'Reduced load on Level 1 AI resources',
-          ],
-        },
-        recommendations: this.getCacheOptimizationRecommendations(cacheStats, userInsights.size),
-      };
-    } catch (error) {
-      this.logger.error(`Error retrieving cache stats for user ${user.id}:`, error);
-      throw new BadRequestException(error.message || 'Failed to retrieve cache statistics');
-    }
-  }
-
-  /**
-   * Invalidate health analysis cache
-   */
-  @Post('health-cache/invalidate')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Invalidate health analysis cache',
-    description: 'Clear cached health analysis to force fresh analysis with new data',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Cache invalidated successfully',
-  })
-  async invalidateHealthCache(
-    @User() user: UserEntity,
-    @Body() body: { healthReportId?: string },
-  ): Promise<any> {
-    try {
-      this.logger.log(`Invalidating health cache for user ${user.id}`);
-
-      await this.healthAnalysisCacheService.invalidateHealthReportCache(user.id, body.healthReportId);
-
-      return {
-        success: true,
-        message: 'Health analysis cache invalidated successfully',
-        impact: 'Next health-related queries will generate fresh analysis',
-        recommendation: 'This will result in higher accuracy but increased processing time and cost for next analysis',
-      };
-    } catch (error) {
-      this.logger.error(`Error invalidating health cache for user ${user.id}:`, error);
-      throw new BadRequestException(error.message || 'Failed to invalidate health cache');
     }
   }
 
@@ -1025,161 +762,30 @@ export class ChatController {
   }
 
   /**
-   * Get health insights recommendations
+   * Get cache recommendations based on analytics
    */
-  private getHealthInsightsRecommendations(nutritionData: any): string[] {
+  private getCacheRecommendations(analytics: any): string[] {
     const recommendations = [];
 
-    if (nutritionData.deficiencies.length > 0) {
+    if (analytics.localDataCoverage > 0.7) {
       recommendations.push(
-        `You have ${nutritionData.deficiencies.length} nutrient deficiencies that can be addressed through targeted diet planning.`,
+        'Great! Your health data is helping us answer most questions quickly without AI calls.',
       );
+    } else if (analytics.localDataCoverage < 0.3) {
       recommendations.push(
-        'Consider generating a timeline diet plan to systematically address these deficiencies.',
-      );
-    }
-
-    if (nutritionData.timelinedRecommendations.length > 0) {
-      const shortestTimeline = Math.min(...nutritionData.timelinedRecommendations.map(r => r.targetDays));
-      recommendations.push(
-        `Some improvements can be seen as early as ${shortestTimeline} days with targeted dietary changes.`,
+        'Consider syncing more health data from your devices for faster responses.',
       );
     }
 
-    if (nutritionData.excesses.length > 0) {
+    if (analytics.cacheHitRate > 0.8) {
       recommendations.push(
-        `You have ${nutritionData.excesses.length} parameters that exceed optimal ranges and should be reduced.`,
+        'Excellent cache performance! Your frequently asked questions are being answered instantly.',
+      );
+    } else if (analytics.cacheHitRate < 0.5) {
+      recommendations.push(
+        "Cache performance could be better. We're learning your patterns to improve response times.",
       );
     }
-
-    if (recommendations.length === 0) {
-      recommendations.push('Your current health analysis shows balanced nutrition levels.');
-      recommendations.push('Continue with your current dietary approach and regular health monitoring.');
-    }
-
-    return recommendations;
-  }
-
-  /**
-   * Get current phase information for diet plan
-   */
-  private getCurrentPhaseInfo(dietPlan: any): any {
-    const now = new Date();
-    const currentPhase = dietPlan.phases.find(phase => phase.startDate <= now && phase.endDate >= now);
-    
-    if (!currentPhase) {
-      return null;
-    }
-
-    const daysSinceStart = Math.floor((now.getTime() - currentPhase.startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const daysRemaining = Math.floor((currentPhase.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-    return {
-      phaseNumber: currentPhase.phaseNumber,
-      name: currentPhase.name,
-      currentDay: Math.max(1, daysSinceStart + 1),
-      totalDays: currentPhase.duration,
-      daysRemaining: Math.max(0, daysRemaining),
-      primaryFocus: currentPhase.primaryFocus,
-      dietaryGuidelines: currentPhase.dietaryGuidelines,
-      expectedProgress: currentPhase.expectedProgress,
-      progressPercentage: Math.min(100, Math.max(0, ((daysSinceStart + 1) / currentPhase.duration) * 100)),
-    };
-  }
-
-  /**
-   * Get upcoming reminders for diet plan
-   */
-  private getUpcomingReminders(dietPlan: any): any[] {
-    const now = new Date();
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    
-    return dietPlan.recheckReminders
-      .filter(reminder => reminder.scheduledDate >= now && reminder.scheduledDate <= nextWeek)
-      .map(reminder => ({
-        type: reminder.type,
-        description: reminder.description,
-        scheduledDate: reminder.scheduledDate,
-        daysUntil: Math.ceil((reminder.scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
-      }));
-  }
-
-  /**
-   * Calculate diet plan progress
-   */
-  private calculateDietPlanProgress(dietPlan: any): any {
-    const now = new Date();
-    const startDate = dietPlan.createdAt;
-    const totalDuration = dietPlan.totalDuration;
-    
-    const daysElapsed = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const progressPercentage = Math.min(100, Math.max(0, (daysElapsed / totalDuration) * 100));
-    
-    const completedPhases = dietPlan.phases.filter(phase => phase.endDate < now);
-    const totalPhases = dietPlan.phases.length;
-
-    return {
-      daysElapsed,
-      totalDays: totalDuration,
-      progressPercentage: Math.round(progressPercentage),
-      phasesCompleted: completedPhases.length,
-      totalPhases,
-      phaseProgressPercentage: Math.round((completedPhases.length / totalPhases) * 100),
-      estimatedCompletion: new Date(startDate.getTime() + totalDuration * 24 * 60 * 60 * 1000),
-    };
-  }
-
-  /**
-   * Get diet plan recommendations
-   */
-  private getDietPlanRecommendations(dietPlan: any, transitionCheck: any): string[] {
-    const recommendations = [];
-
-    if (transitionCheck.shouldTransition) {
-      recommendations.push('🎉 Congratulations! You\'re ready to transition to maintenance mode.');
-      recommendations.push('Schedule a comprehensive health test to verify your improvements.');
-      recommendations.push('Consider setting new health optimization goals.');
-    } else {
-      const currentPhase = this.getCurrentPhaseInfo(dietPlan);
-      if (currentPhase) {
-        recommendations.push(`Continue with Phase ${currentPhase.phaseNumber} for ${currentPhase.daysRemaining} more days.`);
-        recommendations.push(`Focus on: ${currentPhase.primaryFocus.join(', ')}.`);
-      }
-      
-      recommendations.push('Track your adherence to dietary guidelines for better outcomes.');
-      recommendations.push('Monitor how you feel and any improvements in energy or symptoms.');
-    }
-
-    const upcomingReminders = this.getUpcomingReminders(dietPlan);
-    if (upcomingReminders.length > 0) {
-      recommendations.push(`You have ${upcomingReminders.length} upcoming reminders in the next week.`);
-    }
-
-    return recommendations;
-  }
-
-  /**
-   * Get cache optimization recommendations
-   */
-  private getCacheOptimizationRecommendations(cacheStats: any, userCachedAnalyses: number): string[] {
-    const recommendations = [];
-
-    if (cacheStats.hitRate > 0.8) {
-      recommendations.push('Excellent cache performance! Your health queries are being answered efficiently.');
-    } else if (cacheStats.hitRate < 0.5) {
-      recommendations.push('Cache hit rate could be improved. More health analysis will build up your cache.');
-    }
-
-    if (userCachedAnalyses < 3) {
-      recommendations.push('Upload more health reports to build comprehensive analysis cache.');
-      recommendations.push('Complete health questionnaires to expand your health insights.');
-    }
-
-    if (cacheStats.expiredEntries > cacheStats.activeEntries * 0.5) {
-      recommendations.push('Some cached analyses have expired. Upload recent health data for fresh insights.');
-    }
-
-    recommendations.push('Regular health data updates keep your analysis current and actionable.');
 
     return recommendations;
   }
@@ -1214,4 +820,261 @@ export class ChatController {
 
     return recommendations;
   }
+
+  // ============= NEW ENDPOINTS FOR LEVEL 1/LEVEL 2 AI ROUTING =============
+
+  /**
+   * Get cached health insights
+   */
+  @Get('health-insights')
+  @ApiOperation({
+    summary: 'Get cached health analysis insights',
+    description: 'Retrieve stored health analysis insights for diet planning and health queries',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Health insights retrieved successfully',
+  })
+  async getHealthInsights(@User() user: UserEntity): Promise<any> {
+    try {
+      this.logger.log(`Retrieving health insights for user ${user.id}`);
+
+      const insights = await this.healthAnalysisCacheService.getHealthInsights(user.id);
+      const cacheStats = await this.healthAnalysisCacheService.getCacheStats(user.id);
+
+      return {
+        success: true,
+        insights,
+        cacheStats,
+        message: 'Health insights retrieved from cached analysis',
+      };
+    } catch (error) {
+      this.logger.error(`Error retrieving health insights for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to retrieve health insights');
+    }
+  }
+
+  /**
+   * Get personalized diet plan based on cached health analysis
+   */
+  @Get('diet-plan')
+  @ApiOperation({
+    summary: 'Get timeline-based diet plan',
+    description: 'Retrieve personalized diet plan with progress tracking based on cached health insights',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Diet plan retrieved successfully',
+  })
+  async getDietPlan(@User() user: UserEntity): Promise<any> {
+    try {
+      this.logger.log(`Retrieving diet plan for user ${user.id}`);
+
+      const dietPlan = await this.timelineDietPlanningService.getDietPlan(user.id);
+      
+      if (!dietPlan) {
+        return {
+          success: false,
+          message: 'No active diet plan found. Upload health reports to generate a personalized plan.',
+          recommendation: 'Upload your latest health reports to get started with personalized nutrition planning.',
+        };
+      }
+
+      // Check for phase transitions
+      const transitionCheck = await this.timelineDietPlanningService.checkPhaseTransition(user.id);
+
+      return {
+        success: true,
+        dietPlan: {
+          id: dietPlan.id,
+          planName: dietPlan.planName,
+          phase: dietPlan.phase,
+          timeline: dietPlan.timeline,
+          targetConditions: dietPlan.targetConditions,
+          nutritionalFocus: dietPlan.nutritionalFocus,
+          meals: dietPlan.meals,
+          progressTracking: dietPlan.progressTracking,
+        },
+        phaseTransition: transitionCheck,
+        message: 'Diet plan retrieved successfully with current progress',
+      };
+    } catch (error) {
+      this.logger.error(`Error retrieving diet plan for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to retrieve diet plan');
+    }
+  }
+
+  /**
+   * Generate or regenerate personalized diet plan
+   */
+  @Post('diet-plan/generate')
+  @ApiOperation({
+    summary: 'Generate personalized diet plan',
+    description: 'Generate a new diet plan based on current health analysis cache',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        forceRefresh: { type: 'boolean', description: 'Force generation of new plan' },
+        preferences: {
+          type: 'object',
+          properties: {
+            dietaryRestrictions: { type: 'array', items: { type: 'string' } },
+            cuisinePreferences: { type: 'array', items: { type: 'string' } },
+            mealComplexity: { type: 'string', enum: ['simple', 'moderate', 'complex'] },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Diet plan generated successfully',
+  })
+  async generateDietPlan(
+    @User() user: UserEntity,
+    @Body() generateDto: { forceRefresh?: boolean; preferences?: any },
+  ): Promise<any> {
+    try {
+      this.logger.log(`Generating diet plan for user ${user.id}`);
+
+      const dietPlan = await this.timelineDietPlanningService.generateDietPlan({
+        userId: user.id,
+        forceRefresh: generateDto.forceRefresh,
+        preferences: generateDto.preferences,
+      });
+
+      return {
+        success: true,
+        dietPlan: {
+          id: dietPlan.id,
+          planName: dietPlan.planName,
+          phase: dietPlan.phase,
+          timeline: dietPlan.timeline,
+          targetConditions: dietPlan.targetConditions,
+          nutritionalFocus: dietPlan.nutritionalFocus,
+          meals: dietPlan.meals,
+          progressTracking: dietPlan.progressTracking,
+        },
+        message: 'Personalized diet plan generated successfully',
+        costSaving: 'This plan was generated using cached health analysis, saving AI processing costs',
+      };
+    } catch (error) {
+      this.logger.error(`Error generating diet plan for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to generate diet plan');
+    }
+  }
+
+  /**
+   * Transition diet plan to next phase
+   */
+  @Post('diet-plan/transition')
+  @ApiOperation({
+    summary: 'Transition to next diet plan phase',
+    description: 'Move to the next phase of the diet plan or extend current phase',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userChoice: { type: 'string', enum: ['continue', 'maintain', 'recheck'] },
+      },
+      required: ['userChoice'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Diet plan phase transitioned successfully',
+  })
+  async transitionDietPlan(
+    @User() user: UserEntity,
+    @Body() transitionDto: { userChoice: 'continue' | 'maintain' | 'recheck' },
+  ): Promise<any> {
+    try {
+      this.logger.log(`Transitioning diet plan for user ${user.id} - choice: ${transitionDto.userChoice}`);
+
+      const updatedPlan = await this.timelineDietPlanningService.transitionToNextPhase(
+        user.id,
+        transitionDto.userChoice,
+      );
+
+      return {
+        success: true,
+        dietPlan: {
+          id: updatedPlan.id,
+          planName: updatedPlan.planName,
+          phase: updatedPlan.phase,
+          timeline: updatedPlan.timeline,
+          targetConditions: updatedPlan.targetConditions,
+        },
+        message: `Diet plan ${transitionDto.userChoice === 'continue' ? 'transitioned to next phase' : transitionDto.userChoice === 'maintain' ? 'extended current phase' : 'updated with recheck recommendation'}`,
+      };
+    } catch (error) {
+      this.logger.error(`Error transitioning diet plan for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to transition diet plan');
+    }
+  }
+
+  /**
+   * Get health analysis cache statistics and cost savings
+   */
+  @Get('health-cache/stats')
+  @ApiOperation({
+    summary: 'Get health cache performance stats',
+    description: 'Retrieve cache performance metrics and cost savings from Level 1 AI caching',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Cache statistics retrieved successfully',
+  })
+  async getHealthCacheStats(@User() user: UserEntity): Promise<any> {
+    try {
+      this.logger.log(`Retrieving health cache stats for user ${user.id}`);
+
+      const cacheStats = await this.healthAnalysisCacheService.getCacheStats(user.id);
+
+      return {
+        success: true,
+        cacheStats,
+        recommendations: this.getHealthCacheRecommendations(cacheStats),
+        message: 'Health analysis cache statistics retrieved successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Error retrieving cache stats for user ${user.id}:`, error);
+      throw new BadRequestException(error.message || 'Failed to retrieve cache statistics');
+    }
+  }
+
+  /**
+   * Get health cache recommendations
+   */
+  private getHealthCacheRecommendations(cacheStats: any): string[] {
+    const recommendations = [];
+
+    if (cacheStats.validAnalyses > 0) {
+      recommendations.push(
+        `Great! You have ${cacheStats.validAnalyses} cached health analyses saving you approximately $${cacheStats.estimatedCostSavings.toFixed(2)} in AI processing costs.`,
+      );
+    } else {
+      recommendations.push(
+        'Upload your health reports to start building your health analysis cache and save on AI processing costs.',
+      );
+    }
+
+    if (cacheStats.expiredAnalyses > 0) {
+      recommendations.push(
+        `${cacheStats.expiredAnalyses} of your health analyses have expired. Consider uploading updated health reports.`,
+      );
+    }
+
+    if (cacheStats.cacheHitsSaved > 10) {
+      recommendations.push(
+        `Excellent! You've had ${cacheStats.cacheHitsSaved} cache hits, making your health queries instant and cost-free.`,
+      );
+    }
+
+    return recommendations;
+  }
+}
 }

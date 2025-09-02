@@ -11,6 +11,8 @@ import { RAGService } from './rag.service';
 import { HinglishNLPService } from './hinglish-nlp.service';
 import { ChatSessionService } from './chat-session.service';
 import { SmartQueryCacheService } from './smart-query-cache.service';
+import { HealthAnalysisCacheService } from './health-analysis-cache.service';
+import { TimelineDietPlanningService } from './timeline-diet-planning.service';
 
 // AI routing integration
 import { AIRoutingService, AIRoutingRequest } from '../../ai-routing/services/ai-routing.service';
@@ -25,18 +27,6 @@ import { TokenUsageType, TokenProvider } from '../../users/entities/user-token-u
 
 // DLP integration for privacy
 import { DLPService } from '../../auth/services/dlp.service';
-
-// Enhanced health analysis and timeline diet planning
-import {
-  HealthAnalysisCacheService,
-  HealthAnalysisType,
-  CachedAnalysisResult,
-} from './health-analysis-cache.service';
-import {
-  TimelineDietPlanningService,
-  DietAdaptationRequest,
-  TimelineDietPlan,
-} from './timeline-diet-planning.service';
 
 export interface ChatRequest {
   message: string;
@@ -139,7 +129,7 @@ export class DomainScopedChatService {
   ) {}
 
   /**
-   * Process a chat message with enhanced Level 1/Level 2 AI routing and health analysis caching
+   * Process a chat message with domain-scoped RAG and Level 1/Level 2 AI routing
    */
   async processMessage(userId: string, request: ChatRequest): Promise<ChatResponse> {
     const startTime = Date.now();
@@ -153,108 +143,73 @@ export class DomainScopedChatService {
       // Process the user's message with Hinglish NLP
       const processedMessage = await this.hinglishNLPService.processMessage(request.message);
 
-      // Classify domain and determine if this is a Level 1 (health-critical) or Level 2 (general) request
+      // Classify domain and determine routing level
       const domainClassification = await this.classifyDomain(processedMessage.content);
-      const aiRoutingLevel = this.determineAIRoutingLevel(domainClassification.domain);
+      const routingLevel = this.determineRoutingLevel(domainClassification.domain, processedMessage.content);
 
-      this.logger.debug(
-        `Domain: ${domainClassification.domain}, AI Level: ${aiRoutingLevel}, Confidence: ${domainClassification.confidence}`,
-      );
+      this.logger.log(`Domain: ${domainClassification.domain}, Routing Level: ${routingLevel}`);
 
-      // **LEVEL 1 ROUTING**: Health reports, biomarkers, deficiencies (highest accuracy + cached analysis)
-      if (aiRoutingLevel === 'L1') {
-        return await this.processLevel1HealthQuery(
-          userId,
-          session,
-          processedMessage,
-          domainClassification,
-          request,
-          startTime,
-        );
+      // **LEVEL 1 AI ROUTING** - Health-critical queries
+      if (routingLevel === 'L1') {
+        return await this.processLevel1Query(userId, session, request, processedMessage, domainClassification, startTime);
       }
 
-      // **LEVEL 2 ROUTING**: Diet plans, general wellness (cost-optimized + timeline-based planning)
-      return await this.processLevel2GeneralQuery(
-        userId,
-        session,
-        processedMessage,
-        domainClassification,
-        request,
-        startTime,
-      );
+      // **LEVEL 2 AI ROUTING** - Cost-optimized queries
+      return await this.processLevel2Query(userId, session, request, processedMessage, domainClassification, startTime);
+
     } catch (error) {
-      this.logger.error(`Error processing chat message for user ${userId}:`, error);
-      throw new BadRequestException(`Chat processing failed: ${error.message}`);
+      this.logger.error(`Error processing message for user ${userId}:`, error);
+      throw error;
     }
   }
 
   /**
-   * Process Level 1 (health-critical) queries with cached analysis and highest accuracy AI
+   * Process Level 1 (health-critical) queries with caching
    */
-  private async processLevel1HealthQuery(
+  private async processLevel1Query(
     userId: string,
     session: ChatSession,
+    request: ChatRequest,
     processedMessage: any,
     domainClassification: any,
-    request: ChatRequest,
     startTime: number,
   ): Promise<ChatResponse> {
-    this.logger.debug(`Processing Level 1 health query for user ${userId}`);
+    this.logger.log(`Processing Level 1 query for user ${userId}`);
 
-    // Determine the type of health analysis needed
-    const analysisType = this.mapDomainToAnalysisType(domainClassification.domain);
-
-    // **CHECK HEALTH ANALYSIS CACHE FIRST** - This is the key optimization
-    const cachedAnalysis = await this.healthAnalysisCacheService.getHealthAnalysis(
-      userId,
-      processedMessage.content,
-      analysisType,
-      request.context?.healthReportId,
-    );
-
-    // Create user message record
-    const userMessage = await this.createUserMessage(session, request.message, {
-      processedContent: processedMessage.content,
-      languageDetection: processedMessage.languageDetection,
-      domainClassification,
-      hinglishProcessing: processedMessage.metadata,
-      aiRoutingLevel: 'L1',
-      analysisType,
-    });
-
-    // If we have cached analysis, return it immediately (major cost & time savings)
-    if (cachedAnalysis.fromCache) {
-      this.logger.log(`Using cached Level 1 health analysis for user ${userId}: ${analysisType}`);
+    // **STEP 1: Check health analysis cache first**
+    const cacheHit = await this.checkHealthAnalysisCache(userId, processedMessage.content, domainClassification.domain);
+    
+    if (cacheHit) {
+      this.logger.log(`Cache hit for Level 1 query - user ${userId}`);
+      
+      // Create user message record
+      const userMessage = await this.createUserMessage(session, request.message, {
+        processedContent: processedMessage.content,
+        languageDetection: processedMessage.languageDetection,
+        domainClassification,
+        cacheHit: true,
+      });
 
       // Create assistant message with cached response
-      const assistantMessage = await this.createAssistantMessage(session, cachedAnalysis.response, {
-        healthAnalysisCache: {
-          fromCache: true,
-          analysisType: cachedAnalysis.analysisType,
-          confidence: cachedAnalysis.confidence,
-          lastAnalyzed: cachedAnalysis.lastAnalyzed,
-          validUntil: cachedAnalysis.validUntil,
+      const assistantMessage = await this.createAssistantMessage(
+        session,
+        cacheHit.response,
+        {
+          healthAnalysisCache: {
+            fromCache: true,
+            analysisType: cacheHit.analysisType,
+            cacheAge: cacheHit.cacheAge,
+          },
+          domainClassification,
+          languageDetection: processedMessage.languageDetection,
+          routingDecision: {
+            level: 'L1',
+            provider: 'cache',
+            model: 'health_analysis_cache',
+          },
+          cost: 0, // No cost for cached responses
         },
-        domainClassification,
-        languageDetection: processedMessage.languageDetection,
-        routingDecision: {
-          level: 'L1',
-          provider: 'cached_analysis',
-          model: cachedAnalysis.aiModel,
-        },
-        performance: {
-          processingTimeMs: Date.now() - startTime,
-          tokenCount: 0, // No new AI tokens used
-          retrievalTimeMs: 50, // Fast cache retrieval
-          generationTimeMs: 0,
-        },
-        tokenUsage: {
-          tokensUsed: 0,
-          usedFreeTier: true,
-          cost: 0,
-        },
-        healthInsights: cachedAnalysis.insights,
-      });
+      );
 
       // Update session activity
       session.incrementMessageCount();
@@ -264,141 +219,107 @@ export class DomainScopedChatService {
         success: true,
         sessionId: session.id,
         messageId: assistantMessage.id,
-        response: cachedAnalysis.response,
+        response: cacheHit.response,
         metadata: {
           processingTime: Date.now() - startTime,
           domainClassification,
           languageDetection: processedMessage.languageDetection,
-          ragContext: { documentsUsed: 0, sources: [] },
-          actionRequests: this.extractHealthActionRequests(cachedAnalysis.insights),
           cost: 0,
           routingDecision: {
             level: 'L1',
-            provider: 'cached_analysis',
-            model: cachedAnalysis.aiModel,
+            provider: 'cache',
+            model: 'health_analysis_cache',
           },
         },
-        citations: ['Cached health report analysis'],
-        followUpQuestions: this.generateHealthFollowUps(cachedAnalysis.insights),
+        citations: ['Cached health analysis'],
+        followUpQuestions: this.generateHealthFollowUps(domainClassification.domain),
       };
     }
 
-    // If no cached analysis, generate new Level 1 AI analysis (high cost but highest accuracy)
-    this.logger.debug(`No cached analysis found. Generating new Level 1 AI analysis for user ${userId}`);
-    
-    // This would be a full Level 1 AI call with highest accuracy routing
-    // For now, we return the newly generated analysis from the cache service
-    const assistantMessage = await this.createAssistantMessage(session, cachedAnalysis.response, {
-      healthAnalysisCache: {
-        fromCache: false,
-        analysisType: cachedAnalysis.analysisType,
-        confidence: cachedAnalysis.confidence,
-        lastAnalyzed: cachedAnalysis.lastAnalyzed,
-        validUntil: cachedAnalysis.validUntil,
-      },
-      domainClassification,
-      languageDetection: processedMessage.languageDetection,
-      routingDecision: {
-        level: 'L1',
-        provider: cachedAnalysis.aiProvider,
-        model: cachedAnalysis.aiModel,
-      },
-      performance: {
-        processingTimeMs: Date.now() - startTime,
-        tokenCount: 2500, // Typical Level 1 analysis cost
-        retrievalTimeMs: 200,
-        generationTimeMs: 3000, // Level 1 takes longer for accuracy
-      },
-      tokenUsage: {
-        tokensUsed: 2500,
-        usedFreeTier: false,
-        cost: 0.05, // Estimated Level 1 cost
-      },
-      healthInsights: cachedAnalysis.insights,
-    });
-
-    // Update session activity
-    session.incrementMessageCount();
-    await this.chatSessionRepository.save(session);
-
-    return {
-      success: true,
-      sessionId: session.id,
-      messageId: assistantMessage.id,
-      response: cachedAnalysis.response,
-      metadata: {
-        processingTime: Date.now() - startTime,
-        domainClassification,
-        languageDetection: processedMessage.languageDetection,
-        ragContext: { documentsUsed: 0, sources: [] },
-        actionRequests: this.extractHealthActionRequests(cachedAnalysis.insights),
-        cost: 0.05,
-        routingDecision: {
-          level: 'L1',
-          provider: cachedAnalysis.aiProvider,
-          model: cachedAnalysis.aiModel,
-        },
-      },
-      citations: ['New health report analysis'],
-      followUpQuestions: this.generateHealthFollowUps(cachedAnalysis.insights),
-    };
+    // **STEP 2: Process with AI and cache the result**
+    return await this.processLevel1WithAI(userId, session, request, processedMessage, domainClassification, startTime);
   }
 
   /**
-   * Process Level 2 (cost-optimized) queries with timeline-based diet planning
+   * Process Level 2 (cost-optimized) queries
    */
-  private async processLevel2GeneralQuery(
+  private async processLevel2Query(
     userId: string,
     session: ChatSession,
+    request: ChatRequest,
     processedMessage: any,
     domainClassification: any,
-    request: ChatRequest,
     startTime: number,
   ): Promise<ChatResponse> {
-    this.logger.debug(`Processing Level 2 general query for user ${userId}`);
+    this.logger.log(`Processing Level 2 query for user ${userId}`);
 
-    // **CHECK SMART QUERY CACHE FIRST** for Level 2 queries
+    // **STEP 1: Check if diet/meal planning query - use cached health insights**
+    if (this.isDietPlanningQuery(processedMessage.content)) {
+      return await this.processDietPlanningQuery(userId, session, request, processedMessage, domainClassification, startTime);
+    }
+
+    // **STEP 2: Check smart query cache**
     const smartResponse = await this.smartQueryCacheService.processQuery(
       userId,
       processedMessage.content,
       session.id,
     );
 
-    // Create user message record
-    const userMessage = await this.createUserMessage(session, request.message, {
-      processedContent: processedMessage.content,
-      languageDetection: processedMessage.languageDetection,
-      domainClassification,
-      hinglishProcessing: processedMessage.metadata,
-      aiRoutingLevel: 'L2',
-      smartCacheResult: smartResponse,
-    });
-
-    // If smart cache has the answer, use it
     if (smartResponse) {
-      this.logger.log(`Using Level 2 smart cache for user ${userId}`);
+      // Record that query was answered locally
+      await this.smartQueryCacheService.recordQuery(userId, request.message, true);
 
-      const assistantMessage = await this.createAssistantMessage(session, smartResponse.response, {
-        smartQueryCache: {
-          fromCache: smartResponse.fromCache,
-          dataSource: smartResponse.dataSource,
-          confidence: smartResponse.confidence,
-          category: smartResponse.category,
-        },
-        domainClassification,
+      // Create user message record
+      const userMessage = await this.createUserMessage(session, request.message, {
+        processedContent: processedMessage.content,
         languageDetection: processedMessage.languageDetection,
-        routingDecision: { level: 'L2', provider: 'smart_cache', model: 'local_data' },
-        performance: {
-          processingTimeMs: Date.now() - startTime,
-          tokenCount: 0,
-          retrievalTimeMs: 30,
-          generationTimeMs: 0,
-        },
-        tokenUsage: { tokensUsed: 0, usedFreeTier: true, cost: 0 },
+        smartCacheResult: smartResponse,
+        hinglishProcessing: processedMessage.metadata,
       });
 
+      // Create assistant message with cached response
+      const assistantMessage = await this.createAssistantMessage(
+        session,
+        smartResponse.response,
+        {
+          smartQueryCache: {
+            fromCache: smartResponse.fromCache,
+            dataSource: smartResponse.dataSource,
+            confidence: smartResponse.confidence,
+            category: smartResponse.category,
+          },
+          domainClassification: {
+            domain: smartResponse.category,
+            confidence: smartResponse.confidence,
+            isInScope: true,
+          },
+          languageDetection: processedMessage.languageDetection,
+          performance: {
+            processingTimeMs: Date.now() - startTime,
+            tokenCount: 0, // No AI tokens used
+            retrievalTimeMs: 50, // Fast local retrieval
+            generationTimeMs: 0,
+          },
+          tokenUsage: {
+            tokensUsed: 0,
+            usedFreeTier: true,
+            cost: 0,
+          },
+          routingDecision: {
+            level: 'L2',
+            provider: 'local_cache',
+            model: 'smart_query_cache',
+          },
+        },
+      );
+
+      // Update session activity
       session.incrementMessageCount();
       await this.chatSessionRepository.save(session);
+
+      this.logger.log(
+        `Smart cache response provided for user ${userId} in ${Date.now() - startTime}ms`,
+      );
 
       return {
         success: true,
@@ -407,38 +328,52 @@ export class DomainScopedChatService {
         response: smartResponse.response,
         metadata: {
           processingTime: Date.now() - startTime,
-          domainClassification,
+          domainClassification: {
+            domain: smartResponse.category,
+            confidence: smartResponse.confidence,
+            isInScope: true,
+          },
           languageDetection: processedMessage.languageDetection,
-          ragContext: { documentsUsed: 0, sources: [] },
+          ragContext: {
+            documentsUsed: 0,
+            sources: [],
+          },
           actionRequests: [],
           cost: 0,
-          routingDecision: { level: 'L2', provider: 'smart_cache', model: 'local_data' },
+          routingDecision: {
+            level: 'L2',
+            provider: 'local_cache',
+            model: 'smart_query_cache',
+          },
         },
         citations: smartResponse.dataSource === 'local' ? ['Local health data'] : [],
         followUpQuestions: this.generateSmartFollowUps(smartResponse.category),
       };
     }
 
-    // For diet/meal planning queries, use timeline-based planning with stored health insights
-    if (this.isDietPlanningQuery(processedMessage.content)) {
-      return await this.processTimelineDietQuery(
-        userId,
-        session,
-        processedMessage,
-        domainClassification,
-        startTime,
-      );
-    }
+    // **STEP 3: Process with cost-optimized AI**
+    return await this.processLevel2WithAI(userId, session, request, processedMessage, domainClassification, startTime);
+  }
 
-    // **REGULAR LEVEL 2 AI ROUTING** (cost-optimized)
-    return await this.processRegularLevel2Query(
-      userId,
-      session,
-      processedMessage,
-      domainClassification,
-      request,
-      startTime,
-    );
+      // Record that query was not answered locally (will go to AI)
+      await this.smartQueryCacheService.recordQuery(userId, request.message, false);
+
+      // **FALLBACK**: Process with regular AI routing (existing logic)
+      return await this.processWithRegularAI(userId, session, request, processedMessage, startTime);
+
+    } catch (error) {
+      this.logger.error(`Error processing message for user ${userId}:`, error);
+      throw error;
+    }
+  }
+        },
+        citations: this.buildCitations(ragContext.sources),
+        followUpQuestions: processedResponse.followUpQuestions,
+      };
+    } catch (error) {
+      this.logger.error(`Error processing chat message for user ${userId}:`, error);
+      throw new BadRequestException(`Chat processing failed: ${error.message}`);
+    }
   }
 
   /**
@@ -638,533 +573,31 @@ export class DomainScopedChatService {
     return contextMap[domain] || ['user_profile', 'knowledge_base'];
   }
 
-  private determineRoutingLevel(domain: string): 'L1' | 'L2' {
-    // Health reports and medical-related queries use Level 1 (highest accuracy)
+  private determineRoutingLevel(domain: string, message: string): 'L1' | 'L2' {
+    // Enhanced Level 1 (Health-critical) domains
     const level1Domains = ['health_reports', 'health'];
-    return level1Domains.includes(domain) ? 'L1' : 'L2';
-  }
-
-  /**
-   * Enhanced AI routing level determination based on domain and query content
-   */
-  private determineAIRoutingLevel(domain: string): 'L1' | 'L2' {
-    // Level 1: Health reports, biomarkers, medical analysis (highest accuracy, rate limited)
-    const level1Domains = [
-      'health_reports',
-      'health_report_analysis',
-      'biomarker_analysis',
-      'nutrient_deficiency',
-      'micronutrient_status',
-      'health_risk_assessment',
-      'metabolic_analysis',
-      'hormone_analysis',
-      'medical_consultation',
-    ];
-
-    // Level 2: Diet plans, meal planning, general wellness (cost-optimized)
-    const level2Domains = [
-      'nutrition',
-      'meal_planning',
-      'recipe',
-      'fitness',
-      'workout_planning',
-      'general_wellness',
-      'lifestyle',
-    ];
-
-    if (level1Domains.includes(domain)) {
-      return 'L1';
-    }
-
-    return 'L2'; // Default to cost-optimized Level 2
-  }
-
-  /**
-   * Map domain classification to health analysis type
-   */
-  private mapDomainToAnalysisType(domain: string): HealthAnalysisType {
-    const mapping = {
-      health_reports: HealthAnalysisType.HEALTH_REPORT_SUMMARY,
-      health_report_analysis: HealthAnalysisType.HEALTH_REPORT_SUMMARY,
-      biomarker_analysis: HealthAnalysisType.BIOMARKER_ANALYSIS,
-      nutrient_deficiency: HealthAnalysisType.NUTRIENT_DEFICIENCY,
-      micronutrient_status: HealthAnalysisType.MICRONUTRIENT_STATUS,
-      metabolic_analysis: HealthAnalysisType.METABOLIC_ANALYSIS,
-      hormone_analysis: HealthAnalysisType.HORMONE_ANALYSIS,
-      health_risk_assessment: HealthAnalysisType.HEALTH_RISK_ASSESSMENT,
-    };
-
-    return mapping[domain] || HealthAnalysisType.HEALTH_REPORT_SUMMARY;
-  }
-
-  /**
-   * Check if query is about diet/meal planning
-   */
-  private isDietPlanningQuery(message: string): boolean {
-    const dietKeywords = [
-      'diet plan',
-      'meal plan',
-      'what should I eat',
-      'food recommendations',
-      'nutrition plan',
-      'create diet',
-      'meal suggestions',
-      'healthy eating plan',
+    
+    // Health reports and medical analysis keywords trigger Level 1
+    const level1Keywords = [
+      'blood test', 'lab report', 'health report', 'biomarker', 'hba1c', 'cholesterol', 
+      'deficiency', 'vitamin', 'mineral', 'test results', 'medical report',
+      'summarize report', 'what does my report say', 'health summary', 'micronutrient',
+      'fatty liver', 'diabetes', 'hypertension', 'anemia', 'thyroid'
     ];
 
     const lowerMessage = message.toLowerCase();
-    return dietKeywords.some(keyword => lowerMessage.includes(keyword));
-  }
-
-  /**
-   * Process timeline-based diet planning queries using stored health insights
-   */
-  private async processTimelineDietQuery(
-    userId: string,
-    session: ChatSession,
-    processedMessage: any,
-    domainClassification: any,
-    startTime: number,
-  ): Promise<ChatResponse> {
-    this.logger.debug(`Processing timeline diet query for user ${userId}`);
-
-    try {
-      // Get or generate timeline diet plan based on stored health insights
-      let dietPlan = await this.timelineDietPlanningService.getCurrentDietPlan(userId);
-      
-      if (!dietPlan) {
-        this.logger.debug(`No existing diet plan found. Generating new plan for user ${userId}`);
-        dietPlan = await this.timelineDietPlanningService.generateTimelineDietPlan(userId);
-      }
-
-      // Check if plan needs adaptation
-      const transitionCheck = await this.timelineDietPlanningService.checkMaintenanceTransition(userId);
-
-      // Generate response based on current diet plan and health insights
-      const response = this.generateDietPlanResponse(dietPlan, transitionCheck, processedMessage.content);
-
-      const assistantMessage = await this.createAssistantMessage(session, response, {
-        timelineDietPlan: {
-          planId: dietPlan.id,
-          planName: dietPlan.planName,
-          currentPhase: this.getCurrentPhase(dietPlan),
-          totalDuration: dietPlan.totalDuration,
-          basedOnInsights: dietPlan.basedOnInsights,
-        },
-        domainClassification,
-        routingDecision: {
-          level: 'L2',
-          provider: 'timeline_diet_planner',
-          model: 'health_insights_based',
-        },
-        performance: {
-          processingTimeMs: Date.now() - startTime,
-          tokenCount: 0, // Using stored analysis, no new AI tokens
-          retrievalTimeMs: 100,
-          generationTimeMs: 0,
-        },
-        tokenUsage: {
-          tokensUsed: 0,
-          usedFreeTier: true,
-          cost: 0,
-        },
-      });
-
-      // Update session activity
-      session.incrementMessageCount();
-      await this.chatSessionRepository.save(session);
-
-      return {
-        success: true,
-        sessionId: session.id,
-        messageId: assistantMessage.id,
-        response,
-        metadata: {
-          processingTime: Date.now() - startTime,
-          domainClassification,
-          languageDetection: { detected: 'en', confidence: 1.0 },
-          ragContext: { documentsUsed: 0, sources: [] },
-          actionRequests: this.extractDietPlanActions(dietPlan, transitionCheck),
-          cost: 0,
-          routingDecision: {
-            level: 'L2',
-            provider: 'timeline_diet_planner',
-            model: 'health_insights_based',
-          },
-        },
-        citations: ['Personalized timeline diet plan based on health analysis'],
-        followUpQuestions: this.generateDietPlanFollowUps(dietPlan, transitionCheck),
-      };
-    } catch (error) {
-      this.logger.error(`Error processing timeline diet query for user ${userId}:`, error);
-      // Fallback to regular Level 2 processing
-      return await this.processRegularLevel2Query(
-        userId,
-        session,
-        processedMessage,
-        domainClassification,
-        { message: processedMessage.content },
-        startTime,
-      );
-    }
-  }
-
-  /**
-   * Process regular Level 2 queries with cost-optimized AI routing
-   */
-  private async processRegularLevel2Query(
-    userId: string,
-    session: ChatSession,
-    processedMessage: any,
-    domainClassification: any,
-    request: any,
-    startTime: number,
-  ): Promise<ChatResponse> {
-    this.logger.debug(`Processing regular Level 2 query for user ${userId}`);
-
-    // Apply privacy and compliance checks
-    const dlpProcessedContent = await this.dlpService.processText(processedMessage.content);
-
-    // Get RAG context
-    const ragContext = await this.ragService.retrieveContext(
-      userId,
-      processedMessage.content,
-      domainClassification.domain,
-      {
-        maxDocuments: 3, // Less context for cost optimization
-        relevanceThreshold: 0.8, // Higher threshold for Level 2
-        contextTypes: this.getDomainContextTypes(domainClassification.domain),
-      },
-    );
-
-    // Build Level 2 AI request (cost-optimized)
-    const aiRequest: AIRoutingRequest = {
-      requestType: RequestType.GENERAL_CHAT,
-      userId,
-      sessionId: session.id,
-      contextTokens: Math.ceil(dlpProcessedContent.processedText.length / 4),
-      maxResponseTokens: 800, // Shorter responses for cost efficiency
-      accuracyRequirement: 0.85, // Lower accuracy requirement for cost optimization
-      privacyLevel: 'standard', // Standard privacy for general queries
-    };
-
-    // Route to cost-optimized AI (Level 2)
-    const aiResponse = await this.aiRoutingService.routeRequestWithUserTokens(aiRequest);
-
-    // Mock response for now - would be actual AI response in production
-    const mockResponse = this.generateMockLevel2Response(domainClassification.domain, processedMessage.content);
-
-    const assistantMessage = await this.createAssistantMessage(session, mockResponse, {
-      routingDecision: {
-        level: 'L2',
-        provider: aiResponse.provider,
-        model: aiResponse.model,
-      },
-      ragContext: {
-        documentsUsed: ragContext.metadata?.documentsRetrieved || 0,
-        sources: ragContext.sources?.map((s) => ({
-          title: s.title,
-          excerpt: s.excerpt,
-          relevanceScore: s.relevanceScore,
-        })) || [],
-      },
-      domainClassification,
-      performance: {
-        processingTimeMs: Date.now() - startTime,
-        tokenCount: 800,
-        retrievalTimeMs: 150,
-        generationTimeMs: 1000, // Faster Level 2 processing
-      },
-      tokenUsage: {
-        tokensUsed: 800,
-        usedFreeTier: aiResponse.usedFreeTier,
-        cost: aiResponse.estimatedCost || 0.01, // Lower cost for Level 2
-      },
-    });
-
-    // Update session activity
-    session.incrementMessageCount();
-    await this.chatSessionRepository.save(session);
-
-    return {
-      success: true,
-      sessionId: session.id,
-      messageId: assistantMessage.id,
-      response: mockResponse,
-      metadata: {
-        processingTime: Date.now() - startTime,
-        domainClassification,
-        languageDetection: processedMessage.languageDetection,
-        ragContext: {
-          documentsUsed: ragContext.metadata?.documentsRetrieved || 0,
-          sources: ragContext.sources?.map((s) => ({
-            title: s.title,
-            excerpt: s.excerpt,
-            relevanceScore: s.relevanceScore,
-          })) || [],
-        },
-        actionRequests: [],
-        cost: aiResponse.estimatedCost || 0.01,
-        routingDecision: {
-          level: 'L2',
-          provider: aiResponse.provider,
-          model: aiResponse.model,
-        },
-      },
-      citations: this.buildCitations(ragContext.sources || []),
-      followUpQuestions: this.generateLevel2FollowUps(domainClassification.domain),
-    };
-  }
-
-  /**
-   * Extract health-specific action requests from insights
-   */
-  private extractHealthActionRequests(insights: any): any[] {
-    const actions = [];
-
-    if (insights?.deficiencies?.length > 0) {
-      actions.push({
-        actionType: 'create_nutrition_plan',
-        description: 'Create a targeted nutrition plan to address identified deficiencies',
-        requiresConfirmation: true,
-        parameters: { deficiencies: insights.deficiencies.map(d => d.nutrient) },
-      });
-    }
-
-    if (insights?.recommendations?.length > 0) {
-      actions.push({
-        actionType: 'schedule_health_followup',
-        description: 'Schedule follow-up health test to track improvement',
-        requiresConfirmation: true,
-        parameters: { recommendations: insights.recommendations },
-      });
-    }
-
-    return actions;
-  }
-
-  /**
-   * Generate health-specific follow-up questions
-   */
-  private generateHealthFollowUps(insights: any): string[] {
-    const followUps = [];
-
-    if (insights?.deficiencies?.length > 0) {
-      followUps.push(
-        'Would you like a specific meal plan to address these deficiencies?',
-        'How long have you been experiencing symptoms related to these deficiencies?',
-      );
-    }
-
-    if (insights?.risks?.length > 0) {
-      followUps.push(
-        'What lifestyle changes would you like to focus on first?',
-        'Do you have any family history of these health concerns?',
-      );
-    }
-
-    followUps.push(
-      'When was your last comprehensive health check?',
-      'Are you currently taking any supplements or medications?',
-    );
-
-    return followUps;
-  }
-
-  /**
-   * Generate diet plan response based on timeline and health insights
-   */
-  private generateDietPlanResponse(
-    dietPlan: TimelineDietPlan,
-    transitionCheck: any,
-    userQuery: string,
-  ): string {
-    const currentPhase = this.getCurrentPhase(dietPlan);
     
-    let response = `## Your Personalized ${dietPlan.planName}\n\n`;
-
-    if (currentPhase) {
-      response += `**Current Phase:** ${currentPhase.name} (Day ${this.getCurrentDay(dietPlan, currentPhase)} of ${currentPhase.duration})\n\n`;
-      
-      response += `**Primary Focus:** ${currentPhase.primaryFocus.join(', ')}\n\n`;
-      
-      response += `**Dietary Guidelines:**\n`;
-      response += `• **Emphasize:** ${currentPhase.dietaryGuidelines.emphasize.join(', ')}\n`;
-      response += `• **Limit:** ${currentPhase.dietaryGuidelines.limit.join(', ')}\n`;
-      if (currentPhase.dietaryGuidelines.avoid?.length > 0) {
-        response += `• **Avoid:** ${currentPhase.dietaryGuidelines.avoid.join(', ')}\n`;
-      }
-      
-      response += `\n**Expected Progress:** ${currentPhase.expectedProgress}\n`;
-    }
-
-    // Add timeline information
-    if (dietPlan.expectedOutcomes.length > 0) {
-      response += `\n**Expected Outcomes:**\n`;
-      dietPlan.expectedOutcomes.forEach(outcome => {
-        const daysRemaining = Math.max(0, outcome.timelineToAchieve - this.getDaysElapsed(dietPlan));
-        response += `• ${outcome.parameter}: Target ${outcome.targetValue} in ${daysRemaining} days\n`;
-      });
-    }
-
-    // Add transition guidance if applicable
-    if (transitionCheck.shouldTransition) {
-      response += `\n🎉 **Great Progress!** ${transitionCheck.reason}\n\n`;
-      response += `**Next Steps:**\n`;
-      transitionCheck.recommendedActions.forEach((action, i) => {
-        response += `${i + 1}. ${action}\n`;
-      });
-    }
-
-    // Add reminders if any are upcoming
-    const upcomingReminders = dietPlan.recheckReminders.filter(
-      r => r.scheduledDate > new Date() && r.scheduledDate <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    );
+    // Check for Level 1 keywords in message
+    const hasLevel1Keywords = level1Keywords.some(keyword => lowerMessage.includes(keyword));
     
-    if (upcomingReminders.length > 0) {
-      response += `\n**Upcoming Reminders:**\n`;
-      upcomingReminders.forEach(reminder => {
-        response += `• ${reminder.description} (${reminder.scheduledDate.toLocaleDateString()})\n`;
-      });
+    if (level1Domains.includes(domain) || hasLevel1Keywords) {
+      this.logger.log(`Routing to Level 1 AI - Domain: ${domain}, Keywords: ${hasLevel1Keywords}`);
+      return 'L1';
     }
 
-    return response;
-  }
-
-  /**
-   * Extract diet plan actions
-   */
-  private extractDietPlanActions(dietPlan: TimelineDietPlan, transitionCheck: any): any[] {
-    const actions = [];
-
-    if (transitionCheck.shouldTransition) {
-      actions.push({
-        actionType: 'schedule_health_test',
-        description: 'Schedule comprehensive health test to verify improvements',
-        requiresConfirmation: true,
-      });
-
-      actions.push({
-        actionType: 'transition_to_maintenance',
-        description: 'Transition to balanced maintenance diet',
-        requiresConfirmation: true,
-      });
-    }
-
-    // Add upcoming reminder actions
-    const upcomingReminders = dietPlan.recheckReminders.filter(
-      r => r.scheduledDate > new Date() && r.scheduledDate <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    );
-
-    upcomingReminders.forEach(reminder => {
-      actions.push({
-        actionType: 'reminder_action',
-        description: reminder.description,
-        requiresConfirmation: false,
-      });
-    });
-
-    return actions;
-  }
-
-  /**
-   * Generate diet plan follow-up questions
-   */
-  private generateDietPlanFollowUps(dietPlan: TimelineDietPlan, transitionCheck: any): string[] {
-    const followUps = [];
-
-    if (transitionCheck.shouldTransition) {
-      followUps.push(
-        'Are you ready to schedule a health test to verify your improvements?',
-        'Would you like to set new health optimization goals?',
-      );
-    } else {
-      followUps.push(
-        'How is your adherence to the current dietary recommendations?',
-        'Are you experiencing any challenges with the meal plan?',
-        'Would you like specific recipes for your current phase?',
-      );
-    }
-
-    followUps.push(
-      'Do you need help with meal prep for this phase?',
-      'Any questions about the nutritional guidelines?',
-    );
-
-    return followUps;
-  }
-
-  /**
-   * Get current phase of diet plan
-   */
-  private getCurrentPhase(dietPlan: TimelineDietPlan): any {
-    const now = new Date();
-    return dietPlan.phases.find(phase => phase.startDate <= now && phase.endDate >= now);
-  }
-
-  /**
-   * Get current day within a phase
-   */
-  private getCurrentDay(dietPlan: TimelineDietPlan, phase: any): number {
-    const now = new Date();
-    const daysSinceStart = Math.floor((now.getTime() - phase.startDate.getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(1, daysSinceStart + 1);
-  }
-
-  /**
-   * Get days elapsed since diet plan started
-   */
-  private getDaysElapsed(dietPlan: TimelineDietPlan): number {
-    const now = new Date();
-    return Math.floor((now.getTime() - dietPlan.createdAt.getTime()) / (1000 * 60 * 60 * 24));
-  }
-
-  /**
-   * Generate mock Level 2 response
-   */
-  private generateMockLevel2Response(domain: string, query: string): string {
-    const responses = {
-      nutrition: `Based on your query about nutrition, here are some general recommendations: Focus on a balanced diet with plenty of vegetables, lean proteins, and whole grains. Stay hydrated and consider the timing of your meals for optimal energy levels.`,
-      fitness: `For your fitness goals, I recommend starting with a combination of cardio and strength training. Begin with 30 minutes of activity 3-4 times per week and gradually increase intensity.`,
-      meal_planning: `Here's a simple approach to meal planning: Plan your meals around lean proteins, colorful vegetables, and complex carbohydrates. Prep ingredients in advance and consider batch cooking for efficiency.`,
-      general_wellness: `For overall wellness, focus on the fundamentals: balanced nutrition, regular physical activity, adequate sleep (7-9 hours), stress management, and staying hydrated. Small, consistent changes make the biggest impact.`,
-    };
-
-    return responses[domain] || `I'd be happy to help with your ${domain} question. Let me provide some guidance based on current best practices and your personal health context.`;
-  }
-
-  /**
-   * Generate Level 2 follow-up questions
-   */
-  private generateLevel2FollowUps(domain: string): string[] {
-    const followUps = {
-      nutrition: [
-        'What are your current dietary preferences or restrictions?',
-        'Are you trying to achieve any specific nutrition goals?',
-        'Would you like help with meal planning?',
-      ],
-      fitness: [
-        'What type of physical activities do you enjoy?',
-        'Do you have access to a gym or prefer home workouts?',
-        'Any fitness goals you\'d like to work toward?',
-      ],
-      meal_planning: [
-        'How many meals do you typically prepare at home?',
-        'Do you have any cooking time constraints?',
-        'Are there foods you particularly enjoy or want to avoid?',
-      ],
-      general_wellness: [
-        'Which aspect of wellness would you like to focus on first?',
-        'Are there any specific health challenges you\'re addressing?',
-        'What does a typical day look like for you?',
-      ],
-    };
-
-    return followUps[domain] || [
-      'What specific aspect would you like to explore further?',
-      'Are there any particular concerns or goals you have?',
-      'Would you like more personalized recommendations?',
-    ];
+    // Everything else goes to Level 2 (cost-optimized)
+    this.logger.log(`Routing to Level 2 AI - Domain: ${domain}`);
+    return 'L2';
   }
 
   private async buildAIRequest(
@@ -1427,4 +860,482 @@ export class DomainScopedChatService {
 
     return mapping[aiProvider] || TokenProvider.GROQ_FREE;
   }
+
+  // ============= NEW HELPER METHODS FOR LEVEL 1/LEVEL 2 ROUTING =============
+
+  /**
+   * Check health analysis cache for Level 1 queries
+   */
+  private async checkHealthAnalysisCache(
+    userId: string,
+    message: string,
+    domain: string,
+  ): Promise<{ response: string; analysisType: string; cacheAge: number } | null> {
+    const lowerMessage = message.toLowerCase();
+    
+    // Determine analysis type based on query
+    let analysisType: 'micronutrients' | 'biomarkers' | 'health_summary' | 'deficiencies' | 'conditions' = 'health_summary';
+    
+    if (lowerMessage.includes('micronutrient') || lowerMessage.includes('vitamin') || lowerMessage.includes('mineral')) {
+      analysisType = 'micronutrients';
+    } else if (lowerMessage.includes('biomarker') || lowerMessage.includes('blood test') || lowerMessage.includes('lab')) {
+      analysisType = 'biomarkers';
+    } else if (lowerMessage.includes('deficiency')) {
+      analysisType = 'deficiencies';
+    } else if (lowerMessage.includes('condition') || lowerMessage.includes('disease')) {
+      analysisType = 'conditions';
+    }
+
+    // Check if we have cached analysis
+    const cachedAnalysis = await this.healthAnalysisCacheService.getHealthAnalysis(userId, analysisType);
+    
+    if (!cachedAnalysis) {
+      return null;
+    }
+
+    // Generate response based on cached analysis
+    const response = this.generateResponseFromCachedAnalysis(cachedAnalysis, lowerMessage);
+    const cacheAge = Math.floor((Date.now() - cachedAnalysis.createdAt.getTime()) / (1000 * 60 * 60 * 24)); // days
+    
+    return {
+      response,
+      analysisType: cachedAnalysis.analysisType,
+      cacheAge,
+    };
+  }
+
+  /**
+   * Process Level 1 query with AI and cache the result
+   */
+  private async processLevel1WithAI(
+    userId: string,
+    session: ChatSession,
+    request: ChatRequest,
+    processedMessage: any,
+    domainClassification: any,
+    startTime: number,
+  ): Promise<ChatResponse> {
+    this.logger.log(`Processing Level 1 with AI for user ${userId}`);
+
+    // Use existing AI processing logic but with Level 1 routing
+    const result = await this.processWithRegularAI(userId, session, request, processedMessage, startTime);
+    
+    // Extract and cache health analysis from AI response
+    await this.cacheHealthAnalysisFromAIResponse(userId, result.response, processedMessage.content);
+    
+    return result;
+  }
+
+  /**
+   * Process Level 2 query with cost-optimized AI
+   */
+  private async processLevel2WithAI(
+    userId: string,
+    session: ChatSession,
+    request: ChatRequest,
+    processedMessage: any,
+    domainClassification: any,
+    startTime: number,
+  ): Promise<ChatResponse> {
+    this.logger.log(`Processing Level 2 with cost-optimized AI for user ${userId}`);
+
+    // Force cost-optimized routing (use cheaper models)
+    const originalRequest = { ...request };
+    request.context = { ...request.context, forceLevel2: true, costOptimize: true };
+    
+    return await this.processWithRegularAI(userId, session, request, processedMessage, startTime);
+  }
+
+  /**
+   * Check if query is about diet planning
+   */
+  private isDietPlanningQuery(message: string): boolean {
+    const dietKeywords = [
+      'diet plan', 'meal plan', 'nutrition plan', 'food plan',
+      'what should i eat', 'meal suggestions', 'diet recommendations',
+      'create diet', 'plan my meals', 'food recommendations'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    return dietKeywords.some(keyword => lowerMessage.includes(keyword));
+  }
+
+  /**
+   * Process diet planning query using cached health insights
+   */
+  private async processDietPlanningQuery(
+    userId: string,
+    session: ChatSession,
+    request: ChatRequest,
+    processedMessage: any,
+    domainClassification: any,
+    startTime: number,
+  ): Promise<ChatResponse> {
+    this.logger.log(`Processing diet planning query for user ${userId}`);
+
+    try {
+      // Get or generate personalized diet plan
+      const dietPlan = await this.timelineDietPlanningService.generateDietPlan({ userId });
+      
+      // Create user message record
+      const userMessage = await this.createUserMessage(session, request.message, {
+        processedContent: processedMessage.content,
+        languageDetection: processedMessage.languageDetection,
+        domainClassification,
+        dietPlanRequest: true,
+      });
+
+      // Generate response based on diet plan
+      const response = this.generateDietPlanResponse(dietPlan, processedMessage.content);
+      
+      // Create assistant message
+      const assistantMessage = await this.createAssistantMessage(session, response, {
+        dietPlan: {
+          planId: dietPlan.id,
+          phase: dietPlan.phase,
+          timeline: dietPlan.timeline,
+          usedCachedHealthData: true,
+        },
+        domainClassification,
+        languageDetection: processedMessage.languageDetection,
+        routingDecision: {
+          level: 'L2',
+          provider: 'timeline_diet_planning',
+          model: 'health_insights_based',
+        },
+        cost: 0, // No AI cost, uses cached health data
+      });
+
+      // Update session activity
+      session.incrementMessageCount();
+      await this.chatSessionRepository.save(session);
+
+      return {
+        success: true,
+        sessionId: session.id,
+        messageId: assistantMessage.id,
+        response,
+        metadata: {
+          processingTime: Date.now() - startTime,
+          domainClassification,
+          languageDetection: processedMessage.languageDetection,
+          cost: 0,
+          routingDecision: {
+            level: 'L2',
+            provider: 'timeline_diet_planning',
+            model: 'health_insights_based',
+          },
+        },
+        citations: ['Personalized health analysis', 'Timeline diet planning'],
+        followUpQuestions: this.generateDietPlanFollowUps(dietPlan),
+      };
+      
+    } catch (error) {
+      this.logger.warn(`Diet planning failed for user ${userId}: ${error.message}`);
+      
+      // Fallback to regular AI processing
+      return await this.processLevel2WithAI(userId, session, request, processedMessage, domainClassification, startTime);
+    }
+  }
+
+  /**
+   * Process with regular AI (existing logic for fallback)
+   */
+  private async processWithRegularAI(
+    userId: string,
+    session: ChatSession,
+    request: ChatRequest,
+    processedMessage: any,
+    startTime: number,
+  ): Promise<ChatResponse> {
+    // Classify domain and check scope
+    const domainClassification = await this.classifyDomain(processedMessage.content);
+
+    // Create user message record
+    const userMessage = await this.createUserMessage(session, request.message, {
+      processedContent: processedMessage.content,
+      languageDetection: processedMessage.languageDetection,
+      domainClassification,
+      hinglishProcessing: processedMessage.metadata,
+    });
+
+    // Check if message is in scope
+    if (!domainClassification.isInScope) {
+      return await this.handleOutOfScopeMessage(session, userMessage, domainClassification);
+    }
+
+    // Retrieve relevant context using RAG
+    const ragContext = await this.ragService.retrieveContext(
+      userId,
+      processedMessage.content,
+      domainClassification.domain,
+      {
+        maxDocuments: 5,
+        relevanceThreshold: 0.7,
+        contextTypes: this.getDomainContextTypes(domainClassification.domain),
+      },
+    );
+
+    // Apply DLP to the message and context
+    const dlpProcessedContent = await this.dlpService.processText(processedMessage.content);
+
+    // Determine AI routing level based on domain
+    const routingLevel = this.determineRoutingLevel(domainClassification.domain, processedMessage.content);
+
+    // Check user token limits before routing
+    const estimatedTokens = this.estimateTokenUsage(dlpProcessedContent.processedText, ragContext);
+    const canConsumeTokens = await this.tokenManagementService.canConsumeTokens(userId, estimatedTokens);
+
+    // Build AI request with RAG context
+    const aiRequest = await this.buildAIRequest(
+      userId,
+      dlpProcessedContent.processedText,
+      ragContext,
+      domainClassification,
+      routingLevel,
+      session,
+    );
+
+    // Route to AI provider with token awareness
+    const aiResponse = await this.aiRoutingService.routeRequestWithUserTokens({
+      ...aiRequest,
+      forceFreeTier: !canConsumeTokens,
+      forceLevel2: request.context?.forceLevel2 || false,
+    });
+
+    // Mock AI response for now (in production this would be actual AI response)
+    const mockAIResponse = `Based on your ${domainClassification.domain} question: "${processedMessage.content}", here's a comprehensive response addressing your health and wellness needs.`;
+
+    // Process AI response for actions and citations
+    const processedResponse = await this.processAIResponse(mockAIResponse, ragContext, domainClassification);
+
+    // Record token consumption
+    const actualTokensUsed = this.calculateActualTokenUsage(
+      dlpProcessedContent.processedText,
+      processedResponse.content,
+    );
+
+    if (!aiResponse.usedFreeTier) {
+      await this.tokenManagementService.consumeTokens({
+        userId,
+        usageType: TokenUsageType.CHAT_MESSAGE,
+        provider: this.mapAIProviderToTokenProvider(aiResponse.provider),
+        inputTokens: Math.floor(actualTokensUsed * 0.6),
+        outputTokens: Math.floor(actualTokensUsed * 0.4),
+        modelName: aiResponse.model,
+        sessionId: session.id,
+        requestId: aiResponse.decisionId,
+        metadata: {
+          domainClassification: domainClassification.domain,
+          ragDocumentsUsed: ragContext.metadata.documentsRetrieved,
+          languageDetected: processedMessage.languageDetection,
+        },
+      });
+    }
+
+    // Create assistant message record
+    const assistantMessage = await this.createAssistantMessage(session, processedResponse.content, {
+      routingDecision: {
+        level: routingLevel,
+        provider: aiResponse.provider,
+        model: aiResponse.model,
+      },
+      ragContext: {
+        documentsUsed: ragContext.metadata.documentsRetrieved,
+        sources: ragContext.sources.map((s) => ({
+          title: s.title,
+          excerpt: s.excerpt,
+          relevanceScore: s.relevanceScore,
+        })),
+      },
+      domainClassification,
+      languageDetection: processedMessage.languageDetection,
+      actionRequests: processedResponse.actionRequests,
+      ragSources: ragContext.sources,
+      performance: {
+        processingTimeMs: Date.now() - startTime,
+        tokenCount: actualTokensUsed,
+        retrievalTimeMs: ragContext.metadata.retrievalTimeMs,
+        generationTimeMs: 200,
+      },
+      safety: {
+        contentFiltered: false,
+        dlpApplied: dlpProcessedContent.redactedFields.length > 0,
+        redactedFields: dlpProcessedContent.redactedFields,
+        complianceChecks: ['domain_scope', 'content_safety'],
+      },
+      tokenUsage: {
+        tokensUsed: actualTokensUsed,
+        usedFreeTier: aiResponse.usedFreeTier,
+        cost: aiResponse.estimatedCost,
+      },
+    });
+
+    // Update session activity
+    session.incrementMessageCount();
+    await this.chatSessionRepository.save(session);
+
+    const processingTime = Date.now() - startTime;
+
+    return {
+      success: true,
+      sessionId: session.id,
+      messageId: assistantMessage.id,
+      response: processedResponse.content,
+      metadata: {
+        processingTime,
+        domainClassification,
+        languageDetection: processedMessage.languageDetection,
+        ragContext: {
+          documentsUsed: ragContext.metadata.documentsRetrieved,
+          sources: ragContext.sources.map((s) => ({
+            title: s.title,
+            excerpt: s.excerpt,
+            relevanceScore: s.relevanceScore,
+          })),
+        },
+        actionRequests: processedResponse.actionRequests,
+        cost: aiResponse.estimatedCost || 0,
+        routingDecision: {
+          level: routingLevel,
+          provider: aiResponse.provider,
+          model: aiResponse.model,
+        },
+        followUpQuestions: this.generateFollowUpQuestions(domainClassification.domain),
+      },
+    };
+  }
+
+  /**
+   * Generate response from cached health analysis
+   */
+  private generateResponseFromCachedAnalysis(analysis: any, query: string): string {
+    const findings = analysis.analysis.findings;
+    const summary = analysis.analysis.summary;
+    
+    if (query.includes('micronutrient') || query.includes('deficiency')) {
+      const deficiencies = findings.filter(f => f.type.includes('deficiency'));
+      if (deficiencies.length > 0) {
+        return `Based on your previous health report analysis, I found the following micronutrient concerns: ${deficiencies.map(d => d.description).join(', ')}. ${summary}`;
+      }
+    }
+    
+    if (query.includes('summary') || query.includes('report')) {
+      return `Here's a summary of your health report analysis: ${summary}. Key findings include: ${findings.slice(0, 3).map(f => f.description).join(', ')}`;
+    }
+    
+    return `Based on your cached health analysis: ${summary}`;
+  }
+
+  /**
+   * Cache health analysis from AI response
+   */
+  private async cacheHealthAnalysisFromAIResponse(
+    userId: string,
+    aiResponse: string,
+    originalQuery: string,
+  ): Promise<void> {
+    // Extract health analysis from AI response (simplified)
+    const analysisType = this.determineAnalysisTypeFromQuery(originalQuery);
+    
+    // Mock analysis extraction (in production, this would parse the AI response)
+    const mockAnalysis = {
+      findings: [
+        {
+          type: 'vitamin_d_deficiency',
+          severity: 'moderate' as const,
+          description: 'Vitamin D levels below optimal range',
+          recommendedAction: 'Increase sun exposure and vitamin D rich foods',
+          improvementTimeline: {
+            estimatedDays: 30,
+            milestones: [
+              { days: 10, description: 'Initial improvement' },
+              { days: 30, description: 'Optimal levels achieved' },
+            ],
+          },
+        },
+      ],
+      summary: 'Overall health analysis shows room for improvement in vitamin D levels',
+      riskFactors: ['limited sun exposure'],
+      recommendations: ['Increase vitamin D intake', 'Regular outdoor activities'],
+    };
+
+    await this.healthAnalysisCacheService.storeHealthAnalysis(userId, analysisType, mockAnalysis);
+  }
+
+  /**
+   * Generate diet plan response
+   */
+  private generateDietPlanResponse(dietPlan: any, query: string): string {
+    const phase = dietPlan.phase;
+    const targets = dietPlan.targetConditions.map(t => t.condition).join(', ');
+    
+    return `I've created a personalized ${phase} diet plan for you targeting: ${targets}. 
+    
+    **Current Phase**: ${phase.charAt(0).toUpperCase() + phase.slice(1)}
+    **Timeline**: ${dietPlan.timeline.totalDays} days (Day ${dietPlan.timeline.currentDay})
+    
+    **Key Focus Areas**:
+    - Emphasize: ${dietPlan.nutritionalFocus.emphasizeNutrients.join(', ')}
+    - Avoid: ${dietPlan.nutritionalFocus.avoidFoods.join(', ')}
+    
+    **Next Milestone**: ${dietPlan.progressTracking.nextMilestone.description} (Day ${dietPlan.progressTracking.nextMilestone.day})
+    
+    This plan is based on your cached health analysis to save costs while providing personalized recommendations.`;
+  }
+
+  /**
+   * Generate health-related follow-up questions
+   */
+  private generateHealthFollowUps(domain: string): string[] {
+    const healthFollowUps = {
+      health_reports: [
+        'Would you like me to explain any specific biomarkers?',
+        'Should I create a improvement timeline for your health concerns?',
+        'Would you like dietary recommendations based on your report?',
+      ],
+      health: [
+        'Do you have any specific health symptoms to discuss?',
+        'Would you like to track your health progress over time?',
+        'Should I help create a health improvement plan?',
+      ],
+    };
+
+    return healthFollowUps[domain] || healthFollowUps.health;
+  }
+
+  /**
+   * Generate diet plan follow-up questions
+   */
+  private generateDietPlanFollowUps(dietPlan: any): string[] {
+    return [
+      'Would you like specific meal recipes for this plan?',
+      'Should I explain the timeline for expected improvements?',
+      'Do you have any dietary restrictions I should consider?',
+      'Would you like to track your progress with this plan?',
+    ];
+  }
+
+  /**
+   * Determine analysis type from query
+   */
+  private determineAnalysisTypeFromQuery(query: string): 'micronutrients' | 'biomarkers' | 'health_summary' | 'deficiencies' | 'conditions' {
+    const lowerQuery = query.toLowerCase();
+    
+    if (lowerQuery.includes('micronutrient') || lowerQuery.includes('vitamin') || lowerQuery.includes('mineral')) {
+      return 'micronutrients';
+    }
+    if (lowerQuery.includes('biomarker') || lowerQuery.includes('blood') || lowerQuery.includes('lab')) {
+      return 'biomarkers';
+    }
+    if (lowerQuery.includes('deficiency')) {
+      return 'deficiencies';
+    }
+    if (lowerQuery.includes('condition') || lowerQuery.includes('disease')) {
+      return 'conditions';
+    }
+    
+    return 'health_summary';
+  }
+}
 }

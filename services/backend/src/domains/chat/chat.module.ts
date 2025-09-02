@@ -9,6 +9,8 @@ import { HinglishNLPService } from './services/hinglish-nlp.service';
 import { ChatSessionService } from './services/chat-session.service';
 import { SmartQueryCacheService } from './services/smart-query-cache.service';
 import { SmartCacheSchedulerService } from './services/smart-cache-scheduler.service';
+import { HealthAnalysisCacheService } from './services/health-analysis-cache.service';
+import { TimelineDietPlanningService } from './services/timeline-diet-planning.service';
 import { ChatRateLimitInterceptor } from './interceptors/chat-rate-limit.interceptor';
 
 import { ChatSession } from './entities/chat-session.entity';
@@ -46,6 +48,8 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     ChatSessionService,
     SmartQueryCacheService,
     SmartCacheSchedulerService,
+    HealthAnalysisCacheService,
+    TimelineDietPlanningService,
     ChatRateLimitInterceptor,
   ],
   exports: [
@@ -55,6 +59,8 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     ChatSessionService,
     SmartQueryCacheService,
     SmartCacheSchedulerService,
+    HealthAnalysisCacheService,
+    TimelineDietPlanningService,
   ],
 })
 export class ChatModule {}
