@@ -188,7 +188,7 @@ fun QuickActionsSection() {
             )
             
             QuickActionButton(
-                title = "Chat",
+                title = "Chat AI",
                 icon = Icons.Filled.Chat,
                 color = Secondary500,
                 modifier = Modifier.weight(1f),
@@ -197,6 +197,38 @@ fun QuickActionsSection() {
                     // In real implementation: navController.navigate("chat")
                 }
             )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            QuickActionButton(
+                title = "Analytics",
+                icon = Icons.Filled.Analytics,
+                color = androidx.compose.ui.graphics.Color(0xFF8B5CF6),
+                modifier = Modifier.weight(1f),
+                onClick = { 
+                    // Navigate to analytics screen (modal or separate activity)
+                    // In real implementation: navController.navigate("analytics")
+                }
+            )
+            
+            QuickActionButton(
+                title = "Health Report",
+                icon = Icons.Filled.Assessment,
+                color = androidx.compose.ui.graphics.Color(0xFFEF4444),
+                modifier = Modifier.weight(1f),
+                onClick = { 
+                    // Navigate to health reports screen
+                    // In real implementation: navController.navigate("health_reports")
+                }
+            )
+            
+            // Empty space to maintain balance
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }

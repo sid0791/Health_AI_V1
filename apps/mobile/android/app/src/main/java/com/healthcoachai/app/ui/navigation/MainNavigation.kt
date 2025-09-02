@@ -22,6 +22,7 @@ sealed class BottomNavItem(
 ) {
     object Dashboard : BottomNavItem("dashboard", "Dashboard", Icons.Filled.Home)
     object MealPlan : BottomNavItem("mealplan", "Meal Plan", Icons.Filled.Restaurant)
+    object Chat : BottomNavItem("chat", "AI Chat", Icons.Filled.Chat)
     object Log : BottomNavItem("log", "Log", Icons.Filled.Edit)
     object Fitness : BottomNavItem("fitness", "Fitness", Icons.Filled.FitnessCenter)
     object Settings : BottomNavItem("settings", "Settings", Icons.Filled.Settings)
@@ -34,6 +35,7 @@ fun MainNavigation(onLogout: () -> Unit = {}) {
     val items = listOf(
         BottomNavItem.Dashboard,
         BottomNavItem.MealPlan,
+        BottomNavItem.Chat,
         BottomNavItem.Log,
         BottomNavItem.Fitness,
         BottomNavItem.Settings
@@ -81,8 +83,14 @@ fun MainNavigation(onLogout: () -> Unit = {}) {
             composable(BottomNavItem.MealPlan.route) {
                 MealPlanScreen()
             }
+            composable(BottomNavItem.Chat.route) {
+                ChatScreen()
+            }
             composable(BottomNavItem.Log.route) {
                 LogScreen()
+            }
+            composable(BottomNavItem.Fitness.route) {
+                FitnessScreen()
             }
             composable(BottomNavItem.Fitness.route) {
                 FitnessScreen()
