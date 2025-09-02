@@ -72,6 +72,8 @@ import { AIRoutingDecision } from './domains/ai-routing/entities/ai-routing-deci
 import { ChatSession } from './domains/chat/entities/chat-session.entity';
 import { ChatMessage } from './domains/chat/entities/chat-message.entity';
 import { ChatContext } from './domains/chat/entities/chat-context.entity';
+import { HealthInsight } from './domains/chat/entities/health-insights.entity';
+import { DietPlan } from './domains/chat/entities/diet-plan.entity';
 
 @Module({
   imports: [
@@ -139,6 +141,8 @@ import { ChatContext } from './domains/chat/entities/chat-context.entity';
           ChatSession,
           ChatMessage,
           ChatContext,
+          HealthInsight,
+          DietPlan,
         ],
         synchronize: false, // Never use synchronize in production
         logging: configService.get('NODE_ENV') === 'development',
