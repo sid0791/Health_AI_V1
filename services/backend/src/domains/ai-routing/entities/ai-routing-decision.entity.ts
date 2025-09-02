@@ -18,11 +18,13 @@ export enum AIProvider {
   GOOGLE = 'google',
   AZURE_OPENAI = 'azure_openai',
   XAI = 'xai', // xAI (Grok models)
-  DEEPSEEK = 'deepseek', // DeepSeek API
+  DEEPSEEK = 'deepseek', // DeepSeek API - High privacy, low cost
   MISTRAL = 'mistral', // Mistral AI
-  COHERE = 'cohere', // Cohere API
+  COHERE = 'cohere', // Cohere API - Enhanced reasoning
   OPENROUTER = 'openrouter',
-  TOGETHER = 'together',
+  TOGETHER = 'together', // Together AI - Open source model access
+  FIREWORKS = 'fireworks', // Fireworks AI - Speed optimized
+  PERPLEXITY = 'perplexity', // Perplexity AI - Real-time web access
   HUGGINGFACE = 'huggingface',
   GROQ = 'groq',
   OLLAMA = 'ollama', // Local models with full privacy
@@ -97,11 +99,15 @@ export enum AIModel {
   // Cohere Models (August 2025)
   COMMAND_R_PLUS_V2 = 'command-r-plus-v2', // Enhanced Command model
   COMMAND_R_V2 = 'command-r-v2', // Updated Command model
+  COMMAND_R_PLUS = 'command-r-plus', // Previous generation
+  COMMAND_R = 'command-r', // Previous generation
 
   // Additional Open Source Models (August 2025)
   QWEN_2_5_72B = 'qwen-2.5-72b', // Latest Qwen model
+  QWEN_2_5_32B = 'qwen-2.5-32b', // Efficient Qwen variant
   QWEN_2_72B = 'qwen-2-72b',
   YI_34B_V2 = 'yi-34b-v2', // Updated Yi model
+  YI_6B_CHAT = 'yi-6b-chat', // Efficient Yi model
   WIZARD_CODER_V2 = 'wizard-coder-v2', // Enhanced coding model
   STARCODER_V3 = 'starcoder-v3', // Latest coding model
 
@@ -111,6 +117,8 @@ export enum AIModel {
   OLLAMA_LLAMA3_2_90B = 'llama3.2:90b', // Llama 3.2 on Ollama
   OLLAMA_LLAMA3_8B = 'llama3.1:8b',
   OLLAMA_DEEPSEEK_V4 = 'deepseek-v4:latest', // DeepSeek V4 on Ollama
+  OLLAMA_QWEN_2_5_32B = 'qwen2.5:32b', // Qwen 2.5 32B on Ollama
+  OLLAMA_YI_34B_V2 = 'yi:34b-v2', // Yi 34B V2 on Ollama
   OLLAMA_MISTRAL_V3 = 'mistral-v3:7b', // Mistral V3 on Ollama
   OLLAMA_CODELLAMA_13B = 'codellama:13b',
   OLLAMA_MISTRAL_7B = 'mistral:7b',

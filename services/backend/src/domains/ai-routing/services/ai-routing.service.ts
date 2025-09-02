@@ -719,6 +719,36 @@ export class AIRoutingService {
           phiCompliant: true,
           zeroTrustVerified: true,
         },
+        {
+          model: AIModel.OLLAMA_QWEN_2_5_32B,
+          endpoint: 'http://localhost:11434/api/generate',
+          apiKeyConfig: 'OLLAMA_LOCAL',
+          costPerToken: 0.0,
+          accuracyScore: 93, // Qwen 2.5 32B locally
+          maxTokens: 128000,
+          availability: 99,
+          dataRetention: 'zero',
+          privacyCompliant: true,
+          encryptionRequired: false,
+          onPremise: true,
+          phiCompliant: true,
+          zeroTrustVerified: true,
+        },
+        {
+          model: AIModel.OLLAMA_YI_34B_V2,
+          endpoint: 'http://localhost:11434/api/generate',
+          apiKeyConfig: 'OLLAMA_LOCAL',
+          costPerToken: 0.0,
+          accuracyScore: 94, // Yi 34B V2 locally
+          maxTokens: 128000,
+          availability: 99,
+          dataRetention: 'zero',
+          privacyCompliant: true,
+          encryptionRequired: false,
+          onPremise: true,
+          phiCompliant: true,
+          zeroTrustVerified: true,
+        },
       ],
       dailyQuota: this.configService.get('AI_FREE_DAILY_QUOTA', 50000000), // High quota for local
       rateLimits: {
@@ -806,6 +836,198 @@ export class AIRoutingService {
         tokensPerMinute: 300000,
       },
       privacyScore: 45,
+      complianceFlags: ['SOC2'],
+    });
+
+    // Enhanced Cohere Provider (Strong reasoning, enterprise features)
+    this.providers.set(AIProvider.COHERE, {
+      provider: AIProvider.COHERE,
+      models: [
+        {
+          model: AIModel.COMMAND_R_PLUS_V2,
+          endpoint: 'https://api.cohere.ai/v1/chat',
+          apiKeyConfig: 'COHERE_API_KEY',
+          costPerToken: 0.000008, // $8 per 1M tokens - competitive pricing
+          accuracyScore: 96, // Strong reasoning capabilities
+          maxTokens: 128000,
+          availability: 98,
+          dataRetention: 'short', // 30 days retention
+          privacyCompliant: true, // Good privacy policy
+          encryptionRequired: false,
+          phiCompliant: true, // Enterprise-friendly
+          zeroTrustVerified: true,
+        },
+        {
+          model: AIModel.COMMAND_R_V2,
+          endpoint: 'https://api.cohere.ai/v1/chat',
+          apiKeyConfig: 'COHERE_API_KEY',
+          costPerToken: 0.000006, // $6 per 1M tokens
+          accuracyScore: 94, // Good balanced performance
+          maxTokens: 128000,
+          availability: 98,
+          dataRetention: 'short',
+          privacyCompliant: true,
+          encryptionRequired: false,
+          phiCompliant: true,
+          zeroTrustVerified: true,
+        },
+      ],
+      dailyQuota: this.configService.get('AI_LEVEL1_DAILY_QUOTA', 1500000),
+      rateLimits: {
+        requestsPerMinute: 1500,
+        tokensPerMinute: 150000,
+      },
+      privacyScore: 82, // Good privacy with enterprise features
+      complianceFlags: ['SOC2', 'GDPR', 'HIPAA_ELIGIBLE'],
+    });
+
+    // Together AI Provider (Open source model aggregator)
+    this.providers.set(AIProvider.TOGETHER, {
+      provider: AIProvider.TOGETHER,
+      models: [
+        {
+          model: AIModel.QWEN_2_5_72B,
+          endpoint: 'https://api.together.xyz/v1/chat/completions',
+          apiKeyConfig: 'TOGETHER_API_KEY',
+          costPerToken: 0.000004, // $4 per 1M tokens - excellent cost efficiency
+          accuracyScore: 95, // Latest Qwen model with strong performance
+          maxTokens: 128000,
+          availability: 97,
+          dataRetention: 'short',
+          privacyCompliant: true, // Open source friendly policies
+          encryptionRequired: false,
+          phiCompliant: true,
+          zeroTrustVerified: true,
+        },
+        {
+          model: AIModel.QWEN_2_5_32B,
+          endpoint: 'https://api.together.xyz/v1/chat/completions',
+          apiKeyConfig: 'TOGETHER_API_KEY',
+          costPerToken: 0.000003, // $3 per 1M tokens - ultra cost effective
+          accuracyScore: 93, // Efficient Qwen variant
+          maxTokens: 128000,
+          availability: 98,
+          dataRetention: 'short',
+          privacyCompliant: true,
+          encryptionRequired: false,
+          phiCompliant: true,
+          zeroTrustVerified: true,
+        },
+        {
+          model: AIModel.YI_34B_V2,
+          endpoint: 'https://api.together.xyz/v1/chat/completions',
+          apiKeyConfig: 'TOGETHER_API_KEY',
+          costPerToken: 0.000003, // $3 per 1M tokens
+          accuracyScore: 94, // Strong Yi model performance
+          maxTokens: 128000,
+          availability: 97,
+          dataRetention: 'short',
+          privacyCompliant: true,
+          encryptionRequired: false,
+          phiCompliant: true,
+          zeroTrustVerified: true,
+        },
+        {
+          model: AIModel.YI_6B_CHAT,
+          endpoint: 'https://api.together.xyz/v1/chat/completions',
+          apiKeyConfig: 'TOGETHER_API_KEY',
+          costPerToken: 0.000001, // $1 per 1M tokens - extremely cost effective
+          accuracyScore: 89, // Efficient model for simple tasks
+          maxTokens: 64000,
+          availability: 99,
+          dataRetention: 'short',
+          privacyCompliant: true,
+          encryptionRequired: false,
+          phiCompliant: true,
+          zeroTrustVerified: true,
+        },
+      ],
+      dailyQuota: this.configService.get('AI_LEVEL2_DAILY_QUOTA', 10000000), // High quota due to low cost
+      rateLimits: {
+        requestsPerMinute: 2000,
+        tokensPerMinute: 200000,
+      },
+      privacyScore: 80, // Good privacy with open source models
+      complianceFlags: ['SOC2', 'GDPR', 'HIPAA_ELIGIBLE'],
+    });
+
+    // Fireworks AI Provider (Speed optimized inference)
+    this.providers.set(AIProvider.FIREWORKS, {
+      provider: AIProvider.FIREWORKS,
+      models: [
+        {
+          model: AIModel.LLAMA_4_8B,
+          endpoint: 'https://api.fireworks.ai/inference/v1/chat/completions',
+          apiKeyConfig: 'FIREWORKS_API_KEY',
+          costPerToken: 0.000001, // $1 per 1M tokens - ultra fast and cheap
+          accuracyScore: 90, // Llama 4 with speed optimization
+          maxTokens: 128000,
+          availability: 98,
+          dataRetention: 'short',
+          privacyCompliant: false, // Commercial service
+          encryptionRequired: true,
+          phiCompliant: false,
+        },
+        {
+          model: AIModel.QWEN_2_5_72B,
+          endpoint: 'https://api.fireworks.ai/inference/v1/chat/completions',
+          apiKeyConfig: 'FIREWORKS_API_KEY',
+          costPerToken: 0.000002, // $2 per 1M tokens - fast Qwen inference
+          accuracyScore: 95, // High performance Qwen
+          maxTokens: 128000,
+          availability: 97,
+          dataRetention: 'short',
+          privacyCompliant: false,
+          encryptionRequired: true,
+          phiCompliant: false,
+        },
+        {
+          model: AIModel.YI_34B_V2,
+          endpoint: 'https://api.fireworks.ai/inference/v1/chat/completions',
+          apiKeyConfig: 'FIREWORKS_API_KEY',
+          costPerToken: 0.000002, // $2 per 1M tokens
+          accuracyScore: 94, // High performance Yi
+          maxTokens: 128000,
+          availability: 97,
+          dataRetention: 'short',
+          privacyCompliant: false,
+          encryptionRequired: true,
+          phiCompliant: false,
+        },
+      ],
+      dailyQuota: this.configService.get('AI_LEVEL2_DAILY_QUOTA', 15000000),
+      rateLimits: {
+        requestsPerMinute: 5000, // Very high speed processing
+        tokensPerMinute: 500000,
+      },
+      privacyScore: 45, // Moderate privacy
+      complianceFlags: ['SOC2'],
+    });
+
+    // Perplexity AI Provider (Real-time web access capabilities)
+    this.providers.set(AIProvider.PERPLEXITY, {
+      provider: AIProvider.PERPLEXITY,
+      models: [
+        {
+          model: AIModel.LLAMA_3_1_70B,
+          endpoint: 'https://api.perplexity.ai/chat/completions',
+          apiKeyConfig: 'PERPLEXITY_API_KEY',
+          costPerToken: 0.000003, // $3 per 1M tokens
+          accuracyScore: 92, // Strong for real-time info
+          maxTokens: 128000,
+          availability: 96,
+          dataRetention: 'short',
+          privacyCompliant: false, // Web search integration
+          encryptionRequired: true,
+          phiCompliant: false, // Not suitable for PHI due to web search
+        },
+      ],
+      dailyQuota: this.configService.get('AI_LEVEL2_DAILY_QUOTA', 5000000),
+      rateLimits: {
+        requestsPerMinute: 1000,
+        tokensPerMinute: 100000,
+      },
+      privacyScore: 35, // Lower due to web integration
       complianceFlags: ['SOC2'],
     });
   }
