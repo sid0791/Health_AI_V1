@@ -4,12 +4,10 @@ import { useState } from 'react'
 import {
   HeartIcon,
   ClockIcon,
-  TrophyIcon,
   PlayIcon,
   PauseIcon,
   ChevronRightIcon,
   FireIcon,
-  UserGroupIcon,
   StarIcon,
   CalendarIcon,
   CheckIcon

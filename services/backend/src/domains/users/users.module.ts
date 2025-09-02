@@ -7,6 +7,7 @@ import { UserConsent } from './entities/user-consent.entity';
 import { UserPreferences } from './entities/user-preferences.entity';
 import { UserGoals } from './entities/user-goals.entity';
 import { UserTokenUsage } from './entities/user-token-usage.entity';
+import { UserHealthProfile } from './entities/user-health-profile.entity';
 import { UsersController } from './controllers/users.controller';
 import { OnboardingController } from './controllers/onboarding.controller';
 import { UsersService } from './services/users.service';
@@ -17,6 +18,7 @@ import { UserGoalsService } from './services/user-goals.service';
 import { OnboardingService } from './services/onboarding.service';
 import { TokenManagementService } from './services/token-management.service';
 import { TokenSchedulerService } from './services/token-scheduler.service';
+import { UserHealthProfileService } from './services/user-health-profile.service';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
@@ -28,6 +30,7 @@ import { AuthModule } from '../auth/auth.module';
       UserPreferences,
       UserGoals,
       UserTokenUsage,
+      UserHealthProfile,
     ]),
     ScheduleModule.forRoot(),
     AuthModule,
@@ -42,6 +45,7 @@ import { AuthModule } from '../auth/auth.module';
     OnboardingService,
     TokenManagementService,
     TokenSchedulerService,
+    UserHealthProfileService,
   ],
   exports: [
     UsersService,
@@ -51,6 +55,7 @@ import { AuthModule } from '../auth/auth.module';
     UserGoalsService,
     OnboardingService,
     TokenManagementService,
+    UserHealthProfileService,
   ],
 })
 export class UsersModule {}

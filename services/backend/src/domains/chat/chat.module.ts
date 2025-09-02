@@ -3,17 +3,22 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 
 import { ChatController } from './controllers/chat.controller';
+import { HealthInsightsController } from './controllers/health-insights.controller';
 import { DomainScopedChatService } from './services/domain-scoped-chat.service';
 import { RAGService } from './services/rag.service';
 import { HinglishNLPService } from './services/hinglish-nlp.service';
 import { ChatSessionService } from './services/chat-session.service';
 import { SmartQueryCacheService } from './services/smart-query-cache.service';
 import { SmartCacheSchedulerService } from './services/smart-cache-scheduler.service';
+import { HealthInsightsService } from './services/health-insights.service';
 import { ChatRateLimitInterceptor } from './interceptors/chat-rate-limit.interceptor';
 
 import { ChatSession } from './entities/chat-session.entity';
 import { ChatMessage } from './entities/chat-message.entity';
 import { ChatContext } from './entities/chat-context.entity';
+import { HealthInsight } from './entities/health-insights.entity';
+import { DietPlan } from './entities/diet-plan.entity';
+import { HealthReport } from '../health-reports/entities/health-report.entity';
 
 // Import related domains for integration
 import { AIRoutingModule } from '../ai-routing/ai-routing.module';
@@ -27,7 +32,14 @@ import { IntegrationsModule } from '../integrations/integrations.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatContext]),
+    TypeOrmModule.forFeature([
+      ChatSession, 
+      ChatMessage, 
+      ChatContext,
+      HealthInsight,
+      DietPlan,
+      HealthReport,
+    ]),
     ConfigModule,
     AIRoutingModule,
     UsersModule,
@@ -38,7 +50,10 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     RecipeModule,
     IntegrationsModule,
   ],
-  controllers: [ChatController],
+  controllers: [
+    ChatController,
+    HealthInsightsController,
+  ],
   providers: [
     DomainScopedChatService,
     RAGService,
@@ -46,6 +61,7 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     ChatSessionService,
     SmartQueryCacheService,
     SmartCacheSchedulerService,
+    HealthInsightsService,
     ChatRateLimitInterceptor,
   ],
   exports: [
@@ -55,6 +71,7 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     ChatSessionService,
     SmartQueryCacheService,
     SmartCacheSchedulerService,
+    HealthInsightsService,
   ],
 })
 export class ChatModule {}

@@ -1,6 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Observable } from 'rxjs';
 
 import { Request } from 'express';
 
@@ -18,7 +17,7 @@ export interface AuthenticatedRequest extends Request {
 export class OptionalAuthGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     // This guard allows both authenticated and unauthenticated requests
     // If authenticated, it will populate req.user
     // If not authenticated, req.user will be undefined
@@ -28,7 +27,7 @@ export class OptionalAuthGuard implements CanActivate {
 
 @Injectable()
 export class DeviceBindingGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = request.user;
 

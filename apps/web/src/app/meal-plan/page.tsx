@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   ClockIcon,
   FireIcon,
@@ -15,13 +15,6 @@ import { useApiCall, useAutoFetch } from '../../hooks/useApi'
 import mealPlanningService, { UserProfile } from '../../services/mealPlanningService'
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-const mealTypes = [
-  { id: 'breakfast', name: 'Breakfast', time: '7:00 AM' },
-  { id: 'lunch', name: 'Lunch', time: '12:30 PM' },
-  { id: 'snack', name: 'Snack', time: '4:00 PM' },
-  { id: 'dinner', name: 'Dinner', time: '7:30 PM' },
-]
 
 // Mock user profile - in real app this would come from user context/auth
 const mockUserProfile: UserProfile = {
@@ -73,7 +66,7 @@ export default function MealPlanPage() {
     mealPlanningService.swapMeal
   )
 
-  // Apply meal swap
+  // Apply meal swap - TODO: Connect to swap UI when modal is implemented
   const [applySwapState, { execute: applyMealSwap }] = useApiCall(
     mealPlanningService.applyMealSwap
   )
@@ -81,17 +74,7 @@ export default function MealPlanPage() {
   const currentMealPlan = mealPlanState.data
   const selectedDayPlan = currentMealPlan?.days[selectedDay]
 
-  // Generate initial meal plan if none exists
-  useEffect(() => {
-    const initializeMealPlan = async () => {
-      if (!mealPlanState.loading && !mealPlanState.data && !mealPlanState.error) {
-        await handleGeneratePlan()
-      }
-    }
-    initializeMealPlan()
-  }, [mealPlanState.loading, mealPlanState.data, mealPlanState.error])
-
-  const handleGeneratePlan = async () => {
+  const handleGeneratePlan = useCallback(async () => {
     setIsGeneratingPlan(true)
     const result = await generateMealPlan({
       userId,
@@ -109,7 +92,17 @@ export default function MealPlanPage() {
       await refetchMealPlan()
     }
     setIsGeneratingPlan(false)
-  }
+  }, [generateMealPlan, userId, refetchMealPlan])
+
+  // Generate initial meal plan if none exists
+  useEffect(() => {
+    const initializeMealPlan = async () => {
+      if (!mealPlanState.loading && !mealPlanState.data && !mealPlanState.error) {
+        await handleGeneratePlan()
+      }
+    }
+    initializeMealPlan()
+  }, [mealPlanState.loading, mealPlanState.data, mealPlanState.error, handleGeneratePlan])
 
   const handleSwapMeal = async (mealType: string, dayIndex: number) => {
     if (!currentMealPlan) return
@@ -133,6 +126,7 @@ export default function MealPlanPage() {
     }
   }
 
+  // TODO: Connect to swap selection UI - currently being prepared
   const handleApplySwap = async (newRecipeId: string) => {
     if (!currentMealPlan || !showSwapOptions) return
 
@@ -150,7 +144,7 @@ export default function MealPlanPage() {
   }
 
   // Show loading state while generating or fetching
-  if (mealPlanState.loading || isGeneratingPlan) {
+  if (mealPlanState.loading || isGeneratingPlan || generateState.loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { 
   PaperAirplaneIcon,
   MicrophoneIcon,
@@ -57,9 +57,9 @@ export default function ChatPage() {
     chatService.createSession
   )
 
-  const currentSession = sessionState.data
-  const messages = currentSession?.messages || []
-  const suggestedQuestions = suggestedQuestionsState.data || []
+  const currentSession: ChatSession | null = sessionState.data
+  const messages: ChatMessage[] = currentSession?.messages || []
+  const suggestedQuestions: SuggestedQuestion[] = suggestedQuestionsState.data || []
 
   // Create initial session
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const initializeSession = async () => {
+  const initializeSession = useCallback(async () => {
     const session = await createSession(userId, 'general_health', {
       userGoals: ['weight_loss', 'muscle_gain'],
       currentPage: 'chat'
@@ -82,7 +82,14 @@ export default function ChatPage() {
     if (session) {
       setCurrentSessionId(session.id)
     }
-  }
+  }, [createSession, userId])
+
+  // Create initial session
+  useEffect(() => {
+    if (!currentSessionId && !createSessionState.loading) {
+      initializeSession()
+    }
+  }, [currentSessionId, createSessionState.loading, initializeSession])
 
   const handleSendMessage = async () => {
     if (!message.trim() || !currentSessionId || messageState.loading) return

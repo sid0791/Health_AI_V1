@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { AxiosResponse } from 'axios';
 
 export interface SyntheticTest {
   id: string;
@@ -414,15 +415,16 @@ export class SyntheticTestingService {
     const config = test.config;
 
     try {
-      const response = await firstValueFrom(
-        this.httpService.request({
-          method: (config.method as any) || 'GET',
-          url: config.url!,
-          headers: config.headers,
-          data: config.body,
-          timeout: config.timeout || 10000,
-        }),
-      );
+      const httpRequest = this.httpService.request({
+        method: (config.method as any) || 'GET',
+        url: config.url!,
+        headers: config.headers,
+        data: config.body,
+        timeout: config.timeout || 10000,
+      });
+
+      // Type assertion to work around RxJS version conflicts
+      const response: AxiosResponse = await firstValueFrom(httpRequest as any);
 
       const responseTime = Date.now() - startTime;
       const success =
@@ -436,8 +438,8 @@ export class SyntheticTestingService {
         responseTime,
         statusCode: response.status,
         metrics: {
-          dataSize: JSON.stringify(response.data).length,
-          headerCount: Object.keys(response.headers).length,
+          dataSize: JSON.stringify(response.data || {}).length,
+          headerCount: Object.keys(response.headers || {}).length,
         },
         metadata: {
           expectedStatus: config.expectedStatus || 200,
