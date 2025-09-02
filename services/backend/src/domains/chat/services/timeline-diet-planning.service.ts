@@ -1,551 +1,691 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { HealthAnalysisCacheService, HealthInsight } from './health-analysis-cache.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
-export interface DietPlan {
+import {
+  HealthAnalysisCacheService,
+  HealthInsights,
+  HealthAnalysisType,
+} from './health-analysis-cache.service';
+import { AIRoutingService, AIRoutingRequest } from '../../ai-routing/services/ai-routing.service';
+import { RequestType } from '../../ai-routing/entities/ai-routing-decision.entity';
+
+export interface TimelineDietPlan {
   id: string;
   userId: string;
   planName: string;
-  phase: 'correction' | 'maintenance' | 'optimization';
-  timeline: {
-    startDate: Date;
-    estimatedEndDate: Date;
-    currentDay: number;
-    totalDays: number;
-  };
-  targetConditions: Array<{
-    condition: string;
-    targetImprovement: string;
-    estimatedResolutionDays: number;
+  healthGoals: string[];
+  basedOnInsights: Array<{
+    analysisType: HealthAnalysisType;
+    targetDeficiency: string;
+    severity: string;
+    targetTimeline: number; // days
   }>;
-  nutritionalFocus: {
-    emphasizeNutrients: string[];
-    avoidFoods: string[];
-    recommendedFoods: string[];
-  };
-  meals: {
-    breakfast: string[];
-    lunch: string[];
-    dinner: string[];
-    snacks: string[];
-  };
-  progressTracking: {
-    milestones: Array<{
-      day: number;
-      description: string;
-      completed: boolean;
-    }>;
-    nextMilestone: {
-      day: number;
-      description: string;
-    };
-  };
-  transitionPlan?: {
-    triggerConditions: string[];
-    nextPhase: 'maintenance' | 'optimization';
+  phases: DietPhase[];
+  totalDuration: number; // days
+  expectedOutcomes: Array<{
+    parameter: string;
+    currentValue: number;
+    targetValue: number;
+    timelineToAchieve: number; // days
+  }>;
+  recheckReminders: Array<{
+    type: 'health_test' | 'progress_check' | 'diet_transition';
     scheduledDate: Date;
-    notificationSent: boolean;
-  };
+    description: string;
+  }>;
   createdAt: Date;
-  updatedAt: Date;
+  lastUpdated: Date;
+  isActive: boolean;
 }
 
-export interface DietPlanRequest {
-  userId: string;
-  preferences?: {
-    dietaryRestrictions: string[];
-    cuisinePreferences: string[];
-    mealComplexity: 'simple' | 'moderate' | 'complex';
+export interface DietPhase {
+  phaseNumber: number;
+  name: string;
+  duration: number; // days
+  startDate: Date;
+  endDate: Date;
+  primaryFocus: string[]; // nutrients/health goals
+  dietaryGuidelines: {
+    emphasize: string[]; // foods to focus on
+    limit: string[]; // foods to reduce
+    avoid: string[]; // foods to eliminate
+    supplementation?: string[]; // if needed
   };
-  forceRefresh?: boolean;
+  expectedProgress: string;
+  transitionCriteria: string;
+  nextPhasePrep: string;
+}
+
+export interface DietAdaptationRequest {
+  userId: string;
+  currentPlanId?: string;
+  newHealthInsights?: HealthInsights;
+  progressFeedback?: {
+    completedDays: number;
+    adherenceRate: number; // 0-100%
+    reportedImprovements: string[];
+    challenges: string[];
+  };
+  adaptationType: 'new_health_data' | 'timeline_completion' | 'progress_adjustment';
+}
+
+export interface DietAdaptationResult {
+  adaptationNeeded: boolean;
+  newPlan?: TimelineDietPlan;
+  transitionPlan?: {
+    transitionType: 'phase_advance' | 'maintenance_mode' | 'goal_refocus';
+    transitionDate: Date;
+    transitionInstructions: string[];
+    newFocus: string[];
+  };
+  notifications: Array<{
+    type: 'success' | 'reminder' | 'action_required';
+    title: string;
+    message: string;
+    actionRequired?: string;
+    scheduledFor?: Date;
+  }>;
 }
 
 @Injectable()
 export class TimelineDietPlanningService {
   private readonly logger = new Logger(TimelineDietPlanningService.name);
-  
-  // In-memory storage for now (in production, use database)
-  private dietPlans: Map<string, DietPlan> = new Map();
+
+  // Store active diet plans (would be database in production)
+  private activePlans = new Map<string, TimelineDietPlan>();
 
   constructor(
     private readonly healthAnalysisCacheService: HealthAnalysisCacheService,
+    private readonly aiRoutingService: AIRoutingService,
+    private readonly configService: ConfigService,
   ) {
-    this.logger.log('TimelineDietPlanningService initialized');
+    // Check for plan transitions every day
+    setInterval(() => this.checkPlanTransitions(), 24 * 60 * 60 * 1000);
   }
 
   /**
-   * Generate a personalized diet plan based on cached health analysis
+   * Generate a timeline-based diet plan using cached health analysis
    */
-  async generateDietPlan(request: DietPlanRequest): Promise<DietPlan> {
-    this.logger.log(`Generating diet plan for user ${request.userId}`);
+  async generateTimelineDietPlan(userId: string): Promise<TimelineDietPlan> {
+    this.logger.debug(`Generating timeline diet plan for user ${userId}`);
 
-    // Get comprehensive health insights from cache
-    const healthInsights = await this.healthAnalysisCacheService.getHealthInsights(request.userId);
+    // Get nutrition deficiencies and excesses from cached health analysis
+    const nutritionData = await this.healthAnalysisCacheService.getNutritionDeficiencies(userId);
 
-    if (!healthInsights || Object.keys(healthInsights).length === 0) {
-      throw new Error('No health analysis available. Please upload health reports first.');
+    if (nutritionData.deficiencies.length === 0 && nutritionData.excesses.length === 0) {
+      return this.generateMaintenancePlan(userId);
     }
 
-    // Check if user already has an active diet plan
-    const existingPlan = await this.getActiveDietPlan(request.userId);
-    if (existingPlan && !request.forceRefresh) {
-      // Update existing plan with current progress
-      return await this.updateDietPlanProgress(existingPlan);
-    }
+    // Create phased diet plan based on improvement timelines
+    const phases = this.createDietPhases(nutritionData);
+    const totalDuration = Math.max(...phases.map(p => p.duration));
 
-    // Create new diet plan based on health insights
-    const dietPlan = await this.createDietPlanFromInsights(request, healthInsights);
-    
+    // Generate expected outcomes
+    const expectedOutcomes = this.generateExpectedOutcomes(nutritionData);
+
+    // Create recheck reminders
+    const recheckReminders = this.generateRecheckReminders(phases, expectedOutcomes);
+
+    const dietPlan: TimelineDietPlan = {
+      id: this.generatePlanId(),
+      userId,
+      planName: this.generatePlanName(nutritionData),
+      healthGoals: this.extractHealthGoals(nutritionData),
+      basedOnInsights: nutritionData.deficiencies.map(def => ({
+        analysisType: HealthAnalysisType.NUTRIENT_DEFICIENCY,
+        targetDeficiency: def.nutrient,
+        severity: def.severity,
+        targetTimeline: def.improvementTimeline,
+      })),
+      phases,
+      totalDuration,
+      expectedOutcomes,
+      recheckReminders,
+      createdAt: new Date(),
+      lastUpdated: new Date(),
+      isActive: true,
+    };
+
     // Store the plan
-    this.dietPlans.set(dietPlan.id, dietPlan);
-    
-    this.logger.log(`Created diet plan ${dietPlan.id} for user ${request.userId}`);
-    
+    this.activePlans.set(userId, dietPlan);
+
+    this.logger.log(
+      `Generated timeline diet plan for user ${userId} with ${phases.length} phases over ${totalDuration} days`,
+    );
+
     return dietPlan;
+  }
+
+  /**
+   * Adapt diet plan based on new health data or progress
+   */
+  async adaptDietPlan(request: DietAdaptationRequest): Promise<DietAdaptationResult> {
+    this.logger.debug(
+      `Adapting diet plan for user ${request.userId}, type: ${request.adaptationType}`,
+    );
+
+    const currentPlan = this.activePlans.get(request.userId);
+    const notifications: DietAdaptationResult['notifications'] = [];
+
+    switch (request.adaptationType) {
+      case 'new_health_data':
+        return await this.adaptForNewHealthData(request, currentPlan);
+
+      case 'timeline_completion':
+        return await this.adaptForTimelineCompletion(request, currentPlan, notifications);
+
+      case 'progress_adjustment':
+        return await this.adaptForProgress(request, currentPlan, notifications);
+
+      default:
+        return {
+          adaptationNeeded: false,
+          notifications: [{
+            type: 'success',
+            title: 'No Changes Needed',
+            message: 'Your current diet plan remains optimal.',
+          }],
+        };
+    }
   }
 
   /**
    * Get current diet plan for user
    */
-  async getDietPlan(userId: string): Promise<DietPlan | null> {
-    const plan = await this.getActiveDietPlan(userId);
-    
-    if (!plan) {
-      return null;
-    }
-
-    // Update progress and check for phase transitions
-    return await this.updateDietPlanProgress(plan);
+  async getCurrentDietPlan(userId: string): Promise<TimelineDietPlan | null> {
+    return this.activePlans.get(userId) || null;
   }
 
   /**
-   * Check if diet plan needs to transition to next phase
+   * Check if user should transition to maintenance diet
    */
-  async checkPhaseTransition(userId: string): Promise<{
+  async checkMaintenanceTransition(userId: string): Promise<{
     shouldTransition: boolean;
-    currentPhase: string;
-    nextPhase?: string;
-    message?: string;
+    reason: string;
+    recommendedActions: string[];
   }> {
-    const plan = await this.getActiveDietPlan(userId);
-    
-    if (!plan) {
-      return { shouldTransition: false, currentPhase: 'none' };
-    }
-
-    const currentDay = this.calculateCurrentDay(plan.timeline.startDate);
-    
-    // Check if we've reached the estimated end date
-    const shouldTransition = currentDay >= plan.timeline.totalDays;
-    
-    if (shouldTransition && plan.phase === 'correction') {
+    const currentPlan = this.activePlans.get(userId);
+    if (!currentPlan) {
       return {
-        shouldTransition: true,
-        currentPhase: plan.phase,
-        nextPhase: 'maintenance',
-        message: `Great progress! Your ${plan.targetConditions[0]?.condition} improvement plan is complete. Ready to switch to a balanced maintenance diet?`,
+        shouldTransition: false,
+        reason: 'No active diet plan found',
+        recommendedActions: ['Consider creating a new health-focused diet plan'],
       };
     }
 
-    if (shouldTransition && plan.phase === 'maintenance') {
+    const now = new Date();
+    const completedPhases = currentPlan.phases.filter(phase => phase.endDate <= now);
+    const totalPhases = currentPlan.phases.length;
+
+    // Check if 80% of timeline goals should be completed
+    const expectedCompletionRate = completedPhases.length / totalPhases;
+    
+    if (expectedCompletionRate >= 0.8) {
       return {
         shouldTransition: true,
-        currentPhase: plan.phase,
-        nextPhase: 'optimization',
-        message: 'Your maintenance phase is complete. Consider optimizing your diet for peak wellness, or continue with balanced nutrition.',
+        reason: 'Most improvement goals achieved based on timeline',
+        recommendedActions: [
+          'Schedule comprehensive health test to verify improvements',
+          'Transition to balanced maintenance diet',
+          'Continue monitoring key biomarkers',
+          'Consider new health optimization goals',
+        ],
       };
     }
 
-    return { shouldTransition: false, currentPhase: plan.phase };
-  }
-
-  /**
-   * Transition to next phase of diet plan
-   */
-  async transitionToNextPhase(
-    userId: string,
-    userChoice: 'continue' | 'maintain' | 'recheck',
-  ): Promise<DietPlan> {
-    const existingPlan = await this.getActiveDietPlan(userId);
-    
-    if (!existingPlan) {
-      throw new Error('No active diet plan found');
-    }
-
-    if (userChoice === 'recheck') {
-      // Recommend health report recheck
-      return await this.createRecheckRecommendation(existingPlan);
-    }
-
-    if (userChoice === 'maintain') {
-      // Keep current approach but extend timeline
-      return await this.extendCurrentPhase(existingPlan);
-    }
-
-    // Transition to next phase
-    const nextPhase = existingPlan.phase === 'correction' ? 'maintenance' : 'optimization';
-    const newPlan = await this.createNextPhasePlan(existingPlan, nextPhase);
-    
-    // Archive old plan and store new one
-    existingPlan.transitionPlan!.notificationSent = true;
-    this.dietPlans.set(existingPlan.id, existingPlan);
-    this.dietPlans.set(newPlan.id, newPlan);
-    
-    this.logger.log(`Transitioned user ${userId} from ${existingPlan.phase} to ${nextPhase} phase`);
-    
-    return newPlan;
-  }
-
-  /**
-   * Update diet plan when new health report is uploaded
-   */
-  async updatePlanForNewHealthData(userId: string): Promise<DietPlan | null> {
-    this.logger.log(`Updating diet plan for new health data - user ${userId}`);
-    
-    // Get updated health insights
-    const newHealthInsights = await this.healthAnalysisCacheService.getHealthInsights(userId);
-    
-    const existingPlan = await this.getActiveDietPlan(userId);
-    if (!existingPlan) {
-      // No existing plan, generate new one
-      return await this.generateDietPlan({ userId, forceRefresh: true });
-    }
-
-    // Compare new insights with plan targets
-    const planNeedsUpdate = await this.shouldUpdatePlanForNewData(existingPlan, newHealthInsights);
-    
-    if (planNeedsUpdate) {
-      // Generate updated plan
-      const updatedPlan = await this.generateDietPlan({ userId, forceRefresh: true });
-      
-      this.logger.log(`Updated diet plan for user ${userId} based on new health data`);
-      return updatedPlan;
-    }
-
-    return existingPlan;
-  }
-
-  // Private helper methods
-
-  private async getActiveDietPlan(userId: string): Promise<DietPlan | null> {
-    for (const plan of this.dietPlans.values()) {
-      if (plan.userId === userId && this.isPlanActive(plan)) {
-        return plan;
-      }
-    }
-    return null;
-  }
-
-  private isPlanActive(plan: DietPlan): boolean {
-    const now = new Date();
-    return now >= plan.timeline.startDate && now <= plan.timeline.estimatedEndDate;
-  }
-
-  private async createDietPlanFromInsights(
-    request: DietPlanRequest,
-    insights: HealthInsight,
-  ): Promise<DietPlan> {
-    const planId = `diet_plan_${request.userId}_${Date.now()}`;
-    const now = new Date();
-    
-    // Analyze primary health concerns
-    const primaryConcerns = this.identifyPrimaryConcerns(insights);
-    const estimatedDays = this.calculateTotalTimelineDays(primaryConcerns);
-    
-    const estimatedEndDate = new Date(now);
-    estimatedEndDate.setDate(estimatedEndDate.getDate() + estimatedDays);
-
-    const dietPlan: DietPlan = {
-      id: planId,
-      userId: request.userId,
-      planName: this.generatePlanName(primaryConcerns),
-      phase: 'correction',
-      timeline: {
-        startDate: now,
-        estimatedEndDate,
-        currentDay: 1,
-        totalDays: estimatedDays,
-      },
-      targetConditions: primaryConcerns,
-      nutritionalFocus: this.createNutritionalFocus(insights, request.preferences),
-      meals: this.generateMealPlan(insights, request.preferences),
-      progressTracking: {
-        milestones: this.createMilestones(primaryConcerns),
-        nextMilestone: this.createMilestones(primaryConcerns)[0],
-      },
-      transitionPlan: {
-        triggerConditions: primaryConcerns.map(c => c.condition),
-        nextPhase: 'maintenance',
-        scheduledDate: estimatedEndDate,
-        notificationSent: false,
-      },
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    return dietPlan;
-  }
-
-  private identifyPrimaryConcerns(insights: HealthInsight): Array<{
-    condition: string;
-    targetImprovement: string;
-    estimatedResolutionDays: number;
-  }> {
-    const concerns = [];
-
-    if (insights.micronutrients?.deficiencies) {
-      for (const deficiency of insights.micronutrients.deficiencies) {
-        concerns.push({
-          condition: `${deficiency.nutrient} deficiency`,
-          targetImprovement: `Restore ${deficiency.nutrient} to optimal levels`,
-          estimatedResolutionDays: deficiency.timeline || 30,
-        });
-      }
-    }
-
-    if (insights.conditions?.detected) {
-      for (const condition of insights.conditions.detected) {
-        concerns.push({
-          condition: condition.condition,
-          targetImprovement: `Improve ${condition.condition} markers`,
-          estimatedResolutionDays: condition.timeline || 60,
-        });
-      }
-    }
-
-    // Sort by priority (shorter timelines first)
-    return concerns.sort((a, b) => a.estimatedResolutionDays - b.estimatedResolutionDays).slice(0, 3);
-  }
-
-  private calculateTotalTimelineDays(concerns: Array<{ estimatedResolutionDays: number }>): number {
-    if (concerns.length === 0) return 30; // Default 30 days
-    
-    // Take the longest timeline as the main plan duration
-    return Math.max(...concerns.map(c => c.estimatedResolutionDays));
-  }
-
-  private generatePlanName(concerns: Array<{ condition: string }>): string {
-    if (concerns.length === 0) return 'General Wellness Plan';
-    
-    const mainConcern = concerns[0].condition;
-    return `${mainConcern} Recovery Plan`;
-  }
-
-  private createNutritionalFocus(
-    insights: HealthInsight, 
-    preferences?: DietPlanRequest['preferences'],
-  ) {
-    const focus = {
-      emphasizeNutrients: [] as string[],
-      avoidFoods: [] as string[],
-      recommendedFoods: [] as string[],
-    };
-
-    // Based on micronutrient deficiencies
-    if (insights.micronutrients?.deficiencies) {
-      for (const deficiency of insights.micronutrients.deficiencies) {
-        focus.emphasizeNutrients.push(deficiency.nutrient);
-        
-        // Add foods rich in this nutrient
-        const nutrientFoods = this.getFoodsForNutrient(deficiency.nutrient);
-        focus.recommendedFoods.push(...nutrientFoods);
-      }
-    }
-
-    // Based on health conditions
-    if (insights.conditions?.detected) {
-      for (const condition of insights.conditions.detected) {
-        const avoidFoods = this.getFoodsToAvoidForCondition(condition.condition);
-        focus.avoidFoods.push(...avoidFoods);
-      }
-    }
-
-    // Apply dietary preferences
-    if (preferences?.dietaryRestrictions) {
-      focus.avoidFoods.push(...preferences.dietaryRestrictions);
-    }
-
-    return focus;
-  }
-
-  private generateMealPlan(
-    insights: HealthInsight,
-    preferences?: DietPlanRequest['preferences'],
-  ) {
-    // This would be more sophisticated in production
     return {
-      breakfast: [
-        'Iron-rich spinach and egg scramble',
-        'Vitamin D fortified cereal with berries',
-        'Whole grain toast with avocado',
-      ],
-      lunch: [
-        'Salmon salad with leafy greens',
-        'Quinoa bowl with mixed vegetables',
-        'Lentil soup with whole grain bread',
-      ],
-      dinner: [
-        'Grilled chicken with sweet potato',
-        'Tofu stir-fry with broccoli',
-        'Lean beef with roasted vegetables',
-      ],
-      snacks: [
-        'Mixed nuts and seeds',
-        'Greek yogurt with berries',
-        'Hummus with carrot sticks',
+      shouldTransition: false,
+      reason: `Diet plan in progress (${Math.round(expectedCompletionRate * 100)}% timeline completed)`,
+      recommendedActions: [
+        'Continue with current phase recommendations',
+        'Monitor adherence and progress',
+        `Review plan effectiveness in ${Math.ceil((currentPlan.totalDuration * 0.8) - 
+          ((now.getTime() - currentPlan.createdAt.getTime()) / (1000 * 60 * 60 * 24)))} days`,
       ],
     };
   }
 
-  private createMilestones(concerns: Array<{ condition: string; estimatedResolutionDays: number }>) {
-    const milestones = [];
-    
-    for (const concern of concerns) {
-      const quarterPoint = Math.floor(concern.estimatedResolutionDays * 0.25);
-      const halfPoint = Math.floor(concern.estimatedResolutionDays * 0.5);
-      const threeQuarterPoint = Math.floor(concern.estimatedResolutionDays * 0.75);
-      
-      milestones.push(
-        {
-          day: quarterPoint,
-          description: `Initial improvement in ${concern.condition}`,
-          completed: false,
-        },
-        {
-          day: halfPoint,
-          description: `Halfway point - noticeable ${concern.condition} improvement`,
-          completed: false,
-        },
-        {
-          day: threeQuarterPoint,
-          description: `Significant ${concern.condition} improvement`,
-          completed: false,
-        },
-        {
-          day: concern.estimatedResolutionDays,
-          description: `Target ${concern.condition} resolution`,
-          completed: false,
-        },
-      );
-    }
+  /**
+   * Generate maintenance diet plan
+   */
+  private generateMaintenancePlan(userId: string): TimelineDietPlan {
+    const maintenancePhase: DietPhase = {
+      phaseNumber: 1,
+      name: 'Balanced Maintenance',
+      duration: 365, // 1 year
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      primaryFocus: ['overall_health', 'maintenance', 'prevention'],
+      dietaryGuidelines: {
+        emphasize: [
+          'variety_of_vegetables',
+          'lean_proteins',
+          'whole_grains',
+          'healthy_fats',
+          'adequate_hydration',
+        ],
+        limit: ['processed_foods', 'added_sugars', 'excessive_sodium'],
+        avoid: ['trans_fats', 'excessive_alcohol'],
+      },
+      expectedProgress: 'Maintain current health status and prevent chronic disease',
+      transitionCriteria: 'New health concerns or optimization goals identified',
+      nextPhasePrep: 'Regular health monitoring and goal reassessment',
+    };
 
-    return milestones.sort((a, b) => a.day - b.day);
+    return {
+      id: this.generatePlanId(),
+      userId,
+      planName: 'Balanced Maintenance Diet',
+      healthGoals: ['maintain_health', 'prevent_disease', 'optimize_energy'],
+      basedOnInsights: [],
+      phases: [maintenancePhase],
+      totalDuration: 365,
+      expectedOutcomes: [],
+      recheckReminders: [{
+        type: 'health_test',
+        scheduledDate: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000), // 6 months
+        description: 'Comprehensive health check to assess current status and set new goals',
+      }],
+      createdAt: new Date(),
+      lastUpdated: new Date(),
+      isActive: true,
+    };
   }
 
-  private async updateDietPlanProgress(plan: DietPlan): Promise<DietPlan> {
-    const currentDay = this.calculateCurrentDay(plan.timeline.startDate);
+  /**
+   * Create diet phases based on improvement timelines
+   */
+  private createDietPhases(nutritionData: ReturnType<typeof this.healthAnalysisCacheService.getNutritionDeficiencies> extends Promise<infer T> ? T : never): DietPhase[] {
+    const phases: DietPhase[] = [];
     
-    plan.timeline.currentDay = currentDay;
-    plan.updatedAt = new Date();
+    // Sort deficiencies by timeline (shortest first for quick wins)
+    const sortedDeficiencies = [...nutritionData.deficiencies].sort(
+      (a, b) => a.improvementTimeline - b.improvementTimeline
+    );
 
-    // Update milestone completion
-    plan.progressTracking.milestones.forEach(milestone => {
-      if (currentDay >= milestone.day) {
-        milestone.completed = true;
-      }
+    // Group deficiencies by similar timelines
+    const phaseGroups = this.groupDeficienciesByTimeline(sortedDeficiencies);
+    
+    let cumulativeDays = 0;
+
+    phaseGroups.forEach((group, index) => {
+      const phaseDuration = Math.max(...group.map(d => d.improvementTimeline));
+      const startDate = new Date(Date.now() + cumulativeDays * 24 * 60 * 60 * 1000);
+      const endDate = new Date(startDate.getTime() + phaseDuration * 24 * 60 * 60 * 1000);
+
+      const phase: DietPhase = {
+        phaseNumber: index + 1,
+        name: this.generatePhaseName(group, index),
+        duration: phaseDuration,
+        startDate,
+        endDate,
+        primaryFocus: group.map(d => d.nutrient.toLowerCase()),
+        dietaryGuidelines: this.generateDietaryGuidelines(group, nutritionData.excesses),
+        expectedProgress: this.generateExpectedProgress(group),
+        transitionCriteria: this.generateTransitionCriteria(group),
+        nextPhasePrep: this.generateNextPhasePrep(index, phaseGroups.length),
+      };
+
+      phases.push(phase);
+      cumulativeDays += phaseDuration;
     });
 
-    // Find next milestone
-    const nextMilestone = plan.progressTracking.milestones.find(m => !m.completed);
-    if (nextMilestone) {
-      plan.progressTracking.nextMilestone = nextMilestone;
-    }
+    return phases;
+  }
 
-    this.dietPlans.set(plan.id, plan);
+  private groupDeficienciesByTimeline(deficiencies: HealthInsights['deficiencies']): HealthInsights['deficiencies'][] {
+    const groups: HealthInsights['deficiencies'][] = [];
     
-    return plan;
-  }
-
-  private calculateCurrentDay(startDate: Date): number {
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - startDate.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  }
-
-  private getFoodsForNutrient(nutrient: string): string[] {
-    const nutrientFoodMap: Record<string, string[]> = {
-      'iron': ['spinach', 'red meat', 'lentils', 'tofu', 'quinoa'],
-      'vitamin_d': ['fatty fish', 'egg yolks', 'fortified dairy', 'mushrooms'],
-      'b12': ['fish', 'meat', 'dairy', 'nutritional yeast', 'eggs'],
-      'folate': ['leafy greens', 'legumes', 'citrus fruits', 'fortified grains'],
-      'calcium': ['dairy products', 'leafy greens', 'almonds', 'tahini'],
-      'magnesium': ['nuts', 'seeds', 'whole grains', 'dark chocolate'],
-    };
-
-    return nutrientFoodMap[nutrient.toLowerCase()] || ['nutrient-rich whole foods'];
-  }
-
-  private getFoodsToAvoidForCondition(condition: string): string[] {
-    const conditionAvoidMap: Record<string, string[]> = {
-      'fatty_liver': ['alcohol', 'refined sugars', 'processed foods', 'saturated fats'],
-      'high_cholesterol': ['trans fats', 'excessive saturated fats', 'processed meats'],
-      'diabetes': ['refined sugars', 'white bread', 'sugary drinks', 'processed snacks'],
-      'hypertension': ['excessive sodium', 'processed foods', 'canned soups', 'deli meats'],
-    };
-
-    return conditionAvoidMap[condition.toLowerCase()] || ['processed foods'];
-  }
-
-  private async createRecheckRecommendation(plan: DietPlan): Promise<DietPlan> {
-    // Extend current plan with recheck recommendation
-    plan.transitionPlan = {
-      triggerConditions: ['health_report_recheck_recommended'],
-      nextPhase: 'maintenance',
-      scheduledDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      notificationSent: false,
-    };
-
-    return plan;
-  }
-
-  private async extendCurrentPhase(plan: DietPlan): Promise<DietPlan> {
-    // Extend current phase by 30 days
-    const extendedDate = new Date(plan.timeline.estimatedEndDate);
-    extendedDate.setDate(extendedDate.getDate() + 30);
-    
-    plan.timeline.estimatedEndDate = extendedDate;
-    plan.timeline.totalDays += 30;
-    plan.updatedAt = new Date();
-
-    return plan;
-  }
-
-  private async createNextPhasePlan(existingPlan: DietPlan, nextPhase: 'maintenance' | 'optimization'): Promise<DietPlan> {
-    const newPlan: DietPlan = {
-      ...existingPlan,
-      id: `diet_plan_${existingPlan.userId}_${Date.now()}`,
-      phase: nextPhase,
-      planName: `${nextPhase === 'maintenance' ? 'Maintenance' : 'Optimization'} Wellness Plan`,
-      timeline: {
-        startDate: new Date(),
-        estimatedEndDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
-        currentDay: 1,
-        totalDays: 60,
-      },
-      targetConditions: nextPhase === 'maintenance' 
-        ? [{ condition: 'maintain current health', targetImprovement: 'Sustain improvements', estimatedResolutionDays: 60 }]
-        : [{ condition: 'optimal wellness', targetImprovement: 'Peak health optimization', estimatedResolutionDays: 90 }],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    return newPlan;
-  }
-
-  private async shouldUpdatePlanForNewData(
-    existingPlan: DietPlan, 
-    newInsights: HealthInsight,
-  ): Promise<boolean> {
-    // Simple logic: if new deficiencies are detected, update plan
-    if (newInsights.micronutrients?.deficiencies && newInsights.micronutrients.deficiencies.length > 0) {
-      const newDeficiencies = newInsights.micronutrients.deficiencies.map(d => d.nutrient);
-      const planTargets = existingPlan.targetConditions.map(t => t.condition);
-      
-      // Check if there are new deficiencies not covered in current plan
-      return newDeficiencies.some(deficiency => 
-        !planTargets.some(target => target.includes(deficiency))
+    for (const deficiency of deficiencies) {
+      // Find group with similar timeline (within 15 days)
+      const existingGroup = groups.find(group => 
+        Math.abs(group[0].improvementTimeline - deficiency.improvementTimeline) <= 15
       );
+      
+      if (existingGroup) {
+        existingGroup.push(deficiency);
+      } else {
+        groups.push([deficiency]);
+      }
+    }
+    
+    return groups;
+  }
+
+  private generateDietaryGuidelines(
+    deficiencies: HealthInsights['deficiencies'],
+    excesses: HealthInsights['excesses']
+  ): DietPhase['dietaryGuidelines'] {
+    const emphasize = new Set<string>();
+    const limit = new Set<string>();
+    const avoid = new Set<string>();
+
+    // Add foods for deficiencies
+    deficiencies.forEach(def => {
+      def.dietaryFocus.forEach(food => emphasize.add(food));
+    });
+
+    // Add restrictions for excesses
+    excesses.forEach(excess => {
+      excess.restrictions.forEach(restriction => {
+        if (restriction.includes('avoid')) {
+          avoid.add(restriction.replace('avoid_', ''));
+        } else {
+          limit.add(restriction);
+        }
+      });
+    });
+
+    return {
+      emphasize: Array.from(emphasize),
+      limit: Array.from(limit),
+      avoid: Array.from(avoid),
+    };
+  }
+
+  private async adaptForNewHealthData(
+    request: DietAdaptationRequest,
+    currentPlan: TimelineDietPlan | undefined
+  ): Promise<DietAdaptationResult> {
+    if (!request.newHealthInsights) {
+      return {
+        adaptationNeeded: false,
+        notifications: [{
+          type: 'success',
+          title: 'No New Health Data',
+          message: 'No new health insights to adapt diet plan.',
+        }],
+      };
     }
 
-    return false;
+    // Compare new insights with current plan
+    const newDeficiencies = request.newHealthInsights.deficiencies;
+    const currentDeficiencies = currentPlan?.basedOnInsights || [];
+
+    // Check for new deficiencies or changed severities
+    const significantChanges = this.detectSignificantHealthChanges(
+      newDeficiencies,
+      currentDeficiencies
+    );
+
+    if (significantChanges.hasNewDeficiencies || significantChanges.hasSeverityChanges) {
+      // Generate updated plan
+      const newPlan = await this.generateTimelineDietPlan(request.userId);
+      
+      return {
+        adaptationNeeded: true,
+        newPlan,
+        notifications: [{
+          type: 'action_required',
+          title: 'Diet Plan Updated',
+          message: 'Your health analysis shows new insights. Your diet plan has been updated.',
+          actionRequired: 'Review new dietary recommendations and phase timeline',
+        }],
+      };
+    }
+
+    return {
+      adaptationNeeded: false,
+      notifications: [{
+        type: 'success',
+        title: 'Health Progress Confirmed',
+        message: 'Your health improvements are on track. Continue with current diet plan.',
+      }],
+    };
+  }
+
+  private async adaptForTimelineCompletion(
+    request: DietAdaptationRequest,
+    currentPlan: TimelineDietPlan | undefined,
+    notifications: DietAdaptationResult['notifications']
+  ): Promise<DietAdaptationResult> {
+    if (!currentPlan) {
+      return {
+        adaptationNeeded: false,
+        notifications: [{
+          type: 'reminder',
+          title: 'No Active Plan',
+          message: 'Consider creating a new health-focused diet plan.',
+        }],
+      };
+    }
+
+    const transitionCheck = await this.checkMaintenanceTransition(request.userId);
+    
+    if (transitionCheck.shouldTransition) {
+      const maintenancePlan = this.generateMaintenancePlan(request.userId);
+      
+      return {
+        adaptationNeeded: true,
+        newPlan: maintenancePlan,
+        transitionPlan: {
+          transitionType: 'maintenance_mode',
+          transitionDate: new Date(),
+          transitionInstructions: [
+            'Congratulations! Your targeted health improvements are complete.',
+            'Transition to balanced maintenance diet to sustain improvements.',
+            'Schedule comprehensive health test to verify progress.',
+            'Continue monitoring key biomarkers quarterly.',
+          ],
+          newFocus: ['maintenance', 'prevention', 'overall_wellness'],
+        },
+        notifications: [
+          {
+            type: 'success',
+            title: '🎉 Health Goals Achieved!',
+            message: `Your ${currentPlan.totalDuration}-day improvement plan is complete. Time to transition to maintenance mode.`,
+          },
+          {
+            type: 'reminder',
+            title: 'Schedule Health Recheck',
+            message: 'Book a comprehensive health test to verify your improvements and set new goals.',
+            actionRequired: 'Schedule health test appointment',
+            scheduledFor: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week
+          },
+        ],
+      };
+    }
+
+    return {
+      adaptationNeeded: false,
+      notifications: [{
+        type: 'reminder',
+        title: 'Continue Current Plan',
+        message: transitionCheck.reason,
+      }],
+    };
+  }
+
+  private async adaptForProgress(
+    request: DietAdaptationRequest,
+    currentPlan: TimelineDietPlan | undefined,
+    notifications: DietAdaptationResult['notifications']
+  ): Promise<DietAdaptationResult> {
+    if (!request.progressFeedback || !currentPlan) {
+      return {
+        adaptationNeeded: false,
+        notifications: [{ type: 'reminder', title: 'Progress Tracking', message: 'Keep tracking your diet adherence for better recommendations.' }],
+      };
+    }
+
+    const { adherenceRate, reportedImprovements, challenges } = request.progressFeedback;
+
+    // Analyze progress and adapt plan
+    if (adherenceRate < 60) {
+      // Low adherence - simplify plan
+      notifications.push({
+        type: 'action_required',
+        title: 'Diet Plan Simplified',
+        message: 'We notice adherence challenges. Your plan has been simplified to focus on the most important changes.',
+        actionRequired: 'Review simplified dietary recommendations',
+      });
+
+      // Create simplified version of current plan
+      const simplifiedPlan = this.simplifyDietPlan(currentPlan);
+      
+      return {
+        adaptationNeeded: true,
+        newPlan: simplifiedPlan,
+        notifications,
+      };
+    }
+
+    if (reportedImprovements.length > 2 && adherenceRate > 80) {
+      // Good progress - potentially accelerate timeline
+      notifications.push({
+        type: 'success',
+        title: '🎯 Excellent Progress!',
+        message: 'Your adherence and reported improvements are outstanding. Consider advancing to next phase earlier.',
+      });
+    }
+
+    return {
+      adaptationNeeded: false,
+      notifications,
+    };
+  }
+
+  // Helper methods for plan generation
+  private generatePlanName(nutritionData: any): string {
+    const primaryDeficiency = nutritionData.deficiencies[0]?.nutrient;
+    if (primaryDeficiency) {
+      return `${primaryDeficiency} Optimization Plan`;
+    }
+    return 'Personalized Health Optimization Plan';
+  }
+
+  private extractHealthGoals(nutritionData: any): string[] {
+    const goals = [];
+    nutritionData.deficiencies.forEach(def => {
+      goals.push(`optimize_${def.nutrient.toLowerCase()}`);
+    });
+    nutritionData.excesses.forEach(excess => {
+      goals.push(`reduce_${excess.parameter.toLowerCase()}`);
+    });
+    return goals;
+  }
+
+  private generateExpectedOutcomes(nutritionData: any): TimelineDietPlan['expectedOutcomes'] {
+    return nutritionData.deficiencies.map(def => ({
+      parameter: def.nutrient,
+      currentValue: def.currentValue || 0,
+      targetValue: this.parseTargetValue(def.normalRange),
+      timelineToAchieve: def.improvementTimeline,
+    }));
+  }
+
+  private parseTargetValue(normalRange: string): number {
+    // Simple parser for normal ranges like "30-50 ng/mL" -> 40 (midpoint)
+    const match = normalRange.match(/(\d+)-(\d+)/);
+    if (match) {
+      const min = parseInt(match[1]);
+      const max = parseInt(match[2]);
+      return (min + max) / 2;
+    }
+    return 0;
+  }
+
+  private generateRecheckReminders(phases: DietPhase[], outcomes: TimelineDietPlan['expectedOutcomes']): TimelineDietPlan['recheckReminders'] {
+    const reminders: TimelineDietPlan['recheckReminders'] = [];
+
+    // Add mid-point progress check
+    const midPointDate = new Date(phases[0].startDate.getTime() + (phases[phases.length - 1].endDate.getTime() - phases[0].startDate.getTime()) / 2);
+    reminders.push({
+      type: 'progress_check',
+      scheduledDate: midPointDate,
+      description: 'Mid-plan progress assessment and plan adjustment if needed',
+    });
+
+    // Add final health test reminder
+    const finalDate = new Date(phases[phases.length - 1].endDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    reminders.push({
+      type: 'health_test',
+      scheduledDate: finalDate,
+      description: 'Comprehensive health test to verify improvements and plan next steps',
+    });
+
+    return reminders;
+  }
+
+  private generatePhaseName(deficiencies: HealthInsights['deficiencies'], index: number): string {
+    if (deficiencies.length === 1) {
+      return `${deficiencies[0].nutrient} Focus Phase`;
+    }
+    return `Phase ${index + 1}: Multi-Nutrient Optimization`;
+  }
+
+  private generateExpectedProgress(deficiencies: HealthInsights['deficiencies']): string {
+    const nutrients = deficiencies.map(d => d.nutrient).join(', ');
+    const timeline = Math.max(...deficiencies.map(d => d.improvementTimeline));
+    return `Expect ${nutrients} levels to normalize within ${timeline} days with consistent adherence`;
+  }
+
+  private generateTransitionCriteria(deficiencies: HealthInsights['deficiencies']): string {
+    return `Target nutrient levels achieved or ${Math.max(...deficiencies.map(d => d.improvementTimeline))} days completed`;
+  }
+
+  private generateNextPhasePrep(currentIndex: number, totalPhases: number): string {
+    if (currentIndex + 1 >= totalPhases) {
+      return 'Prepare for transition to maintenance diet and health status verification';
+    }
+    return `Maintain current improvements while preparing to address next set of health priorities`;
+  }
+
+  private detectSignificantHealthChanges(newDeficiencies: any[], currentDeficiencies: any[]): {
+    hasNewDeficiencies: boolean;
+    hasSeverityChanges: boolean;
+  } {
+    // Simple comparison logic - would be more sophisticated in production
+    const newNutrients = new Set(newDeficiencies.map(d => d.nutrient));
+    const currentNutrients = new Set(currentDeficiencies.map(d => d.targetDeficiency));
+
+    const hasNewDeficiencies = newDeficiencies.some(d => !currentNutrients.has(d.nutrient));
+    const hasSeverityChanges = newDeficiencies.some(newDef => {
+      const currentDef = currentDeficiencies.find(c => c.targetDeficiency === newDef.nutrient);
+      return currentDef && currentDef.severity !== newDef.severity;
+    });
+
+    return { hasNewDeficiencies, hasSeverityChanges };
+  }
+
+  private simplifyDietPlan(plan: TimelineDietPlan): TimelineDietPlan {
+    // Create a simplified version focusing on top 2 priorities
+    const simplifiedInsights = plan.basedOnInsights.slice(0, 2);
+    
+    return {
+      ...plan,
+      id: this.generatePlanId(),
+      planName: `Simplified ${plan.planName}`,
+      basedOnInsights: simplifiedInsights,
+      phases: plan.phases.map(phase => ({
+        ...phase,
+        primaryFocus: phase.primaryFocus.slice(0, 2),
+        dietaryGuidelines: {
+          ...phase.dietaryGuidelines,
+          emphasize: phase.dietaryGuidelines.emphasize.slice(0, 3),
+          limit: phase.dietaryGuidelines.limit.slice(0, 2),
+        },
+      })),
+      lastUpdated: new Date(),
+    };
+  }
+
+  private generatePlanId(): string {
+    return `diet_plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  private async checkPlanTransitions(): Promise<void> {
+    this.logger.debug('Checking for diet plan transitions');
+
+    for (const [userId, plan] of this.activePlans.entries()) {
+      const transitionCheck = await this.checkMaintenanceTransition(userId);
+      
+      if (transitionCheck.shouldTransition) {
+        this.logger.log(`User ${userId} ready for maintenance transition`);
+        // In production, this would trigger user notifications
+      }
+    }
   }
 }
