@@ -6,6 +6,9 @@
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "postCreateCommand": "npm install -g pnpm && pnpm install && chmod +x .devcontainer/setup.sh && ./.devcontainer/setup.sh",
+  "containerEnv": {
+    "NEXT_TELEMETRY_DISABLED": "1"
+  },
   "forwardPorts": [3000, 8080, 5678, 6379, 5432],
   "portsAttributes": {
     "3000": {

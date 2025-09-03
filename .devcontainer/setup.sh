@@ -85,6 +85,9 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8080
 NEXT_PUBLIC_ENVIRONMENT=development
 NEXT_PUBLIC_DEMO_MODE=true
 
+# Disable Next.js telemetry to prevent firewall issues
+NEXT_TELEMETRY_DISABLED=1
+
 # Demo OAuth (⚠️ REPLACE WITH REAL KEYS FOR PRODUCTION)
 GOOGLE_CLIENT_ID=demo-google-client-id
 GOOGLE_CLIENT_SECRET=demo-google-secret
@@ -110,6 +113,10 @@ N8N_ENCRYPTION_KEY=demo-n8n-encryption-key-for-codespace
 EOF
 
 echo "✅ Environment files created!"
+
+# Disable Next.js telemetry globally
+echo "🔒 Disabling Next.js telemetry to prevent firewall issues..."
+npx next telemetry disable || echo "⚠️ Telemetry already disabled or Next.js not available yet"
 
 # Install dependencies if not already done
 if [ ! -d "node_modules" ]; then

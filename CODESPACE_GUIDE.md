@@ -2,6 +2,17 @@
 
 Welcome to HealthCoach AI! This guide will help you run and test the complete application in GitHub Codespaces for real-time user interaction and testing.
 
+## 🔒 Firewall & Privacy Configuration
+
+**✅ No Firewall Issues!** HealthCoach AI is configured to work in secure, restricted environments:
+
+- **Telemetry Disabled**: All Next.js telemetry is completely disabled
+- **Zero External Requests**: No data sent to tracking servers
+- **Firewall-Friendly**: No blocked connections to telemetry.nextjs.org
+- **Privacy-First**: Your development activity remains completely private
+
+For detailed information, see: [TELEMETRY_FIREWALL_FIX.md](./TELEMETRY_FIREWALL_FIX.md)
+
 ## 🚀 Quick Start in GitHub Codespaces
 
 ### 1. Open in Codespaces

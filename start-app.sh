@@ -1,6 +1,11 @@
 #!/bin/bash
 # HealthCoach AI - Quick Start Script for GitHub Codespaces
 
+# Disable telemetry to prevent firewall issues
+export NEXT_TELEMETRY_DISABLED=1
+export npm_config_disable_telemetry=true
+export DO_NOT_TRACK=1
+
 echo "🚀 HealthCoach AI - Starting Application..."
 
 # Function to check if port is in use

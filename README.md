@@ -36,6 +36,8 @@
 - ✅ Health analytics dashboard
 - ✅ Responsive design (mobile-friendly)
 
+🔒 **Firewall-friendly:** All telemetry disabled for secure environments
+
 📖 **See [CODESPACE_GUIDE.md](./CODESPACE_GUIDE.md) for detailed testing instructions**
 
 ### 💻 Local Development
