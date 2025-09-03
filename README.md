@@ -20,20 +20,38 @@
 
 ## 🚀 Quick Start
 
-For detailed setup instructions, see [USER_GUIDE.md](./USER_GUIDE.md)
+### 🌐 GitHub Codespaces (Recommended for Testing)
+
+**The fastest way to try HealthCoach AI:**
+
+1. Click **[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/sid0791/Health_AI_V1)**
+2. Wait for automatic setup (2-3 minutes)
+3. The app will automatically open at `http://localhost:3000`
+
+**Ready to test immediately with:**
+- ✅ Full web application UI
+- ✅ AI-powered meal planning (demo)
+- ✅ Health chat assistant (demo) 
+- ✅ User authentication flows
+- ✅ Health analytics dashboard
+- ✅ Responsive design (mobile-friendly)
+
+📖 **See [CODESPACE_GUIDE.md](./CODESPACE_GUIDE.md) for detailed testing instructions**
+
+### 💻 Local Development
+
+For local setup and real API integration, see [USER_GUIDE.md](./USER_GUIDE.md)
 
 ```bash
 # Clone the repository
-git clone https://github.com/coronis/Health_AI_V1.git
+git clone https://github.com/sid0791/Health_AI_V1.git
 cd Health_AI_V1
 
-# Install dependencies
+# Quick start script
+./start-app.sh
+
+# Or manual setup:
 pnpm install
-
-# Configure environment (copy and edit .env files)
-cp services/backend/.env.example services/backend/.env
-
-# Run the application
 pnpm run dev
 ```
 

@@ -88,7 +88,7 @@ export class CostOptimizationService {
   /**
    * Optimize a specific query for cost efficiency
    */
-  static async optimizeQuery(query: string, context: any): Promise<{
+  static async optimizeQuery(query: string, context: Record<string, unknown>): Promise<{
     originalCost: number
     optimizedCost: number
     savings: number

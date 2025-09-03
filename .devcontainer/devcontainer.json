@@ -1,0 +1,51 @@
+{
+  "name": "HealthCoach AI Development",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "npm install -g pnpm && pnpm install && chmod +x .devcontainer/setup.sh && ./.devcontainer/setup.sh",
+  "forwardPorts": [3000, 8080, 5678, 6379, 5432],
+  "portsAttributes": {
+    "3000": {
+      "label": "Web App (Next.js)",
+      "onAutoForward": "openBrowser"
+    },
+    "8080": {
+      "label": "Backend API (NestJS)",
+      "onAutoForward": "notify"
+    },
+    "5678": {
+      "label": "n8n Workflows",
+      "onAutoForward": "notify"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "ignore"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "ignore"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-json",
+        "bradlc.vscode-tailwindcss",
+        "formulahendry.auto-rename-tag",
+        "ms-vscode.vscode-eslint",
+        "ms-vscode-remote.remote-containers"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "typescript.preferences.importModuleSpecifier": "relative"
+      }
+    }
+  },
+  "remoteUser": "node"
+}
