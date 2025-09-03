@@ -1,132 +1,94 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { 
-  PaperAirplaneIcon,
-  MicrophoneIcon,
-  PlusIcon,
-  ClockIcon,
-  HeartIcon,
-  BeakerIcon,
-  LightBulbIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline'
-import { useApiCall, useAutoFetch } from '../../hooks/useApi'
-import chatService, { ChatMessage, ChatSession, SuggestedQuestion } from '../../services/chatService'
+import { useState, useEffect, useRef } from 'react'
+import { PaperAirplaneIcon, SparklesIcon } from '@heroicons/react/24/outline'
 
-const quickActions = [
-  { icon: BeakerIcon, label: 'Log Food', color: 'bg-blue-100 text-blue-700' },
-  { icon: HeartIcon, label: 'Health Tips', color: 'bg-red-100 text-red-700' },
-  { icon: LightBulbIcon, label: 'Meal Ideas', color: 'bg-yellow-100 text-yellow-700' },
-  { icon: ClockIcon, label: 'Schedule', color: 'bg-green-100 text-green-700' },
-]
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+}
 
 export default function ChatPage() {
-  const [message, setMessage] = useState('')
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const [selectedQuestionCategory, setSelectedQuestionCategory] = useState<string>('all')
+  const [messages, setMessages] = useState<Message[]>([])
+  const [inputValue, setInputValue] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [initialized, setInitialized] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Mock user ID - in real app this would come from auth context
-  const userId = 'user_123'
-
-  // Get current chat session
-  const [sessionState, { refetch: refetchSession }] = useAutoFetch(
-    () => currentSessionId ? chatService.getSession(currentSessionId) : Promise.resolve(null),
-    [],
-    { enabled: !!currentSessionId, retryCount: 1 }
-  )
-
-  // Get suggested questions
-  const [suggestedQuestionsState] = useAutoFetch(
-    () => chatService.getSuggestedQuestions(userId, {
-      currentPage: 'chat',
-      userGoals: ['weight_loss', 'muscle_gain']
-    }),
-    [],
-    { enabled: true, retryCount: 1 }
-  )
-
-  // Send message
-  const [messageState, { execute: sendMessage }] = useApiCall(
-    chatService.sendMessage
-  )
-
-  // Create session
-  const [createSessionState, { execute: createSession }] = useApiCall(
-    chatService.createSession
-  )
-
-  const currentSession: ChatSession | null = sessionState.data
-  const messages: ChatMessage[] = currentSession?.messages || []
-  const suggestedQuestions: SuggestedQuestion[] = suggestedQuestionsState.data || []
-
-  // Create initial session
+  // Initialize chat with welcome message
   useEffect(() => {
-    if (!currentSessionId && !createSessionState.loading) {
-      initializeSession()
+    if (!initialized) {
+      setMessages([
+        {
+          id: '1',
+          role: 'assistant',
+          content: "Hi! I'm your AI Health Coach. I can help you with meal planning, fitness advice, and health insights. What would you like to know?",
+          timestamp: new Date().toISOString()
+        }
+      ])
+      setInitialized(true)
     }
-  }, [currentSessionId, createSessionState.loading])
+  }, [initialized])
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const initializeSession = useCallback(async () => {
-    const session = await createSession(userId, 'general_health', {
-      userGoals: ['weight_loss', 'muscle_gain'],
-      currentPage: 'chat'
-    })
-    
-    if (session) {
-      setCurrentSessionId(session.id)
-    }
-  }, [createSession, userId])
-
-  // Create initial session
-  useEffect(() => {
-    if (!currentSessionId && !createSessionState.loading) {
-      initializeSession()
-    }
-  }, [currentSessionId, createSessionState.loading, initializeSession])
-
   const handleSendMessage = async () => {
-    if (!message.trim() || !currentSessionId || messageState.loading) return
+    if (!inputValue.trim() || isLoading) return
 
-    const userMessage = message.trim()
-    setMessage('')
-
-    const response = await sendMessage({
-      message: userMessage,
-      sessionId: currentSessionId,
-      sessionType: 'general_health',
-      userPreferences: {
-        language: 'en',
-        responseStyle: 'friendly'
-      }
-    })
-
-    if (response?.success) {
-      await refetchSession()
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: inputValue.trim(),
+      timestamp: new Date().toISOString()
     }
-  }
 
-  const handleSuggestedQuestion = async (question: string) => {
-    if (!currentSessionId || messageState.loading) return
+    setMessages(prev => [...prev, userMessage])
+    setInputValue('')
+    setIsLoading(true)
 
-    const response = await sendMessage({
-      message: question,
-      sessionId: currentSessionId,
-      sessionType: 'general_health',
-      userPreferences: {
-        language: 'en',
-        responseStyle: 'detailed'
+    try {
+      // Mock AI response - in real app this would call the API
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      let response = "I'm here to help with your health and nutrition goals. "
+      const userMsg = userMessage.content.toLowerCase()
+      
+      if (userMsg.includes('protein')) {
+        response = "Great question about protein! For most adults, aim for 0.8-1g of protein per kg of body weight daily. Good sources include lean meats, fish, eggs, beans, and Greek yogurt. Would you like specific meal suggestions?"
+      } else if (userMsg.includes('weight')) {
+        response = "Weight management involves balancing calories in vs calories out. Focus on whole foods, regular exercise, and staying hydrated. I can help create a personalized plan based on your goals!"
+      } else if (userMsg.includes('meal') || userMsg.includes('food')) {
+        response = "I'd be happy to help with meal planning! A balanced plate should include lean protein, complex carbs, healthy fats, and plenty of vegetables. What are your dietary preferences?"
+      } else if (userMsg.includes('exercise') || userMsg.includes('workout')) {
+        response = "For effective workouts, combine cardio and strength training. Aim for 150 minutes of moderate cardio per week plus 2-3 strength sessions. What's your current fitness level?"
+      } else {
+        response += "I can help with meal planning, nutrition advice, fitness guidance, and analyzing health reports. What specific area would you like to explore?"
       }
-    })
 
-    if (response?.success) {
-      await refetchSession()
+      const aiMessage: Message = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: response,
+        timestamp: new Date().toISOString()
+      }
+
+      setMessages(prev => [...prev, aiMessage])
+    } catch (error) {
+      console.error('Error sending message:', error)
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: "I'm sorry, I'm having trouble responding right now. Please try again.",
+        timestamp: new Date().toISOString()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -137,216 +99,99 @@ export default function ChatPage() {
     }
   }
 
-  // Show loading state while creating session
-  if (createSessionState.loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Initializing AI Health Assistant...</h2>
-          <p className="text-gray-600">Setting up your personalized chat experience.</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Show error state
-  if (createSessionState.error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto">
-          <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Start Chat</h2>
-          <p className="text-gray-600 mb-4">{createSessionState.error}</p>
-          <button
-            onClick={initializeSession}
-            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const suggestedQuestions = [
+    "How can I improve my protein intake?",
+    "What exercises are best for weight loss?",
+    "Help me plan meals for this week",
+    "How much water should I drink daily?"
+  ]
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 font-display">
-              AI Health Coach
-            </h1>
-            <p className="text-sm text-gray-600">
-              Your personal nutrition and wellness assistant
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-600">
-                {currentSession ? 'Connected' : 'Connecting...'}
-              </span>
-            </div>
-            {messageState.loading && (
-              <div className="flex items-center space-x-1">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
-                <span className="text-sm text-gray-600">AI thinking...</span>
-              </div>
-            )}
-          </div>
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center">
+          <SparklesIcon className="h-6 w-6 text-primary-600 mr-2" />
+          <h1 className="text-lg font-semibold text-gray-900">AI Health Coach</h1>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3">
-        <div className="flex space-x-2 overflow-x-auto">
-          {quickActions.map((action, index) => (
-            <button
-              key={index}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${action.color}`}
-            >
-              <action.icon className="h-4 w-4" />
-              <span>{action.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 && !messageState.loading && (
-          <div className="text-center py-8">
-            <div className="max-w-md mx-auto">
-              <LightBulbIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Welcome to AI Health Coach!</h3>
-              <p className="text-gray-600 mb-4">
-                I&apos;m here to help with your nutrition, fitness, and health questions. 
-                Ask me anything about your wellness journey!
-              </p>
-              <p className="text-sm text-gray-500">
-                🔒 This chat is domain-restricted to health, nutrition, and fitness topics only.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
-              msg.type === 'user' 
-                ? 'bg-primary-500 text-white' 
-                : 'bg-white border border-gray-200 text-gray-900'
-            }`}>
-              <div className="whitespace-pre-wrap text-sm">{msg.message}</div>
-              <div className={`text-xs mt-2 ${
-                msg.type === 'user' ? 'text-primary-100' : 'text-gray-500'
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto space-y-4">
+          {messages.map((message) => (
+            <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                message.role === 'user' 
+                  ? 'bg-primary-600 text-white' 
+                  : 'bg-white text-gray-900 border border-gray-200'
               }`}>
-                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <p className="text-sm">{message.content}</p>
               </div>
-              {msg.metadata?.domainClassification && !msg.metadata.domainClassification.isInScope && (
-                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                  ⚠️ This question is outside my health expertise. I can only help with nutrition, fitness, and wellness topics.
+            </div>
+          ))}
+          
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white text-gray-900 border border-gray-200 max-w-xs lg:max-w-md px-4 py-2 rounded-lg">
+                <div className="flex items-center space-x-1">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                  <span className="text-sm text-gray-500 ml-2">AI is thinking...</span>
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {messageState.loading && (
-          <div className="flex justify-start">
-            <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 max-w-xs lg:max-w-md">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">AI is analyzing your question...</div>
             </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Suggested Questions */}
-      {(messages.length === 0 || suggestedQuestions.length > 0) && (
-        <div className="px-6 py-4 bg-white border-t border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-gray-900">Suggested questions:</h3>
-            <select 
-              value={selectedQuestionCategory}
-              onChange={(e) => setSelectedQuestionCategory(e.target.value)}
-              className="text-xs border border-gray-300 rounded px-2 py-1"
-            >
-              <option value="all">All Categories</option>
-              <option value="nutrition">Nutrition</option>
-              <option value="fitness">Fitness</option>
-              <option value="health">Health</option>
-              <option value="meal_planning">Meal Planning</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {suggestedQuestions
-              .filter(q => selectedQuestionCategory === 'all' || q.category === selectedQuestionCategory)
-              .slice(0, 6)
-              .map((questionObj) => (
-              <button
-                key={questionObj.id}
-                onClick={() => handleSuggestedQuestion(questionObj.question)}
-                disabled={messageState.loading}
-                className="text-left p-3 text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <span className="block text-xs text-gray-500 mb-1 capitalize">{questionObj.category}</span>
-                {questionObj.question}
-              </button>
-            ))}
+      {messages.length <= 1 && (
+        <div className="flex-shrink-0 px-4 py-2">
+          <div className="max-w-3xl mx-auto">
+            <p className="text-sm text-gray-500 mb-2">Try asking:</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestedQuestions.map((question, index) => (
+                <button
+                  key={index}
+                  onClick={() => setInputValue(question)}
+                  className="px-3 py-1 text-sm bg-white border border-gray-200 text-gray-700 rounded-full hover:bg-gray-50 transition-colors"
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
-      {/* Message Input */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4">
-        <div className="flex items-end space-x-3">
-          <button className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 transition-colors">
-            <PlusIcon className="h-5 w-5" />
-          </button>
-          
+
+      {/* Input */}
+      <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-4">
+        <div className="max-w-3xl mx-auto flex space-x-4">
           <div className="flex-1 relative">
             <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder="Ask me about nutrition, health, meal planning, or fitness..."
-              className="w-full resize-none border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent max-h-32"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask about nutrition, fitness, or health..."
               rows={1}
-              disabled={messageState.loading}
+              className="block w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              style={{ minHeight: '40px', maxHeight: '120px' }}
             />
           </div>
-
-          <button className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 transition-colors">
-            <MicrophoneIcon className="h-5 w-5" />
-          </button>
-
           <button
             onClick={handleSendMessage}
-            disabled={!message.trim() || messageState.loading}
-            className="flex-shrink-0 inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500"
+            disabled={!inputValue.trim() || isLoading}
+            className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <PaperAirplaneIcon className="h-4 w-4" />
           </button>
         </div>
-        
-        <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
-          <span>Press Enter to send, Shift+Enter for new line</span>
-          <span>🔒 Health-focused AI • English, Hindi & Hinglish supported</span>
-        </div>
-
-        {messageState.error && (
-          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-            Failed to send message: {messageState.error}
-          </div>
-        )}
       </div>
     </div>
   )

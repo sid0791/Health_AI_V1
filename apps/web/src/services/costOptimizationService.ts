@@ -60,7 +60,7 @@ export class CostOptimizationService {
   static async updateConfig(config: Partial<CostOptimizationConfig>): Promise<CostOptimizationConfig> {
     return apiRequest<CostOptimizationConfig>('/cost-optimization/config', {
       method: 'PUT',
-      body: config
+      body: JSON.stringify(config)
     })
   }
 
@@ -98,7 +98,7 @@ export class CostOptimizationService {
   }> {
     return apiRequest('/cost-optimization/optimize-query', {
       method: 'POST',
-      body: { query, context }
+      body: JSON.stringify({ query, context })
     })
   }
 
@@ -108,7 +108,7 @@ export class CostOptimizationService {
   static async setCostAlert(threshold: number, alertType: 'email' | 'push' | 'both'): Promise<void> {
     return apiRequest('/cost-optimization/alerts', {
       method: 'POST',
-      body: { threshold, alertType }
+      body: JSON.stringify({ threshold, alertType })
     })
   }
 
@@ -139,7 +139,7 @@ export class CostOptimizationService {
   }> {
     return apiRequest('/cost-optimization/simulate', {
       method: 'POST',
-      body: config
+      body: JSON.stringify(config)
     })
   }
 
@@ -170,7 +170,7 @@ export class CostOptimizationService {
   }> {
     return apiRequest('/cost-optimization/auto-optimize', {
       method: 'POST',
-      body: { enabled }
+      body: JSON.stringify({ enabled })
     })
   }
 
