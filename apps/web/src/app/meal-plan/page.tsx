@@ -345,7 +345,10 @@ export default function MealPlanPage() {
                               key={index}
                               className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
                             >
-                              {ingredient}
+                              {typeof ingredient === 'string' 
+                                ? ingredient 
+                                : `${ingredient.name} (${ingredient.amount}${ingredient.unit})`
+                              }
                             </span>
                           ))}
                         </div>

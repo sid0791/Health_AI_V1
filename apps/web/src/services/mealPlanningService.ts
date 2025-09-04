@@ -40,11 +40,17 @@ export interface NutritionInfo {
   glycemicLoad?: number
 }
 
+export interface Ingredient {
+  name: string
+  amount: number
+  unit: string
+}
+
 export interface Recipe {
   id: string
   name: string
   description?: string
-  ingredients: string[]
+  ingredients: (string | Ingredient)[]
   instructions: string[]
   prepTime: number
   cookTime: number

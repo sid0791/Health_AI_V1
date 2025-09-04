@@ -6,6 +6,11 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || false
 
+// Console info about API mode
+if (typeof window !== 'undefined') {
+  console.log(`🔧 API Mode: ${USE_MOCK_API ? 'MOCK' : 'REAL'} | Base URL: ${API_BASE_URL}`)
+}
+
 export class APIError extends Error {
   constructor(public status: number, message: string) {
     super(message)
@@ -18,7 +23,8 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   // Use mock responses for development when backend is not available
-  if (USE_MOCK_API || endpoint.includes('/chat/') || endpoint.includes('/auth/') ) {
+  // OR for specific endpoints that are always mocked (chat, auth in demo mode)
+  if (USE_MOCK_API || endpoint.includes('/chat/') || (endpoint.includes('/auth/') && process.env.NEXT_PUBLIC_DEMO_MODE === 'true')) {
     return handleMockRequest<T>(endpoint, options)
   }
 
@@ -32,7 +38,7 @@ export async function apiRequest<T>(
   }
 
   // Add auth token if available
-  const token = localStorage.getItem('auth_token')
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
   if (token) {
     defaultOptions.headers = {
       ...defaultOptions.headers,
@@ -48,12 +54,25 @@ export async function apiRequest<T>(
       throw new APIError(response.status, errorData.message || `HTTP ${response.status}`)
     }
 
-    return await response.json()
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json()
+    } else {
+      // Handle non-JSON responses
+      return await response.text() as unknown as T
+    }
   } catch (error) {
     if (error instanceof APIError) {
       throw error
     }
     console.error('API Request failed:', error)
+    
+    // Fallback to mock data if real API fails and we're in development
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🔄 Real API failed, falling back to mock data for:', endpoint)
+      return handleMockRequest<T>(endpoint, options)
+    }
+    
     throw new APIError(0, 'Network error occurred')
   }
 }
@@ -288,17 +307,153 @@ async function handleMockRequest<T>(endpoint: string, options: RequestInit = {})
                 tags: ['high-fiber', 'make-ahead', 'vegan-option'],
                 healthBenefits: ['High fiber', 'Sustained energy', 'Omega-3 from chia']
               }
+            },
+            {
+              id: 'meal-5',
+              mealType: 'lunch',
+              time: '13:00',
+              portionSize: 1,
+              recipe: {
+                id: 'recipe-5',
+                name: 'Chickpea Salad Bowl',
+                cuisine: 'Mediterranean',
+                difficulty: 'Easy',
+                prepTime: 15,
+                cookTime: 0,
+                servings: 1,
+                ingredients: [
+                  'canned chickpeas (1 cup)',
+                  'cucumber (1 medium)',
+                  'cherry tomatoes (100g)',
+                  'red onion (1/4 cup)',
+                  'olive oil (2 tbsp)',
+                  'lemon juice (1 tbsp)',
+                  'fresh herbs (mixed)'
+                ],
+                instructions: [
+                  'Drain and rinse chickpeas',
+                  'Chop all vegetables',
+                  'Mix with olive oil and lemon juice',
+                  'Season with herbs and spices'
+                ],
+                nutrition: {
+                  calories: 350,
+                  protein: 15,
+                  carbs: 45,
+                  fat: 12,
+                  fiber: 12,
+                  sugar: 8
+                },
+                tags: ['vegan', 'high-fiber', 'protein-rich'],
+                healthBenefits: ['Plant protein', 'High fiber', 'Antioxidants']
+              }
+            },
+            {
+              id: 'meal-6',
+              mealType: 'dinner',
+              time: '19:30',
+              portionSize: 1,
+              recipe: {
+                id: 'recipe-6',
+                name: 'Lentil Curry with Brown Rice',
+                cuisine: 'Indian',
+                difficulty: 'Medium',
+                prepTime: 10,
+                cookTime: 25,
+                servings: 1,
+                ingredients: [
+                  { name: 'Red lentils', amount: 80, unit: 'g' },
+                  { name: 'Brown rice', amount: 60, unit: 'g' },
+                  { name: 'Onion', amount: 50, unit: 'g' },
+                  { name: 'Tomato', amount: 100, unit: 'g' },
+                  { name: 'Coconut milk', amount: 100, unit: 'ml' },
+                  { name: 'Spinach', amount: 50, unit: 'g' }
+                ],
+                instructions: [
+                  'Cook brown rice according to package instructions',
+                  'Sauté onions until golden',
+                  'Add lentils, tomatoes, and spices',
+                  'Simmer with coconut milk',
+                  'Add spinach at the end'
+                ],
+                nutrition: {
+                  calories: 420,
+                  protein: 18,
+                  carbs: 65,
+                  fat: 8,
+                  fiber: 15,
+                  sugar: 6
+                },
+                tags: ['vegan', 'high-protein', 'comfort-food'],
+                healthBenefits: ['Complete protein', 'High fiber', 'Iron rich']
+              }
             }
           ],
           totalNutrition: {
-            calories: 1150,
-            protein: 68,
-            carbs: 125,
-            fat: 42,
-            fiber: 25,
-            sugar: 35
+            calories: 1060,
+            protein: 45,
+            carbs: 155,
+            fat: 29,
+            fiber: 35,
+            sugar: 32
           },
-          adherenceScore: 88
+          adherenceScore: 90
+        },
+        // Add Wednesday with more variety
+        {
+          date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          meals: [
+            {
+              id: 'meal-7',
+              mealType: 'breakfast',
+              time: '08:00',
+              portionSize: 1,
+              recipe: {
+                id: 'recipe-7',
+                name: 'Avocado Toast with Egg',
+                cuisine: 'International',
+                difficulty: 'Easy',
+                prepTime: 10,
+                cookTime: 5,
+                servings: 1,
+                ingredients: [
+                  'whole grain bread (2 slices)',
+                  'avocado (1 medium)',
+                  'eggs (2 large)',
+                  'cherry tomatoes (5-6)',
+                  'olive oil (1 tsp)',
+                  'black pepper (to taste)',
+                  'sea salt (pinch)'
+                ],
+                instructions: [
+                  'Toast bread slices until golden',
+                  'Mash avocado with salt and pepper',
+                  'Cook eggs sunny side up',
+                  'Spread avocado on toast',
+                  'Top with eggs and tomatoes'
+                ],
+                nutrition: {
+                  calories: 380,
+                  protein: 18,
+                  carbs: 30,
+                  fat: 22,
+                  fiber: 12,
+                  sugar: 4
+                },
+                tags: ['vegetarian', 'high-protein', 'healthy-fats'],
+                healthBenefits: ['Healthy fats', 'Complete protein', 'High fiber']
+              }
+            }
+          ],
+          totalNutrition: {
+            calories: 1200,
+            protein: 65,
+            carbs: 140,
+            fat: 35,
+            fiber: 28,
+            sugar: 25
+          },
+          adherenceScore: 92
         }
       ]
     } as T
