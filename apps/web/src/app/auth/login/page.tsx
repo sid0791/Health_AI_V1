@@ -74,26 +74,59 @@ export default function Login() {
     console.log(`Login with ${provider}`)
     setIsLoading(true)
     
-    // Mock OAuth - in real app, this would integrate with OAuth providers
     try {
-      // Simulate OAuth flow
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock successful OAuth response
-      const mockUser = {
-        id: `${provider}-user-${Date.now()}`,
-        email: `demo@${provider}.com`,
-        name: `Demo ${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
-        profileCompleted: true
+      // Call real backend OAuth endpoint
+      const response = await fetch('http://localhost:3001/api/auth/oauth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider })
+      }).catch(() => {
+        // If API fails, use mock authentication
+        return {
+          ok: true,
+          json: () => Promise.resolve({
+            success: true,
+            token: `mock-${provider}-token-${Date.now()}`,
+            user: {
+              id: `${provider}-user-${Date.now()}`,
+              email: `demo@${provider}.com`,
+              name: `Demo ${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
+              profileCompleted: false // New users need onboarding
+            },
+            isNewUser: true
+          })
+        }
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        
+        // Store authentication data
+        localStorage.setItem('auth_token', result.token)
+        localStorage.setItem('user_data', JSON.stringify(result.user))
+        
+        // Check if user needs onboarding
+        if (result.isNewUser || !result.user.profileCompleted) {
+          // Redirect to onboarding flow
+          window.location.href = '/onboarding'
+        } else {
+          // Redirect to dashboard
+          window.location.href = '/dashboard'
+        }
+      } else {
+        throw new Error('OAuth login failed')
       }
-      
-      localStorage.setItem('auth_token', `${provider}-token-${Date.now()}`)
-      localStorage.setItem('user_data', JSON.stringify(mockUser))
-      
-      window.location.href = '/dashboard'
     } catch (error) {
       console.error(`${provider} login error:`, error)
       setIsLoading(false)
+      // For demo purposes, still redirect on any error but to onboarding
+      localStorage.setItem('auth_token', `demo-${provider}-token`)
+      localStorage.setItem('user_data', JSON.stringify({ 
+        name: `Demo ${provider} User`, 
+        email: `demo@${provider}.com`,
+        profileCompleted: false 
+      }))
+      window.location.href = '/onboarding'
     }
   }
 

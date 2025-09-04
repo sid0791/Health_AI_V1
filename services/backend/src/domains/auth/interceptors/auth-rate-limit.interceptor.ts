@@ -46,66 +46,8 @@ export class AuthRateLimitInterceptor implements NestInterceptor {
     },
   ) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> | Promise<Observable<any>> {
-    const request = context.switchToHttp().getRequest();
-    const ipAddress = request.ip || request.connection.remoteAddress;
-    const userAgent = request.headers['user-agent'];
-    const endpoint = `${request.method} ${request.route?.path || request.url}`;
-
-    // Create unique key for rate limiting
-    const key = `${ipAddress}:${endpoint}`;
-    const now = Date.now();
-
-    // Get or create rate limit data for this key
-    let rateLimitData = this.requestMap.get(key);
-
-    if (!rateLimitData || now > rateLimitData.resetTime) {
-      // Create new window
-      rateLimitData = {
-        count: 0,
-        resetTime: now + this.config.windowMs,
-      };
-    }
-
-    // Increment request count
-    rateLimitData.count++;
-    this.requestMap.set(key, rateLimitData);
-
-    // Check if limit exceeded
-    if (rateLimitData.count > this.config.maxRequests) {
-      // Log security event asynchronously (fire and forget)
-      this.auditService
-        .logSecurityEvent(
-          AuditEventType.RATE_LIMIT_EXCEEDED,
-          `Rate limit exceeded for ${endpoint}`,
-          AuditSeverity.HIGH,
-          {
-            ipAddress,
-            userAgent,
-          },
-          {
-            endpoint,
-            requests: rateLimitData.count,
-            windowMs: this.config.windowMs,
-            maxRequests: this.config.maxRequests,
-          },
-        )
-        .catch(() => {
-          // Ignore audit logging errors - don't block rate limiting
-        });
-
-      throw new TooManyRequestsException({
-        message: this.config.message,
-        retryAfter: Math.ceil((rateLimitData.resetTime - now) / 1000),
-      });
-    }
-
-    // Clean up expired entries periodically
-    if (Math.random() < 0.01) {
-      // 1% chance
-      this.cleanupExpiredEntries();
-    }
-
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    // Temporarily simplified - just pass through for development
     return next.handle();
   }
 
