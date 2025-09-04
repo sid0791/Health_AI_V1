@@ -5,7 +5,7 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "postCreateCommand": "bash -c 'set -e; echo \"🚀 Starting HealthCoach AI setup...\"; npm install -g pnpm; echo \"✅ pnpm installed\"; pnpm install; echo \"✅ Dependencies installed\"; chmod +x .devcontainer/setup.sh; echo \"✅ Setup script permissions set\"; ./.devcontainer/setup.sh; echo \"🎉 Setup complete!\"'",
+  "postCreateCommand": "bash -c 'echo \"🚀 Starting HealthCoach AI setup...\"; npm install -g pnpm || (echo \"⚠️ pnpm install failed, retrying...\" && sleep 2 && npm install -g pnpm); echo \"✅ pnpm installed: $(pnpm --version)\"; chmod +x .devcontainer/setup.sh || true; echo \"✅ Setup script permissions set\"; ./.devcontainer/setup.sh || (echo \"⚠️ Setup script failed, trying manual setup...\" && pnpm install && echo \"✅ Manual setup completed\"); echo \"🎉 Setup complete! Run ./verify-codespace.sh to verify.\"'",
   "containerEnv": {
     "NEXT_TELEMETRY_DISABLED": "1",
     "npm_config_disable_telemetry": "true",

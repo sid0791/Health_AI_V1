@@ -52,11 +52,17 @@ fi
 
 echo ""
 echo "🏗️ Testing build process..."
-pnpm run build --filter=@healthcoachai/web >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if pnpm run build --filter=@healthcoachai/web >/dev/null 2>&1; then
     echo "✅ Build successful"
 else
-    echo "❌ Build failed"
+    echo "❌ Build failed - checking dependencies..."
+    if [ ! -d "node_modules" ]; then
+        echo "💡 Missing dependencies. Run: pnpm install"
+    elif [ ! -f "apps/web/.env.local" ]; then
+        echo "💡 Missing environment files. Run: ./.devcontainer/setup.sh"
+    else
+        echo "💡 Build issues detected. Check: pnpm run build"
+    fi
     exit 1
 fi
 
