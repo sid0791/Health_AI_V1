@@ -1,9 +1,29 @@
 #!/bin/bash
 # HealthCoach AI - Codespace Setup Script
 
-set -e
+# Remove strict error handling to allow script to continue on warnings
+# set -e
 
 echo "🚀 Setting up HealthCoach AI for GitHub Codespace..."
+
+# Function to retry commands
+retry_command() {
+    local cmd="$1"
+    local retries=3
+    local count=0
+    
+    while [ $count -lt $retries ]; do
+        if eval "$cmd"; then
+            return 0
+        fi
+        count=$((count + 1))
+        echo "⚠️ Command failed, retrying ($count/$retries)..."
+        sleep 2
+    done
+    
+    echo "❌ Command failed after $retries attempts: $cmd"
+    return 1
+}
 
 # Ensure we're in the right directory
 cd "$(dirname "$0")/.."
@@ -130,7 +150,11 @@ export DO_NOT_TRACK=1
 
 # Try to disable telemetry, with fallback if Next.js isn't available yet
 if command -v npx >/dev/null 2>&1; then
-    npx next telemetry disable || echo "⚠️ Telemetry disable command failed, but continuing..."
+    if command -v next >/dev/null 2>&1; then
+        npx next telemetry disable 2>/dev/null || echo "⚠️ Telemetry disable command failed, but environment variables are set"
+    else
+        echo "⚠️ Next.js CLI not available yet, telemetry will be disabled via environment variables"
+    fi
 else
     echo "⚠️ npx not available yet, telemetry will be disabled via environment variables"
 fi
@@ -138,10 +162,14 @@ fi
 # Install dependencies if not already done
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing dependencies..."
-    pnpm install || {
-        echo "❌ pnpm install failed, retrying..."
-        rm -rf node_modules/.cache || true
-        pnpm install
+    retry_command "pnpm install" || {
+        echo "❌ pnpm install failed after retries, trying alternative approach..."
+        rm -rf node_modules/.cache 2>/dev/null || true
+        retry_command "pnpm install --no-frozen-lockfile" || {
+            echo "❌ Could not install dependencies. Please run 'pnpm install' manually."
+            echo "✅ Environment files created successfully - setup partially complete"
+            exit 0
+        }
     }
 else
     echo "✅ Dependencies already installed"
@@ -149,16 +177,19 @@ fi
 
 # Build the project with better error handling
 echo "🔨 Building the project..."
-pnpm run build --filter=!@healthcoachai/backend 2>&1 | tee build.log || {
+if retry_command "pnpm run build --filter=!@healthcoachai/backend"; then
+    echo "✅ Build completed successfully"
+else
     echo "⚠️ Build had issues, checking if critical..."
-    if grep -q "Error:" build.log; then
-        echo "❌ Critical build errors found:"
-        grep "Error:" build.log
-        echo "Continuing anyway for development..."
+    # Try a simpler build to see if it's a dependency issue
+    echo "🔧 Attempting alternative build..."
+    if pnpm run build --filter=@healthcoachai/web 2>&1 | tee build.log; then
+        echo "✅ Web app build succeeded"
     else
-        echo "✅ Only warnings found, build succeeded"
+        echo "⚠️ Build issues detected. Continuing anyway for development..."
+        echo "💡 You can try running 'pnpm run build' manually later"
     fi
-}
+fi
 
 echo "🎉 HealthCoach AI setup complete!"
 
@@ -166,13 +197,29 @@ echo "🎉 HealthCoach AI setup complete!"
 rm -f build.log
 
 echo ""
-echo "🌐 Available Services:"
-echo "  • Web App:      http://localhost:3000"
-echo "  • Backend API:  http://localhost:8080"
-echo "  • API Docs:     http://localhost:8080/api/docs"
-echo "  • n8n:          http://localhost:5678"
-echo ""
-echo "🚀 To start the application:"
-echo "  pnpm run dev"
+echo "🔍 Verifying setup..."
+if [ -d "node_modules" ] && [ -f "services/backend/.env" ] && [ -f "apps/web/.env.local" ]; then
+    echo "✅ Setup verification passed!"
+    echo ""
+    echo "🌐 Available Services:"
+    echo "  • Web App:      http://localhost:3000"
+    echo "  • Backend API:  http://localhost:8080"
+    echo "  • API Docs:     http://localhost:8080/api/docs"
+    echo "  • n8n:          http://localhost:5678"
+    echo ""
+    echo "🚀 To start the application:"
+    echo "  pnpm run dev"
+    echo "  ./start-app.sh      # Alternative start script"
+    echo ""
+    echo "🔧 To verify everything is working:"
+    echo "  ./verify-codespace.sh"
+else
+    echo "⚠️ Setup incomplete. Some components may be missing."
+    echo ""
+    echo "🛠️ Manual troubleshooting:"
+    echo "  • Check dependencies: pnpm install"
+    echo "  • Verify environment: ./verify-codespace.sh"
+    echo "  • Review logs above for specific errors"
+fi
 echo ""
 echo "📖 See CODESPACE_GUIDE.md for detailed instructions"
