@@ -12,6 +12,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { useApiCall, useAutoFetch } from '../../hooks/useApi'
+import { getApiStatus, isUsingMockData } from '../../services/api'
+import ApiDisclaimer from '../../components/ApiDisclaimer'
 import mealPlanningService, { UserProfile } from '../../services/mealPlanningService'
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -45,6 +47,7 @@ export default function MealPlanPage() {
   const [selectedDay, setSelectedDay] = useState(0) // Index instead of name
   const [showSwapOptions, setShowSwapOptions] = useState<{mealType: string, dayIndex: number} | null>(null)
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false)
+  const [apiMode, setApiMode] = useState<'real' | 'mock' | 'fallback'>('mock')
 
   // Mock user ID - in real app this would come from auth context
   const userId = 'user_123'
@@ -103,6 +106,19 @@ export default function MealPlanPage() {
     }
     initializeMealPlan()
   }, [mealPlanState.loading, mealPlanState.data, mealPlanState.error, handleGeneratePlan])
+
+  // Update API mode when status changes
+  useEffect(() => {
+    const updateApiMode = () => {
+      setApiMode(getApiStatus())
+    }
+    
+    // Check immediately and set up periodic checks
+    updateApiMode()
+    const interval = setInterval(updateApiMode, 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
 
   const handleSwapMeal = async (mealType: string, dayIndex: number) => {
     if (!currentMealPlan) return
@@ -192,7 +208,7 @@ export default function MealPlanPage() {
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 font-display mb-2">
@@ -211,6 +227,14 @@ export default function MealPlanPage() {
             {isGeneratingPlan ? 'Generating...' : 'Regenerate Plan'}
           </button>
         </div>
+      </div>
+
+      {/* API Status Disclaimer */}
+      <div className="mb-8">
+        <ApiDisclaimer 
+          mode={isUsingMockData() ? 'mock' : 'real'} 
+          className="mb-0"
+        />
       </div>
 
       {/* Day Selector */}
@@ -430,7 +454,7 @@ export default function MealPlanPage() {
           Your meal plan is optimized for your weight loss goals and provides balanced nutrition. 
           The protein content supports muscle maintenance while creating a caloric deficit.
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 mb-4">
           <span className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm">
             High Protein
           </span>
@@ -441,6 +465,20 @@ export default function MealPlanPage() {
             Anti-inflammatory
           </span>
         </div>
+        
+        {/* Additional disclaimer for meal plan insights */}
+        {!isUsingMockData() && (
+          <div className="mt-4 pt-4 border-t border-primary-200">
+            <p className="text-sm text-primary-700 flex items-start">
+              <ExclamationTriangleIcon className="h-4 w-4 text-primary-600 mt-0.5 mr-2 flex-shrink-0" />
+              <span>
+                <strong>Medical Disclaimer:</strong> These AI-generated meal recommendations are for informational purposes only 
+                and should not replace professional medical advice. Consult with a registered dietitian or healthcare provider 
+                before making significant dietary changes, especially if you have health conditions or are taking medications.
+              </span>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

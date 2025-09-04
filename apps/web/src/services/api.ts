@@ -6,9 +6,26 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || false
 
+// Track API status globally
+let apiStatus: 'real' | 'mock' | 'fallback' = USE_MOCK_API ? 'mock' : 'real'
+
 // Console info about API mode
 if (typeof window !== 'undefined') {
   console.log(`🔧 API Mode: ${USE_MOCK_API ? 'MOCK' : 'REAL'} | Base URL: ${API_BASE_URL}`)
+}
+
+/**
+ * Get current API status
+ */
+export function getApiStatus(): 'real' | 'mock' | 'fallback' {
+  return apiStatus
+}
+
+/**
+ * Check if we're currently using mock data
+ */
+export function isUsingMockData(): boolean {
+  return apiStatus === 'mock' || apiStatus === 'fallback'
 }
 
 export class APIError extends Error {
@@ -25,6 +42,7 @@ export async function apiRequest<T>(
   // Use mock responses for development when backend is not available
   // OR for specific endpoints that are always mocked (chat, auth in demo mode)
   if (USE_MOCK_API || endpoint.includes('/chat/') || (endpoint.includes('/auth/') && process.env.NEXT_PUBLIC_DEMO_MODE === 'true')) {
+    apiStatus = 'mock'
     return handleMockRequest<T>(endpoint, options)
   }
 
@@ -54,6 +72,9 @@ export async function apiRequest<T>(
       throw new APIError(response.status, errorData.message || `HTTP ${response.status}`)
     }
 
+    // Successfully used real API
+    apiStatus = 'real'
+
     const contentType = response.headers.get('content-type')
     if (contentType && contentType.includes('application/json')) {
       return await response.json()
@@ -70,6 +91,7 @@ export async function apiRequest<T>(
     // Fallback to mock data if real API fails and we're in development
     if (process.env.NODE_ENV === 'development') {
       console.warn('🔄 Real API failed, falling back to mock data for:', endpoint)
+      apiStatus = 'fallback'
       return handleMockRequest<T>(endpoint, options)
     }
     

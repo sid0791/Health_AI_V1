@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { PaperAirplaneIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { getApiStatus, isUsingMockData } from '../../services/api'
+import chatService from '../../services/chatService'
+import ApiDisclaimer from '../../components/ApiDisclaimer'
 
 interface Message {
   id: string
@@ -15,6 +18,7 @@ export default function ChatPage() {
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [initialized, setInitialized] = useState(false)
+  const [apiMode, setApiMode] = useState<'real' | 'mock' | 'fallback'>('mock')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Initialize chat with welcome message
@@ -37,6 +41,19 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Update API mode when status changes
+  useEffect(() => {
+    const updateApiMode = () => {
+      setApiMode(getApiStatus())
+    }
+    
+    // Check immediately and set up periodic checks
+    updateApiMode()
+    const interval = setInterval(updateApiMode, 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return
 
@@ -52,9 +69,33 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      // Mock AI response - in real app this would call the API
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Use the API service instead of direct mock responses
+      const response = await chatService.sendMessage({
+        message: userMessage.content,
+        sessionType: 'general_health',
+        userPreferences: {
+          language: 'en',
+          responseStyle: 'friendly'
+        }
+      })
 
+      const aiMessage: Message = {
+        id: response.messageId || `ai-${Date.now()}`,
+        role: 'assistant',
+        content: response.response || response.toString(),
+        timestamp: new Date().toISOString()
+      }
+
+      setMessages(prev => [...prev, aiMessage])
+      
+      // Update API mode after successful request
+      setApiMode(getApiStatus())
+    } catch (error) {
+      console.error('Error sending message:', error)
+      
+      // Fallback to direct mock response if service fails
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
       let response = "I'm here to help with your health and nutrition goals. "
       const userMsg = userMessage.content.toLowerCase()
       
@@ -70,23 +111,14 @@ export default function ChatPage() {
         response += "I can help with meal planning, nutrition advice, fitness guidance, and analyzing health reports. What specific area would you like to explore?"
       }
 
-      const aiMessage: Message = {
-        id: `ai-${Date.now()}`,
+      const errorMessage: Message = {
+        id: `fallback-${Date.now()}`,
         role: 'assistant',
         content: response,
         timestamp: new Date().toISOString()
       }
-
-      setMessages(prev => [...prev, aiMessage])
-    } catch (error) {
-      console.error('Error sending message:', error)
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: "I'm sorry, I'm having trouble responding right now. Please try again.",
-        timestamp: new Date().toISOString()
-      }
       setMessages(prev => [...prev, errorMessage])
+      setApiMode('fallback')
     } finally {
       setIsLoading(false)
     }
@@ -113,6 +145,16 @@ export default function ChatPage() {
         <div className="flex items-center">
           <SparklesIcon className="h-6 w-6 text-primary-600 mr-2" />
           <h1 className="text-lg font-semibold text-gray-900">AI Health Coach</h1>
+        </div>
+      </div>
+
+      {/* API Status Disclaimer */}
+      <div className="flex-shrink-0 px-4 py-3 bg-gray-50">
+        <div className="max-w-3xl mx-auto">
+          <ApiDisclaimer 
+            mode={isUsingMockData() ? 'mock' : 'real'} 
+            className="mb-0"
+          />
         </div>
       </div>
 
