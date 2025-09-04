@@ -96,11 +96,16 @@ export DO_NOT_TRACK=1
 
 - `.env` - Global telemetry disable settings
 - `apps/web/.env.local` - Web app telemetry settings  
-- `apps/web/next.config.ts` - Next.js configuration
-- `.devcontainer/devcontainer.json` - Container environment
-- `.devcontainer/setup.sh` - Setup script with CLI disable
+- `apps/web/next.config.ts` - Next.js configuration (environment-based for v15)
+- `.devcontainer/devcontainer.json` - Container environment with improved error handling
+- `.devcontainer/setup.sh` - Setup script with CLI disable and retry logic
 - `start-app.sh` - Runtime telemetry prevention
+- `verify-codespace.sh` - New verification script for troubleshooting
 
 ### ✅ Result
 
 **Zero firewall conflicts** - The application runs completely offline regarding telemetry, with no external requests that could be blocked by security policies.
+
+**🔧 Verification Tool**: Run `./verify-codespace.sh` to verify your setup is working correctly and troubleshoot any issues.
+
+**📱 Improved Reliability**: Enhanced setup process with better error handling, retry logic, and timeout prevention for robust codespace creation.
