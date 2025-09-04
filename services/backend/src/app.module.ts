@@ -11,6 +11,7 @@ import { HealthModule } from './health/health.module';
 import { AppConfigService } from './config/app-config.service';
 import { MockAuthController } from './mock-auth.controller';
 import { MockMealPlanController } from './mock-meal-plan.controller';
+import { FoodLogController } from './food-log.controller';
 
 // Domain modules
 import { UsersModule } from './domains/users/users.module';
@@ -244,7 +245,7 @@ import { DietPlan } from './domains/chat/entities/diet-plan.entity';
     // Health Check Module
     HealthModule,
   ],
-  controllers: [AppController, MockAuthController, MockMealPlanController],
+  controllers: [AppController, MockAuthController, MockMealPlanController, FoodLogController],
   providers: [AppService, AppConfigService],
 })
 export class AppModule {}

@@ -15,6 +15,7 @@ import { useApiCall, useAutoFetch } from '../../hooks/useApi'
 import { getApiStatus, isUsingMockData } from '../../services/api'
 import ApiDisclaimer from '../../components/ApiDisclaimer'
 import mealPlanningService, { UserProfile } from '../../services/mealPlanningService'
+import foodLoggingService from '../../services/foodLoggingService'
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -48,6 +49,7 @@ export default function MealPlanPage() {
   const [showSwapOptions, setShowSwapOptions] = useState<{mealType: string, dayIndex: number} | null>(null)
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false)
   const [apiMode, setApiMode] = useState<'real' | 'mock' | 'fallback'>('mock')
+  const [loggingMeal, setLoggingMeal] = useState<{mealId: string, mealType: string} | null>(null)
 
   // Mock user ID - in real app this would come from auth context
   const userId = 'user_123'
@@ -72,6 +74,11 @@ export default function MealPlanPage() {
   // Apply meal swap - TODO: Connect to swap UI when modal is implemented
   const [applySwapState, { execute: applyMealSwap }] = useApiCall(
     mealPlanningService.applyMealSwap
+  )
+
+  // Food logging functionality
+  const [logFoodState, { execute: logFood }] = useApiCall(
+    foodLoggingService.logFood
   )
 
   const currentMealPlan = mealPlanState.data
@@ -156,6 +163,31 @@ export default function MealPlanPage() {
     if (result) {
       await refetchMealPlan()
       setShowSwapOptions(null)
+    }
+  }
+
+  const handleLogFood = async (mealType: string, recipeId: string) => {
+    if (!currentMealPlan) return
+
+    setLoggingMeal({ mealId: recipeId, mealType })
+    
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      await logFood({
+        userId,
+        date: today,
+        mealType: mealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+        recipeId,
+        portionSize: 1.0,
+        source: 'meal_plan'
+      })
+      
+      // Show success message (you could add a toast notification here)
+      console.log(`✅ Successfully logged ${mealType}`)
+    } catch (error) {
+      console.error('Failed to log meal:', error)
+    } finally {
+      setLoggingMeal(null)
     }
   }
 
@@ -430,9 +462,22 @@ export default function MealPlanPage() {
                   </div>
                   
                   <div className="flex space-x-2">
-                    <button className="flex-1 inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500">
-                      <PlusIcon className="h-4 w-4 mr-1" />
-                      Add to Log
+                    <button 
+                      onClick={() => handleLogFood(mealEntry.mealType, meal.id)}
+                      disabled={loggingMeal?.mealId === meal.id}
+                      className="flex-1 inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500"
+                    >
+                      {loggingMeal?.mealId === meal.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+                          Logging...
+                        </>
+                      ) : (
+                        <>
+                          <PlusIcon className="h-4 w-4 mr-1" />
+                          Add to Log
+                        </>
+                      )}
                     </button>
                     <button className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary-500">
                       <HeartIconSolid className="h-4 w-4" />
