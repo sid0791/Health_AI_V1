@@ -7,7 +7,14 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   
   // Disable telemetry to prevent firewall issues in codespaces
-  // Note: telemetry config moved to environment variables for Next.js 15
+  experimental: {
+    telemetry: false,
+  },
+  
+  // Environment-based telemetry disable for Next.js 15+ compatibility
+  ...(process.env.NEXT_TELEMETRY_DISABLED === '1' && {
+    telemetry: false
+  }),
 };
 
 export default nextConfig;
