@@ -9,6 +9,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthModule } from './health/health.module';
 import { AppConfigService } from './config/app-config.service';
+import { MockAuthController } from './mock-auth.controller';
+import { MockMealPlanController } from './mock-meal-plan.controller';
+import { FoodLogController } from './food-log.controller';
 
 // Domain modules
 import { UsersModule } from './domains/users/users.module';
@@ -84,125 +87,125 @@ import { DietPlan } from './domains/chat/entities/diet-plan.entity';
       cache: true,
     }),
 
-    // Database Configuration
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('DB_HOST'),
-        port: parseInt(configService.get('DB_PORT', '5432')),
-        username: configService.get('DB_USERNAME'),
-        password: configService.get('DB_PASSWORD'),
-        database: configService.get('DB_NAME'),
-        entities: [
-          // User entities
-          User,
-          UserProfile,
-          UserConsent,
-          UserPreferences,
-          UserGoals,
-          UserTokenUsage,
+    // Database Configuration - temporarily disabled for development
+    // TypeOrmModule.forRootAsync({
+    //   imports: [ConfigModule],
+    //   useFactory: (configService: ConfigService) => ({
+    //     type: 'postgres',
+    //     host: configService.get('DB_HOST'),
+    //     port: parseInt(configService.get('DB_PORT', '5432')),
+    //     username: configService.get('DB_USERNAME'),
+    //     password: configService.get('DB_PASSWORD'),
+    //     database: configService.get('DB_NAME'),
+    //   entities: [
+    //     // User entities
+    //     User,
+    //     UserProfile,
+    //     UserConsent,
+    //     UserPreferences,
+    //     UserGoals,
+    //     UserTokenUsage,
 
-          // Health reports entities
-          HealthReport,
-          StructuredEntity,
+    //     // Health reports entities
+    //     HealthReport,
+    //     StructuredEntity,
 
-          // Recipe entities
-          Recipe,
-          RecipeIngredient,
-          RecipeStep,
-          RecipeNutrition,
+    //     // Recipe entities
+    //     Recipe,
+    //     RecipeIngredient,
+    //     RecipeStep,
+    //     RecipeNutrition,
 
-          // Meal planning entities
-          MealPlan,
-          MealPlanEntry,
+    //     // Meal planning entities
+    //     MealPlan,
+    //     MealPlanEntry,
 
-          // Fitness planning entities
-          Exercise,
-          FitnessPlan,
-          FitnessPlanWeek,
-          FitnessPlanWorkout,
-          FitnessPlanExercise,
+    //     // Fitness planning entities
+    //     Exercise,
+    //     FitnessPlan,
+    //     FitnessPlanWeek,
+    //     FitnessPlanWorkout,
+    //     FitnessPlanExercise,
 
-          // Logs entities
-          MealLog,
-          LogEntry,
+    //     // Logs entities
+    //     MealLog,
+    //     LogEntry,
 
-          // Auth entities
-          UserSession,
-          UserOTP,
-          UserOAuthAccount,
-          AuditLog,
+    //     // Auth entities
+    //     UserSession,
+    //     UserOTP,
+    //     UserOAuthAccount,
+    //     AuditLog,
 
-          // AI Routing entities
-          AIRoutingDecision,
+    //     // AI Routing entities
+    //     AIRoutingDecision,
 
-          // Chat entities (Phase 13)
-          ChatSession,
-          ChatMessage,
-          ChatContext,
-          HealthInsight,
-          DietPlan,
-        ],
-        synchronize: false, // Never use synchronize in production
-        logging: configService.get('NODE_ENV') === 'development',
-        ssl: configService.get('DB_SSL', false)
-          ? {
-              rejectUnauthorized: configService.get('NODE_ENV') === 'production',
-            }
-          : false,
-        // Connection pool settings
-        extra: {
-          max: parseInt(configService.get('DB_MAX_CONNECTIONS', '20')),
-          connectionTimeoutMillis: 30000,
-          idleTimeoutMillis: 30000,
-        },
-        // Migration settings
-        migrations: ['dist/database/migrations/*.js'],
-        migrationsRun: configService.get('NODE_ENV') === 'production', // Auto-run in production
-        migrationsTableName: 'typeorm_migrations',
-        // Entity metadata cache
-        cache: {
-          type: 'redis',
-          options: {
-            host: configService.get('REDIS_HOST'),
-            port: parseInt(configService.get('REDIS_PORT', '6379')),
-            password: configService.get('REDIS_PASSWORD'),
-            ttl: parseInt(configService.get('TYPEORM_CACHE_TTL', '60')), // 1 minute default TTL
-          },
-        },
-      }),
-      inject: [ConfigService],
-    }),
+    //     // Chat entities (Phase 13)
+    //     ChatSession,
+    //     ChatMessage,
+    //     ChatContext,
+    //     HealthInsight,
+    //     DietPlan,
+    //   ],
+    //   synchronize: false, // Never use synchronize in production
+    //   logging: configService.get('NODE_ENV') === 'development',
+    //   ssl: configService.get('DB_SSL', false)
+    //     ? {
+    //         rejectUnauthorized: configService.get('NODE_ENV') === 'production',
+    //       }
+    //     : false,
+    //   // Connection pool settings
+    //   extra: {
+    //     max: parseInt(configService.get('DB_MAX_CONNECTIONS', '20')),
+    //     connectionTimeoutMillis: 30000,
+    //     idleTimeoutMillis: 30000,
+    //   },
+    //   // Migration settings
+    //   migrations: ['dist/database/migrations/*.js'],
+    //   migrationsRun: configService.get('NODE_ENV') === 'production', // Auto-run in production
+    //   migrationsTableName: 'typeorm_migrations',
+    //   // Entity metadata cache
+    //   cache: {
+    //     type: 'redis',
+    //     options: {
+    //       host: configService.get('REDIS_HOST'),
+    //       port: parseInt(configService.get('REDIS_PORT', '6379')),
+    //       password: configService.get('REDIS_PASSWORD'),
+    //       ttl: parseInt(configService.get('TYPEORM_CACHE_TTL', '60')), // 1 minute default TTL
+    //     },
+    //   },
+    // }),
+    // inject: [ConfigService],
+    // }),
 
-    // Redis Cache Configuration
-    CacheModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        store: 'redis',
-        host: configService.get('REDIS_HOST'),
-        port: parseInt(configService.get('REDIS_PORT', '6379')),
-        password: configService.get('REDIS_PASSWORD'),
-        ttl: parseInt(configService.get('CACHE_TTL', '300')), // 5 minutes default
-        max: parseInt(configService.get('CACHE_MAX_ITEMS', '1000')),
-      }),
-      inject: [ConfigService],
-      isGlobal: true,
-    }),
+    // Redis Cache Configuration - temporarily disabled
+    // CacheModule.registerAsync({
+    //   imports: [ConfigModule],
+    //   useFactory: (configService: ConfigService) => ({
+    //     store: 'redis',
+    //     host: configService.get('REDIS_HOST'),
+    //     port: parseInt(configService.get('REDIS_PORT', '6379')),
+    //     password: configService.get('REDIS_PASSWORD'),
+    //     ttl: parseInt(configService.get('CACHE_TTL', '300')), // 5 minutes default
+    //     max: parseInt(configService.get('CACHE_MAX_ITEMS', '1000')),
+    //   }),
+    //   inject: [ConfigService],
+    //   isGlobal: true,
+    // }),
 
-    // Rate Limiting Configuration
-    ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        throttlers: [
-          {
-            ttl: parseInt(configService.get('THROTTLE_TTL', '60')) * 1000, // Convert to milliseconds
-            limit: parseInt(configService.get('THROTTLE_LIMIT', '100')),
-          },
-        ],
-      }),
-      inject: [ConfigService],
-    }),
+    // Rate Limiting Configuration - temporarily disabled
+    // ThrottlerModule.forRootAsync({
+    //   imports: [ConfigModule],
+    //   useFactory: (configService: ConfigService) => ({
+    //     throttlers: [
+    //       {
+    //         ttl: parseInt(configService.get('THROTTLE_TTL', '60')) * 1000, // Convert to milliseconds
+    //         limit: parseInt(configService.get('THROTTLE_LIMIT', '100')),
+    //       },
+    //     ],
+    //   }),
+    //   inject: [ConfigService],
+    // }),
 
     // HTTP Client Configuration
     HttpModule.registerAsync({
@@ -217,32 +220,32 @@ import { DietPlan } from './domains/chat/entities/diet-plan.entity';
       inject: [ConfigService],
     }),
 
-    // Domain Modules
-    UsersModule,
-    AuthModule,
-    HealthReportsModule,
-    RecipeModule,
-    FitnessPlanningModule,
-    MealPlanningModule,
-    NutritionModule,
-    AIRoutingModule,
-    AnalyticsModule,
-    LogsModule,
-    ChatModule, // Phase 13
-    ExternalApiModule,
+    // Domain Modules - Core only for now (without database dependencies)
+    // UsersModule, // Temporarily disabled - needs database
+    // AuthModule, // Temporarily disabled - needs UsersModule
+    // HealthReportsModule,
+    // RecipeModule,
+    // FitnessPlanningModule, // Temporarily disabled - missing LogEntryRepository
+    // MealPlanningModule, // Temporarily disabled - missing RecipeRepository
+    // NutritionModule,
+    // AIRoutingModule, // Temporarily disabled - might need database
+    // AnalyticsModule,
+    // LogsModule,
+    // ChatModule, // Phase 13
+    // ExternalApiModule, // Temporarily disabled due to RxJS conflicts
 
-    // Phase 14 Modules
-    IntegrationsModule,
-    AIPromptOptimizationModule,
+    // Phase 14 Modules - temporarily disabled
+    // IntegrationsModule,
+    // AIPromptOptimizationModule,
 
-    // Phase 15 Modules - Performance & Reliability
-    PerformanceModule,
-    ObservabilityModule,
+    // Phase 15 Modules - Performance & Reliability - temporarily disabled
+    // PerformanceModule,
+    // ObservabilityModule,
 
     // Health Check Module
     HealthModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, MockAuthController, MockMealPlanController, FoodLogController],
   providers: [AppService, AppConfigService],
 })
 export class AppModule {}

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -61,21 +61,21 @@ import { UsersModule } from '../users/users.module';
       maxRedirects: 5,
     }),
 
-    // Rate limiting
-    ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => [
-        {
-          name: 'auth',
-          ttl: configService.get<number>('THROTTLE_TTL', 60000), // 1 minute
-          limit: configService.get<number>('THROTTLE_LIMIT', 10), // 10 requests per minute
-        },
-      ],
-      inject: [ConfigService],
-    }),
+    // Rate limiting - temporarily disabled
+    // ThrottlerModule.forRootAsync({
+    //   imports: [ConfigModule],
+    //   useFactory: (configService: ConfigService) => [
+    //     {
+    //       name: 'auth',
+    //       ttl: configService.get<number>('THROTTLE_TTL', 60000), // 1 minute
+    //       limit: configService.get<number>('THROTTLE_LIMIT', 10), // 10 requests per minute
+    //     },
+    //   ],
+    //   inject: [ConfigService],
+    // }),
 
-    // Users module for user management
-    UsersModule,
+    // Users module for user management - using forwardRef to resolve circular dependency
+    forwardRef(() => UsersModule),
   ],
 
   controllers: [AuthController, ConsentController],

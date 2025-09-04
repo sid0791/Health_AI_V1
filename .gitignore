@@ -557,4 +557,26 @@ local.*
 .yarn/install-state.gz
 .pnp.*
 
+# =============================================================================
+# Telemetry and Analytics Cache
+# =============================================================================
+
+# Next.js telemetry
+.next/telemetry/
+.next/cache/
+**/cache/config.json
+
+# Turbo telemetry
+.turbo/
+**/turbo/
+
+# Package manager telemetry
+.npm/_telemetry/
+.pnpm/telemetry/
+.yarn/telemetry/
+
+# Build tool telemetry
+.webpack/telemetry/
+.vite/telemetry/
+
 # End of .gitignore
