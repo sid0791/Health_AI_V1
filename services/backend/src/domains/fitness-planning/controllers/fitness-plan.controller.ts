@@ -17,7 +17,6 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthenticatedRequest } from '../../auth/guards/optional-auth.guard';
-import '../../../types/express'; // Import type declarations
 import { FitnessPlanService } from '../services/fitness-plan.service';
 import { SafetyValidationService } from '../services/safety-validation.service';
 import {

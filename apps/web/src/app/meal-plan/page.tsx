@@ -51,8 +51,8 @@ export default function MealPlanPage() {
 
   // Fetch current meal plan
   const [mealPlanState, { refetch: refetchMealPlan }] = useAutoFetch(
-    () => mealPlanningService.getCurrentMealPlan(userId),
-    [],
+    mealPlanningService.getCurrentMealPlan,
+    [userId],
     { enabled: true, retryCount: 1 }
   )
 

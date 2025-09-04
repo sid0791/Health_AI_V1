@@ -6,6 +6,7 @@ import {
   IsObject,
   ValidateNested,
   IsArray,
+  IsBoolean,
   Min,
   Max,
 } from 'class-validator';
@@ -372,6 +373,3 @@ export class RecipeOptimizationGoalsDto {
   @IsBoolean()
   preserveVitamins?: boolean;
 }
-
-// Add IsBoolean import
-import { IsBoolean } from 'class-validator';

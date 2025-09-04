@@ -17,7 +17,6 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthenticatedRequest } from '../../auth/guards/optional-auth.guard';
-import '../../../types/express'; // Import type declarations
 import { ExerciseLibraryService } from '../services/exercise-library.service';
 import {
   CreateExerciseDto,
