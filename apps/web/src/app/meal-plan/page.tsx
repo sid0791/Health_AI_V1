@@ -8,96 +8,207 @@ import {
   StarIcon,
   ArrowPathIcon,
   PlusIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
-import { useApiCall, useAutoFetch } from '../../hooks/useApi'
-import { getApiStatus, isUsingMockData } from '../../services/api'
-import ApiDisclaimer from '../../components/ApiDisclaimer'
-import mealPlanningService, { UserProfile } from '../../services/mealPlanningService'
+import { mealPlanningService, type MealPlan, type MealSwapRequest } from '../../services/mealPlanningService'
+import { authService } from '../../services/authService'
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
-// Mock user profile - in real app this would come from user context/auth
-const mockUserProfile: UserProfile = {
-  age: 28,
-  gender: 'female',
-  weight: 65,
-  height: 165,
-  activityLevel: 'moderate',
-  goals: ['weight_loss', 'muscle_gain'],
-  healthConditions: ['PCOS'],
-  allergies: ['nuts'],
-  dietaryPreferences: ['vegetarian'],
-  cuisinePreferences: ['Indian', 'Mediterranean'],
-  preferredIngredients: ['quinoa', 'lentils', 'vegetables'],
-  avoidedIngredients: ['refined_sugar', 'white_rice'],
-  budgetRange: { min: 200, max: 500 },
-  cookingSkillLevel: 3,
-  availableCookingTime: 30,
-  mealFrequency: {
-    mealsPerDay: 4,
-    snacksPerDay: 1,
-    includeBeverages: true
-  }
-}
-
-
 export default function MealPlanPage() {
-  const [selectedDay, setSelectedDay] = useState(0) // Index instead of name
-  const [showSwapOptions, setShowSwapOptions] = useState<{mealType: string, dayIndex: number} | null>(null)
+  const [selectedDay, setSelectedDay] = useState(0)
+  const [currentMealPlan, setCurrentMealPlan] = useState<MealPlan | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false)
-  const [apiMode, setApiMode] = useState<'real' | 'mock' | 'fallback'>('mock')
+  const [swappingMeal, setSwappingMeal] = useState<string | null>(null)
 
-  // Mock user ID - in real app this would come from auth context
-  const userId = 'user_123'
+  // Load current meal plan
+  useEffect(() => {
+    loadCurrentMealPlan()
+  }, [])
 
-  // Fetch current meal plan
-  const [mealPlanState, { refetch: refetchMealPlan }] = useAutoFetch(
-    mealPlanningService.getCurrentMealPlan,
-    [userId],
-    { enabled: true, retryCount: 1 }
-  )
+  const loadCurrentMealPlan = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const mealPlan = await mealPlanningService.getCurrentMealPlan()
+      setCurrentMealPlan(mealPlan)
+    } catch (err) {
+      console.error('Failed to load meal plan:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load meal plan')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  // Generate new meal plan
-  const [generateState, { execute: generateMealPlan }] = useApiCall(
-    mealPlanningService.generateMealPlan
-  )
+  const handleGeneratePlan = async () => {
+    try {
+      setIsGeneratingPlan(true)
+      setError(null)
+      
+      const user = authService.getCurrentUser()
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
 
-  // Swap meal functionality
-  const [swapState, { execute: swapMeal }] = useApiCall(
-    mealPlanningService.swapMeal
-  )
+      console.log('🤖 Generating AI-powered meal plan...')
+      
+      const mealPlan = await mealPlanningService.generateMealPlan({
+        userId: user.id,
+        preferences: {
+          startDate: new Date().toISOString().split('T')[0],
+          duration: 7,
+          specialRequests: 'Generate a comprehensive 7-day meal plan with balanced nutrition'
+        }
+      })
 
-  // Apply meal swap - TODO: Connect to swap UI when modal is implemented
-  const [applySwapState, { execute: applyMealSwap }] = useApiCall(
-    mealPlanningService.applyMealSwap
-  )
+      // Save the generated plan
+      await mealPlanningService.saveMealPlan(mealPlan, 'AI Generated Plan')
+      
+      setCurrentMealPlan(mealPlan)
+      console.log('✅ Meal plan generated and saved successfully!')
+      
+    } catch (err) {
+      console.error('Failed to generate meal plan:', err)
+      setError(err instanceof Error ? err.message : 'Failed to generate meal plan')
+    } finally {
+      setIsGeneratingPlan(false)
+    }
+  }
 
-  const currentMealPlan = mealPlanState.data
+  const handleSwapMeal = async (mealId: string) => {
+    try {
+      setSwappingMeal(mealId)
+      setError(null)
+      
+      console.log('🔄 Finding alternative meals...')
+      
+      const swapRequest: MealSwapRequest = {
+        mealId,
+        reason: 'User requested swap',
+        constraints: {
+          similarNutrition: true,
+          sameMealType: true,
+          maxPrepTime: 45
+        }
+      }
+
+      const result = await mealPlanningService.swapMeal(swapRequest)
+      
+      if (result.success && result.alternatives.length > 0) {
+        // For now, automatically use the first alternative
+        // In a full implementation, show alternatives to user for selection
+        console.log(`✅ Found ${result.alternatives.length} alternatives`)
+        
+        // Update the meal plan with the new recipe
+        if (currentMealPlan) {
+          const updatedPlan = { ...currentMealPlan }
+          updatedPlan.days.forEach(day => {
+            day.meals.forEach(meal => {
+              if (meal.id === mealId) {
+                meal.recipe = result.alternatives[0]
+                meal.alternatives = result.alternatives.slice(1)
+              }
+            })
+          })
+          setCurrentMealPlan(updatedPlan)
+        }
+      } else {
+        throw new Error('No suitable alternatives found')
+      }
+      
+    } catch (err) {
+      console.error('Failed to swap meal:', err)
+      setError(err instanceof Error ? err.message : 'Failed to swap meal')
+    } finally {
+      setSwappingMeal(null)
+    }
+  }
+
   const selectedDayPlan = currentMealPlan?.days[selectedDay]
 
-  const handleGeneratePlan = useCallback(async () => {
-    setIsGeneratingPlan(true)
-    const result = await generateMealPlan({
-      userId,
-      userProfile: mockUserProfile,
-      planDuration: 7,
-      targetCalories: 1800, // Based on user profile
-      macroTargets: {
-        protein: 25,
-        carbs: 45,
-        fat: 30
-      }
-    })
-    
-    if (result) {
-      await refetchMealPlan()
-    }
-    setIsGeneratingPlan(false)
-  }, [generateMealPlan, userId, refetchMealPlan])
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your meal plan...</p>
+        </div>
+      </div>
+    )
+  }
 
-  // Generate initial meal plan if none exists
+  if (!currentMealPlan) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <SparklesIcon className="h-16 w-16 text-primary-500 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              Ready to Create Your Personalized Meal Plan?
+            </h1>
+            <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+              Our AI nutritionist will create a customized 7-day meal plan based on your health goals, 
+              dietary preferences, and lifestyle. Each meal is designed to be nutritious, delicious, and easy to prepare.
+            </p>
+            
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg max-w-md mx-auto">
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+
+            <button
+              onClick={handleGeneratePlan}
+              disabled={isGeneratingPlan}
+              className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-lg hover:from-primary-700 hover:to-secondary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-lg font-medium"
+            >
+              {isGeneratingPlan ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Generating Your Plan...
+                </>
+              ) : (
+                <>
+                  <SparklesIcon className="h-5 w-5 mr-2" />
+                  Generate My Meal Plan
+                </>
+              )}
+            </button>
+
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+              <div className="text-center">
+                <div className="h-12 w-12 bg-primary-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <HeartIcon className="h-6 w-6 text-primary-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Health-Focused</h3>
+                <p className="text-sm text-gray-600">Tailored to your health conditions and goals</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="h-12 w-12 bg-secondary-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <FireIcon className="h-6 w-6 text-secondary-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Nutritionally Balanced</h3>
+                <p className="text-sm text-gray-600">Optimal macros and micronutrients</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <ClockIcon className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Time-Efficient</h3>
+                <p className="text-sm text-gray-600">Quick and easy recipes for busy lifestyles</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
   useEffect(() => {
     const initializeMealPlan = async () => {
       if (!mealPlanState.loading && !mealPlanState.data && !mealPlanState.error) {

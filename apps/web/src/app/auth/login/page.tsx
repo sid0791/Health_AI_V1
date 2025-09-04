@@ -22,51 +22,53 @@ export default function Login() {
       // Get form data
       const formData = new FormData(e.target as HTMLFormElement)
       const credentials = {
-        email: formData.get('login') as string,
+        email: loginMethod === 'email' ? formData.get('login') as string : undefined,
+        phone: loginMethod === 'phone' ? formData.get('login') as string : undefined,
         password: formData.get('password') as string
       }
 
-      // Call authentication API
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials)
-      }).catch(() => {
-        // If API fails, use mock authentication
-        return {
-          ok: true,
-          json: () => Promise.resolve({
-            success: true,
-            token: 'mock-jwt-token-' + Date.now(),
-            user: {
-              id: 'user-123',
-              email: credentials.email,
-              name: 'Demo User',
-              profileCompleted: true
-            }
-          })
+      // Import auth service dynamically to avoid SSR issues
+      const { authService } = await import('../../../services/authService')
+      
+      const result = await authService.login(credentials)
+      
+      if (result.success && result.user) {
+        // Check if user needs onboarding
+        if (result.isNewUser || !result.user.profileCompleted || !result.user.onboardingCompleted) {
+          // Redirect to onboarding flow
+          window.location.href = '/auth/onboarding/1'
+        } else {
+          // Existing user with complete profile - go to dashboard
+          window.location.href = '/dashboard'
         }
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        
-        // Store authentication data
-        localStorage.setItem('auth_token', result.token)
-        localStorage.setItem('user_data', JSON.stringify(result.user))
-        
-        // Redirect to dashboard
-        window.location.href = '/dashboard'
       } else {
-        throw new Error('Login failed')
+        throw new Error(result.message || 'Login failed')
       }
     } catch (error) {
       console.error('Login error:', error)
       setIsLoading(false)
-      // For demo purposes, still redirect on any error
-      localStorage.setItem('auth_token', 'demo-token')
-      localStorage.setItem('user_data', JSON.stringify({ name: 'Demo User', email: 'demo@healthcoachai.com' }))
-      window.location.href = '/dashboard'
+      
+      // For development, still provide a fallback
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Login failed, using fallback mock authentication')
+        const formData = new FormData(e.target as HTMLFormElement)
+        const loginValue = formData.get('login') as string
+        
+        const mockUser = {
+          id: 'demo-user-123',
+          email: loginMethod === 'email' ? loginValue : 'demo@healthcoachai.com',
+          phone: loginMethod === 'phone' ? loginValue : undefined,
+          name: 'Demo User',
+          profileCompleted: false, // Force onboarding
+          onboardingCompleted: false
+        }
+        
+        localStorage.setItem('auth_token', 'demo-token-' + Date.now())
+        localStorage.setItem('user_data', JSON.stringify(mockUser))
+        
+        // Always go to onboarding for demo users
+        window.location.href = '/auth/onboarding/1'
+      }
     }
   }
 
@@ -74,26 +76,46 @@ export default function Login() {
     console.log(`Login with ${provider}`)
     setIsLoading(true)
     
-    // Mock OAuth - in real app, this would integrate with OAuth providers
     try {
-      // Simulate OAuth flow
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Import auth service dynamically to avoid SSR issues
+      const { authService } = await import('../../../services/authService')
       
-      // Mock successful OAuth response
-      const mockUser = {
-        id: `${provider}-user-${Date.now()}`,
-        email: `demo@${provider}.com`,
-        name: `Demo ${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
-        profileCompleted: true
+      const result = await authService.oauthLogin(provider)
+      
+      if (result.success && result.user) {
+        // Check if user needs onboarding
+        if (result.isNewUser || !result.user.profileCompleted || !result.user.onboardingCompleted) {
+          // Redirect to onboarding flow
+          window.location.href = '/auth/onboarding/1'
+        } else {
+          // Existing user with complete profile - go to dashboard
+          window.location.href = '/dashboard'
+        }
+      } else {
+        // OAuth redirect will happen automatically, no action needed
+        setIsLoading(false)
       }
-      
-      localStorage.setItem('auth_token', `${provider}-token-${Date.now()}`)
-      localStorage.setItem('user_data', JSON.stringify(mockUser))
-      
-      window.location.href = '/dashboard'
     } catch (error) {
       console.error(`${provider} login error:`, error)
       setIsLoading(false)
+      
+      // Fallback to mock for development
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('OAuth failed, using fallback mock authentication')
+        const mockUser = {
+          id: `${provider}-user-${Date.now()}`,
+          email: `demo@${provider}.com`,
+          name: `Demo ${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
+          profileCompleted: false, // Force onboarding for new users
+          onboardingCompleted: false
+        }
+        
+        localStorage.setItem('auth_token', `${provider}-token-${Date.now()}`)
+        localStorage.setItem('user_data', JSON.stringify(mockUser))
+        
+        // Always go to onboarding for new users
+        window.location.href = '/auth/onboarding/1'
+      }
     }
   }
 
