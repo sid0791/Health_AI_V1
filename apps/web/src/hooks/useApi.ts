@@ -2,7 +2,7 @@
  * Custom hooks for API integration and state management
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { APIError } from '../services/api'
 
 export interface ApiState<T> {
@@ -192,10 +192,13 @@ export function useAutoFetch<T, P extends unknown[] = []>(
   const [state, { setLoading, setData, setError, reset }] = useApiState<T>()
   const [hasInitiallyFetched, setHasInitiallyFetched] = useState(false)
 
+  // Stabilize args to prevent infinite loops
+  const stableArgs = useMemo(() => args, [JSON.stringify(args)])
+
   const fetchData = useCallback(async (retryAttempt = 0): Promise<T | null> => {
     try {
       setLoading(true)
-      const result = await apiFunction(...args)
+      const result = await apiFunction(...stableArgs)
       setData(result)
       setHasInitiallyFetched(true)
       return result
@@ -219,7 +222,7 @@ export function useAutoFetch<T, P extends unknown[] = []>(
       setHasInitiallyFetched(true)
       return null
     }
-  }, [apiFunction, args, retryCount, retryDelay, setLoading, setData, setError])
+  }, [apiFunction, stableArgs, retryCount, retryDelay, setLoading, setData, setError])
 
   const refetch = useCallback(() => {
     return fetchData()

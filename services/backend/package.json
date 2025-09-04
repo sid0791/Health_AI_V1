@@ -6,6 +6,10 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "nest build || echo 'Build completed with TypeScript issues but continuing...'",
+    "build:prod": "./build.sh",
+    "deploy:prod": "npm run build:prod && pm2 start dist/main.js --name healthai-backend",
+    "docker:build": "docker build -t healthai-backend .",
+    "docker:run": "docker run -p 3001:3001 healthai-backend",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

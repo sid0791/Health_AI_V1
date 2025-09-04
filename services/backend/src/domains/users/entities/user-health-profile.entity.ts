@@ -364,7 +364,8 @@ export class UserHealthProfile {
         case HealthMetricStatus.LOW:
           totalScore += 60;
           break;
-        case HealthMetricStatus.CRITICAL:
+        case HealthMetricStatus.DEFICIENT:
+        case HealthMetricStatus.EXCESSIVE:
           totalScore += 20;
           break;
         default:

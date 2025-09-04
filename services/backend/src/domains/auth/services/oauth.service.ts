@@ -362,7 +362,7 @@ export class OAuthService {
         }),
       );
 
-      const data = response.data;
+      const data = (response as any).data;
       return {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
@@ -413,7 +413,7 @@ export class OAuthService {
 
       const response = await firstValueFrom(this.httpService.get(userInfoUrl, { headers }));
 
-      const data = response.data;
+      const data = (response as any).data;
 
       return this.normalizeUserInfo(provider, data);
     } catch (error) {

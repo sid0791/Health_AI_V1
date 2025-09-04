@@ -15,6 +15,36 @@ import {
 import { Type } from 'class-transformer';
 import { MealPlanType } from '../entities/meal-plan.entity';
 
+export class BudgetRangeDto {
+  @ApiProperty({ description: 'Minimum budget per day in INR', example: 200 })
+  @IsNumber()
+  @Min(50)
+  min: number;
+
+  @ApiProperty({ description: 'Maximum budget per day in INR', example: 500 })
+  @IsNumber()
+  @Min(50)
+  max: number;
+}
+
+export class MealFrequencyDto {
+  @ApiProperty({ description: 'Number of main meals per day', example: 3, minimum: 1, maximum: 6 })
+  @IsNumber()
+  @Min(1)
+  @Max(6)
+  mealsPerDay: number;
+
+  @ApiProperty({ description: 'Number of snacks per day', example: 2, minimum: 0, maximum: 4 })
+  @IsNumber()
+  @Min(0)
+  @Max(4)
+  snacksPerDay: number;
+
+  @ApiProperty({ description: 'Include beverages in meal planning', example: true })
+  @IsBoolean()
+  includeBeverages: boolean;
+}
+
 export class UserProfileDto {
   @ApiProperty({ description: 'User age in years', example: 28, minimum: 13, maximum: 100 })
   @IsNumber()
@@ -158,36 +188,6 @@ export class UserProfileDto {
   @ValidateNested()
   @Type(() => MealFrequencyDto)
   mealFrequency: MealFrequencyDto;
-}
-
-export class BudgetRangeDto {
-  @ApiProperty({ description: 'Minimum budget per day in INR', example: 200 })
-  @IsNumber()
-  @Min(50)
-  min: number;
-
-  @ApiProperty({ description: 'Maximum budget per day in INR', example: 500 })
-  @IsNumber()
-  @Min(50)
-  max: number;
-}
-
-export class MealFrequencyDto {
-  @ApiProperty({ description: 'Number of main meals per day', example: 3, minimum: 1, maximum: 6 })
-  @IsNumber()
-  @Min(1)
-  @Max(6)
-  mealsPerDay: number;
-
-  @ApiProperty({ description: 'Number of snacks per day', example: 2, minimum: 0, maximum: 4 })
-  @IsNumber()
-  @Min(0)
-  @Max(4)
-  snacksPerDay: number;
-
-  @ApiProperty({ description: 'Include beverages in the plan', example: true })
-  @IsBoolean()
-  includeBeverages: boolean;
 }
 
 export class MacroTargetsDto {
