@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { User } from './entities/user.entity';
@@ -33,7 +33,7 @@ import { AuthModule } from '../auth/auth.module';
       UserHealthProfile,
     ]),
     ScheduleModule.forRoot(),
-    AuthModule,
+    forwardRef(() => AuthModule),
   ],
   controllers: [UsersController, OnboardingController],
   providers: [
@@ -56,6 +56,8 @@ import { AuthModule } from '../auth/auth.module';
     OnboardingService,
     TokenManagementService,
     UserHealthProfileService,
+    // Export TypeORM repositories for use in other modules
+    TypeOrmModule,
   ],
 })
 export class UsersModule {}

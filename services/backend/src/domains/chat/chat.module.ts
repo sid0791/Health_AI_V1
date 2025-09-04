@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 
@@ -23,6 +23,7 @@ import { HealthReport } from '../health-reports/entities/health-report.entity';
 // Import related domains for integration
 import { AIRoutingModule } from '../ai-routing/ai-routing.module';
 import { UsersModule } from '../users/users.module';
+import { AuthModule } from '../auth/auth.module';
 import { HealthReportsModule } from '../health-reports/health-reports.module';
 import { MealPlanningModule } from '../meal-planning/meal-planning.module';
 import { FitnessPlanningModule } from '../fitness-planning/fitness-planning.module';
@@ -43,6 +44,7 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     ConfigModule,
     AIRoutingModule,
     UsersModule,
+    forwardRef(() => AuthModule),
     HealthReportsModule,
     MealPlanningModule,
     FitnessPlanningModule,

@@ -26,6 +26,8 @@ import { LogsService } from './services/logs.service';
   exports: [
     // Export LogsService for use in other modules
     LogsService,
+    // Export TypeORM repository for LogEntry
+    TypeOrmModule,
   ],
 })
 export class LogsModule {}

@@ -33,6 +33,9 @@ import { NutritionModule } from '../nutrition/nutrition.module';
     ContentModerationService,
     RecipeNutritionService,
     RecipeSeedingService,
+    RecipeRepository,
+    // Export TypeORM repositories for use in other modules
+    TypeOrmModule,
   ],
 })
 export class RecipeModule {}
