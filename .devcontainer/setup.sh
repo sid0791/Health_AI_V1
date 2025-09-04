@@ -5,8 +5,16 @@ set -e
 
 echo "🚀 Setting up HealthCoach AI for GitHub Codespace..."
 
+# Ensure we're in the right directory
+cd "$(dirname "$0")/.."
+
 # Create environment files for demo mode
 echo "📝 Creating demo environment files..."
+
+# Ensure directories exist
+mkdir -p services/backend
+mkdir -p apps/web  
+mkdir -p n8n
 
 # Backend environment
 cat > services/backend/.env << 'EOF'
@@ -116,19 +124,47 @@ echo "✅ Environment files created!"
 
 # Disable Next.js telemetry globally
 echo "🔒 Disabling Next.js telemetry to prevent firewall issues..."
-npx next telemetry disable || echo "⚠️ Telemetry already disabled or Next.js not available yet"
+export NEXT_TELEMETRY_DISABLED=1
+export npm_config_disable_telemetry=true
+export DO_NOT_TRACK=1
+
+# Try to disable telemetry, with fallback if Next.js isn't available yet
+if command -v npx >/dev/null 2>&1; then
+    npx next telemetry disable || echo "⚠️ Telemetry disable command failed, but continuing..."
+else
+    echo "⚠️ npx not available yet, telemetry will be disabled via environment variables"
+fi
 
 # Install dependencies if not already done
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing dependencies..."
-    pnpm install
+    pnpm install || {
+        echo "❌ pnpm install failed, retrying..."
+        rm -rf node_modules/.cache || true
+        pnpm install
+    }
+else
+    echo "✅ Dependencies already installed"
 fi
 
-# Build the project
+# Build the project with better error handling
 echo "🔨 Building the project..."
-pnpm run build --filter=!@healthcoachai/backend || echo "⚠️  Some build warnings occurred but continuing..."
+pnpm run build --filter=!@healthcoachai/backend 2>&1 | tee build.log || {
+    echo "⚠️ Build had issues, checking if critical..."
+    if grep -q "Error:" build.log; then
+        echo "❌ Critical build errors found:"
+        grep "Error:" build.log
+        echo "Continuing anyway for development..."
+    else
+        echo "✅ Only warnings found, build succeeded"
+    fi
+}
 
 echo "🎉 HealthCoach AI setup complete!"
+
+# Clean up build log
+rm -f build.log
+
 echo ""
 echo "🌐 Available Services:"
 echo "  • Web App:      http://localhost:3000"

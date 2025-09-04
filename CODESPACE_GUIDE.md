@@ -6,12 +6,15 @@ Welcome to HealthCoach AI! This guide will help you run and test the complete ap
 
 **✅ No Firewall Issues!** HealthCoach AI is configured to work in secure, restricted environments:
 
-- **Telemetry Disabled**: All Next.js telemetry is completely disabled
+- **Telemetry Disabled**: All Next.js telemetry is completely disabled via environment variables
 - **Zero External Requests**: No data sent to tracking servers
 - **Firewall-Friendly**: No blocked connections to telemetry.nextjs.org
 - **Privacy-First**: Your development activity remains completely private
+- **Improved Setup**: Enhanced error handling and timeout prevention
 
 For detailed information, see: [TELEMETRY_FIREWALL_FIX.md](./TELEMETRY_FIREWALL_FIX.md)
+
+**🔧 Quick Verification**: Run `./verify-codespace.sh` to check your setup is working correctly.
 
 ## 🚀 Quick Start in GitHub Codespaces
 
@@ -196,6 +199,13 @@ To test with real AI providers:
 
 ## 🐛 Troubleshooting
 
+### Quick Verification
+
+```bash
+# Run the verification script to check your setup
+./verify-codespace.sh
+```
+
 ### Common Issues
 
 #### Port Already in Use
@@ -222,12 +232,14 @@ pnpm run build
 #### Environment Issues
 - Check `.env` files are created correctly
 - Ensure no sensitive keys are committed (using demo keys only)
+- Run `./verify-codespace.sh` to validate environment variables
 
 ### Getting Help
-1. Check the console logs in browser developer tools
-2. Review terminal output for error messages
-3. Check if all ports are properly forwarded in Codespaces
-4. Ensure the auto-setup script completed successfully
+1. Run `./verify-codespace.sh` first for automated diagnostics
+2. Check the console logs in browser developer tools
+3. Review terminal output for error messages
+4. Check if all ports are properly forwarded in Codespaces
+5. Ensure the auto-setup script completed successfully
 
 ## 📊 Performance Tips
 
