@@ -15,6 +15,7 @@ import { HealthInsightsService } from './health-insights.service';
 
 // AI routing integration
 import { AIRoutingService, AIRoutingRequest } from '../../ai-routing/services/ai-routing.service';
+import { EnhancedAIProviderService } from '../../ai-routing/services/enhanced-ai-provider.service';
 import { RequestType } from '../../ai-routing/entities/ai-routing-decision.entity';
 
 // Token management integration
@@ -131,6 +132,7 @@ export class DomainScopedChatService {
     private readonly hinglishNLPService: HinglishNLPService,
     private readonly chatSessionService: ChatSessionService,
     private readonly aiRoutingService: AIRoutingService,
+    private readonly enhancedAIProviderService: EnhancedAIProviderService,
     private readonly dlpService: DLPService,
     private readonly tokenManagementService: TokenManagementService,
     private readonly configService: ConfigService,
@@ -386,21 +388,38 @@ export class DomainScopedChatService {
       );
 
       // Route to AI provider with token awareness
-      const aiResponse = await this.aiRoutingService.routeRequestWithUserTokens({
+      const routingResult = await this.aiRoutingService.routeRequestWithUserTokens({
         ...aiRequest,
         forceFreeTier: !canConsumeTokens,
       });
 
+      // Generate comprehensive AI prompt with RAG context
+      const aiPrompt = this.buildChatPrompt(
+        dlpProcessedContent.processedText,
+        ragContext,
+        domainClassification,
+        routingLevel
+      );
+
+      // Make real AI call using Enhanced AI Provider Service
+      const realAIResponse = await this.enhancedAIProviderService.callAIProvider(
+        routingResult,
+        aiPrompt
+      );
+
+      // Extract the actual response content
+      const aiResponseContent = this.extractResponseContent(realAIResponse);
+
       // Process AI response for actions and citations
       const processedResponse = await this.processAIResponse(
-        'AI response content here', // Would be from actual AI call
+        aiResponseContent,
         ragContext,
         domainClassification,
       );
 
       // **LEVEL 1 VALUE EXTRACTION**: Extract and store structured health data from AI response
       if (routingLevel === 'L1') {
-        const aiCost = aiResponse.estimatedCost || 0.02; // Typical Level 1 cost
+        const aiCost = routingResult.estimatedCost || 0.02; // Actual cost from routing result
         const analysisType = this.getAnalysisType(
           domainClassification.domain,
           processedMessage.content,
@@ -408,7 +427,7 @@ export class DomainScopedChatService {
         await this.extractAndStoreHealthValues(
           userId,
           processedMessage.content,
-          processedResponse.content,
+          aiResponseContent,
           analysisType,
           aiCost,
         );
@@ -448,8 +467,8 @@ export class DomainScopedChatService {
         {
           routingDecision: {
             level: routingLevel,
-            provider: aiResponse.provider,
-            model: aiResponse.model,
+            provider: routingResult.provider,
+            model: routingResult.model,
           },
           ragContext: {
             documentsUsed: ragContext.metadata.documentsRetrieved,
@@ -467,7 +486,7 @@ export class DomainScopedChatService {
             processingTimeMs: Date.now() - startTime,
             tokenCount: actualTokensUsed,
             retrievalTimeMs: ragContext.metadata.retrievalTimeMs,
-            generationTimeMs: 200, // Would be from actual AI response
+            generationTimeMs: realAIResponse.performance?.responseTime || 200,
           },
           safety: {
             contentFiltered: false,
@@ -477,8 +496,8 @@ export class DomainScopedChatService {
           },
           tokenUsage: {
             tokensUsed: actualTokensUsed,
-            usedFreeTier: aiResponse.usedFreeTier,
-            cost: aiResponse.estimatedCost,
+            usedFreeTier: routingResult.usedFreeTier || true,
+            cost: routingResult.estimatedCost || realAIResponse.cost || 0,
           },
         },
       );
@@ -1269,5 +1288,61 @@ export class DomainScopedChatService {
     }
 
     return 'health_summary';
+  }
+
+  /**
+   * Build comprehensive AI prompt for chat with RAG context
+   */
+  private buildChatPrompt(
+    userMessage: string,
+    ragContext: any,
+    domainClassification: any,
+    routingLevel: 'L1' | 'L2'
+  ): string {
+    let systemPrompt = this.buildSystemPrompt(domainClassification.domain, ragContext);
+    
+    // Add context from RAG if available
+    if (ragContext.sources && ragContext.sources.length > 0) {
+      systemPrompt += '\n\nRelevant context from knowledge base:\n';
+      ragContext.sources.forEach((source, index) => {
+        systemPrompt += `[${index + 1}] ${source.title}: ${source.excerpt}\n`;
+      });
+    }
+
+    // Set response requirements based on routing level
+    if (routingLevel === 'L1') {
+      systemPrompt += '\n\nThis is a health-critical query requiring high accuracy and detailed medical analysis. Provide comprehensive, evidence-based information.';
+    } else {
+      systemPrompt += '\n\nProvide helpful, accurate health and wellness information.';
+    }
+
+    systemPrompt += `\n\nUser's question: ${userMessage}`;
+    
+    return systemPrompt;
+  }
+
+  /**
+   * Extract response content from Enhanced AI Provider response
+   */
+  private extractResponseContent(aiResponse: any): string {
+    if (typeof aiResponse === 'string') {
+      return aiResponse;
+    }
+    
+    if (aiResponse.content) {
+      return aiResponse.content;
+    }
+    
+    if (aiResponse.choices && aiResponse.choices[0] && aiResponse.choices[0].message) {
+      return aiResponse.choices[0].message.content;
+    }
+    
+    if (aiResponse.text) {
+      return aiResponse.text;
+    }
+    
+    // Fallback for unknown response formats
+    this.logger.warn('Unknown AI response format, attempting JSON stringify');
+    return JSON.stringify(aiResponse);
   }
 }
