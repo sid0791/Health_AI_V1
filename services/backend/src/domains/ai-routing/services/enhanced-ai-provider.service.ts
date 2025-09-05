@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { FreeAIIntegrationService } from './free-ai-integration.service';
 
 /**
  * Enhanced AI Provider Service - Production Ready Implementation
@@ -17,7 +18,10 @@ export class EnhancedAIProviderService {
   private readonly openaiClient: OpenAI;
   private readonly geminiClient: GoogleGenerativeAI;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly freeAIService: FreeAIIntegrationService,
+  ) {
     // Initialize AI clients only if API keys are available
     const openaiKey = this.configService.get<string>('OPENAI_API_KEY');
     const geminiKey = this.configService.get<string>('GOOGLE_AI_API_KEY');
@@ -35,7 +39,12 @@ export class EnhancedAIProviderService {
    * Enhanced version of callAIProvider with real API integration
    * This replaces the mock implementation in ai-meal-generation.service.ts
    */
-  async callAIProvider(routingResult: any, prompt: string): Promise<any> {
+  async callAIProvider(
+    routingResult: any,
+    prompt: string,
+    userProfile?: any,
+    preferences?: any,
+  ): Promise<any> {
     const { provider, model } = routingResult;
 
     try {
@@ -47,6 +56,16 @@ export class EnhancedAIProviderService {
       if (isProduction && hasValidConfig) {
         this.logger.log(`Making real API call to ${provider} with model ${model}`);
         return await this.makeRealAPICall(provider, model, prompt, routingResult);
+      }
+
+      // For meal planning specifically, use our free AI integration
+      if (
+        prompt.includes('meal plan') ||
+        prompt.includes('nutrition') ||
+        (userProfile && preferences)
+      ) {
+        this.logger.log('Using free AI integration for meal planning');
+        return await this.freeAIService.generateMealPlan(userProfile, preferences);
       }
 
       // Enhanced fallback with more realistic mock data
@@ -61,10 +80,14 @@ export class EnhancedAIProviderService {
       if (routingResult.fallbackOptions?.length > 0) {
         const fallbackProvider = routingResult.fallbackOptions[0];
         this.logger.log(`Attempting fallback to ${fallbackProvider.provider}`);
-        return await this.callAIProvider(fallbackProvider, prompt);
+        return await this.callAIProvider(fallbackProvider, prompt, userProfile, preferences);
       }
 
-      // Final fallback to enhanced mock
+      // Final fallback to enhanced mock or free AI for meal planning
+      if (userProfile && preferences) {
+        return await this.freeAIService.generateMealPlan(userProfile, preferences);
+      }
+
       return this.getEnhancedMockResponse(prompt, routingResult);
     }
   }

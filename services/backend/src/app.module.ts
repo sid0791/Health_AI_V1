@@ -68,12 +68,12 @@ import { AuditLog } from './domains/auth/entities/audit-log.entity';
 // AI Routing entities
 import { AIRoutingDecision } from './domains/ai-routing/entities/ai-routing-decision.entity';
 
-// Chat entities (Phase 13)
-import { ChatSession } from './domains/chat/entities/chat-session.entity';
-import { ChatMessage } from './domains/chat/entities/chat-message.entity';
-import { ChatContext } from './domains/chat/entities/chat-context.entity';
-import { HealthInsight } from './domains/chat/entities/health-insights.entity';
-import { DietPlan } from './domains/chat/entities/diet-plan.entity';
+// Chat entities (Phase 13) - Disabled for now
+// import { ChatSession } from './domains/chat/entities/chat-session.entity';
+// import { ChatMessage } from './domains/chat/entities/chat-message.entity';
+// import { ChatContext } from './domains/chat/entities/chat-context.entity';
+// import { HealthInsight } from './domains/chat/entities/health-insights.entity';
+// import { DietPlan } from './domains/chat/entities/diet-plan.entity';
 
 @Module({
   imports: [
@@ -137,12 +137,12 @@ import { DietPlan } from './domains/chat/entities/diet-plan.entity';
           // AI Routing entities
           AIRoutingDecision,
 
-          // Chat entities (Phase 13)
-          ChatSession,
-          ChatMessage,
-          ChatContext,
-          HealthInsight,
-          DietPlan,
+          // Chat entities (Phase 13) - Disabled for now
+          // ChatSession,
+          // ChatMessage,
+          // ChatContext,
+          // HealthInsight,
+          // DietPlan,
         ],
         synchronize: false, // Never use synchronize in production
         logging: configService.get('NODE_ENV') === 'development',
@@ -228,7 +228,7 @@ import { DietPlan } from './domains/chat/entities/diet-plan.entity';
     AIRoutingModule,
     AnalyticsModule,
     LogsModule,
-    ChatModule, // Phase 13
+    // ChatModule, // Phase 13 - Temporarily disabled due to dependency issues
     ExternalApiModule,
 
     // Phase 14 Modules

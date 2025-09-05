@@ -1,37 +1,26 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { PaperAirplaneIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { PaperAirplaneIcon, SparklesIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import { getApiStatus, isUsingMockData } from '../../services/api'
-import chatService from '../../services/chatService'
+import enhancedChatService, { EnhancedChatMessage, ChatSessionContext } from '../../services/enhancedChatService'
 import ApiDisclaimer from '../../components/ApiDisclaimer'
 
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: string
-}
+type SessionType = 'nutrition_advice' | 'fitness_guidance' | 'health_consultation' | 'meal_planning'
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<EnhancedChatMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [initialized, setInitialized] = useState(false)
-  const [apiMode, setApiMode] = useState<'real' | 'mock' | 'fallback'>('mock')
+  const [currentSessionType, setCurrentSessionType] = useState<SessionType>('health_consultation')
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Initialize chat with welcome message
+  // Initialize chat session
   useEffect(() => {
     if (!initialized) {
-      setMessages([
-        {
-          id: '1',
-          role: 'assistant',
-          content: "Hi! I'm your AI Health Coach. I can help you with meal planning, fitness advice, and health insights. What would you like to know?",
-          timestamp: new Date().toISOString()
-        }
-      ])
+      initializeSession()
       setInitialized(true)
     }
   }, [initialized])
@@ -41,23 +30,56 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Update API mode when status changes
-  useEffect(() => {
-    const updateApiMode = () => {
-      setApiMode(getApiStatus())
+  const initializeSession = async () => {
+    try {
+      setIsLoading(true)
+      
+      // Create context with mock user data (in real app, this would come from auth/profile)
+      const context: ChatSessionContext = {
+        userProfile: {
+          age: 28,
+          gender: 'female',
+          activityLevel: 'moderate'
+        },
+        healthConditions: ['none'],
+        allergies: [],
+        fitnessGoals: ['general_fitness', 'weight_maintenance']
+      }
+
+      const { sessionId: newSessionId, welcomeMessage } = await enhancedChatService.startHealthSession(
+        currentSessionType,
+        context
+      )
+      
+      setSessionId(newSessionId)
+      setMessages([welcomeMessage])
+    } catch (error) {
+      console.error('Error initializing session:', error)
+      // Fallback welcome message
+      const fallbackMessage: EnhancedChatMessage = {
+        id: '1',
+        role: 'assistant',
+        content: "Hi! I'm your AI Health Coach. I can help you with nutrition advice, fitness guidance, health consultations, and meal planning. What would you like to know?",
+        timestamp: new Date().toISOString(),
+        metadata: {
+          aiProvider: 'fallback',
+          domainClassification: {
+            domain: 'health',
+            confidence: 1.0,
+            isInScope: true
+          }
+        }
+      }
+      setMessages([fallbackMessage])
+    } finally {
+      setIsLoading(false)
     }
-    
-    // Check immediately and set up periodic checks
-    updateApiMode()
-    const interval = setInterval(updateApiMode, 1000)
-    
-    return () => clearInterval(interval)
-  }, [])
+  }
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return
 
-    const userMessage: Message = {
+    const userMessage: EnhancedChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: inputValue.trim(),
@@ -69,56 +91,60 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      // Use the API service instead of direct mock responses
-      const response = await chatService.sendMessage({
-        message: userMessage.content,
-        sessionType: 'general_health',
-        userPreferences: {
-          language: 'en',
-          responseStyle: 'friendly'
-        }
-      })
-
-      const aiMessage: Message = {
-        id: response.messageId || `ai-${Date.now()}`,
-        role: 'assistant',
-        content: response.response || response.toString(),
-        timestamp: new Date().toISOString()
-      }
-
-      setMessages(prev => [...prev, aiMessage])
-      
-      // Update API mode after successful request
-      setApiMode(getApiStatus())
+      // Use the enhanced chat service
+      const aiResponse = await enhancedChatService.sendHealthMessage(userMessage.content)
+      setMessages(prev => [...prev, aiResponse])
     } catch (error) {
       console.error('Error sending message:', error)
       
-      // Fallback to direct mock response if service fails
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      let response = "I'm here to help with your health and nutrition goals. "
-      const userMsg = userMessage.content.toLowerCase()
-      
-      if (userMsg.includes('protein')) {
-        response = "Great question about protein! For most adults, aim for 0.8-1g of protein per kg of body weight daily. Good sources include lean meats, fish, eggs, beans, and Greek yogurt. Would you like specific meal suggestions?"
-      } else if (userMsg.includes('weight')) {
-        response = "Weight management involves balancing calories in vs calories out. Focus on whole foods, regular exercise, and staying hydrated. I can help create a personalized plan based on your goals!"
-      } else if (userMsg.includes('meal') || userMsg.includes('food')) {
-        response = "I'd be happy to help with meal planning! A balanced plate should include lean protein, complex carbs, healthy fats, and plenty of vegetables. What are your dietary preferences?"
-      } else if (userMsg.includes('exercise') || userMsg.includes('workout')) {
-        response = "For effective workouts, combine cardio and strength training. Aim for 150 minutes of moderate cardio per week plus 2-3 strength sessions. What's your current fitness level?"
-      } else {
-        response += "I can help with meal planning, nutrition advice, fitness guidance, and analyzing health reports. What specific area would you like to explore?"
-      }
-
-      const errorMessage: Message = {
+      // Fallback response
+      const fallbackResponse: EnhancedChatMessage = {
         id: `fallback-${Date.now()}`,
         role: 'assistant',
-        content: response,
-        timestamp: new Date().toISOString()
+        content: "I'm here to help with your health questions. Could you please rephrase your question or try asking about nutrition, fitness, or general health topics?",
+        timestamp: new Date().toISOString(),
+        metadata: {
+          aiProvider: 'fallback',
+          processingTime: 500
+        }
       }
-      setMessages(prev => [...prev, errorMessage])
-      setApiMode('fallback')
+      setMessages(prev => [...prev, fallbackResponse])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSessionTypeChange = async (newType: SessionType) => {
+    if (newType === currentSessionType) return
+    
+    setCurrentSessionType(newType)
+    setIsLoading(true)
+    
+    try {
+      // End current session
+      await enhancedChatService.endSession()
+      
+      // Start new session with new type
+      const context: ChatSessionContext = {
+        userProfile: {
+          age: 28,
+          gender: 'female',
+          activityLevel: 'moderate'
+        },
+        healthConditions: newType === 'health_consultation' ? ['hypertension'] : [],
+        allergies: newType === 'nutrition_advice' ? ['nuts'] : [],
+        fitnessGoals: newType === 'fitness_guidance' ? ['weight_loss', 'strength_building'] : []
+      }
+
+      const { sessionId: newSessionId, welcomeMessage } = await enhancedChatService.startHealthSession(
+        newType,
+        context
+      )
+      
+      setSessionId(newSessionId)
+      setMessages([welcomeMessage])
+    } catch (error) {
+      console.error('Error changing session type:', error)
     } finally {
       setIsLoading(false)
     }
@@ -131,20 +157,83 @@ export default function ChatPage() {
     }
   }
 
-  const suggestedQuestions = [
-    "How can I improve my protein intake?",
-    "What exercises are best for weight loss?",
-    "Help me plan meals for this week",
-    "How much water should I drink daily?"
-  ]
+  const getSessionTypeIcon = (type: SessionType) => {
+    const icons = {
+      health_consultation: '🩺',
+      nutrition_advice: '🥗',
+      fitness_guidance: '💪',
+      meal_planning: '🍽️'
+    }
+    return icons[type]
+  }
+
+  const getSessionTypeLabel = (type: SessionType) => {
+    const labels = {
+      health_consultation: 'Health Consultation',
+      nutrition_advice: 'Nutrition Advice',
+      fitness_guidance: 'Fitness Guidance',
+      meal_planning: 'Meal Planning'
+    }
+    return labels[type]
+  }
+
+  const suggestedQuestions = {
+    health_consultation: [
+      "What do my recent blood test results mean?",
+      "I have high blood pressure, what foods should I avoid?",
+      "How can I improve my sleep quality?",
+      "What supplements should I consider?"
+    ],
+    nutrition_advice: [
+      "How can I increase my protein intake?",
+      "What are the best foods for heart health?",
+      "Help me plan balanced meals for weight loss",
+      "How much water should I drink daily?"
+    ],
+    fitness_guidance: [
+      "What exercises are best for weight loss?",
+      "How can I build muscle at home?",
+      "Create a workout plan for beginners",
+      "How often should I exercise per week?"
+    ],
+    meal_planning: [
+      "Plan my meals for this week",
+      "Suggest healthy breakfast options",
+      "What are good post-workout meals?",
+      "Help me meal prep for busy weekdays"
+    ]
+  }
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center">
-          <SparklesIcon className="h-6 w-6 text-primary-600 mr-2" />
-          <h1 className="text-lg font-semibold text-gray-900">AI Health Coach</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <SparklesIcon className="h-6 w-6 text-primary-600 mr-2" />
+            <h1 className="text-lg font-semibold text-gray-900">AI Health Coach</h1>
+            {sessionId && (
+              <span className="ml-2 text-xs text-gray-500">
+                Session: {sessionId.slice(-8)}
+              </span>
+            )}
+          </div>
+          
+          {/* Session Type Selector */}
+          <div className="flex items-center space-x-2">
+            <ChatBubbleLeftRightIcon className="h-4 w-4 text-gray-400" />
+            <select
+              value={currentSessionType}
+              onChange={(e) => handleSessionTypeChange(e.target.value as SessionType)}
+              className="text-sm border border-gray-300 rounded-md px-2 py-1"
+              disabled={isLoading}
+            >
+              <option value="health_consultation">🩺 Health Consultation</option>
+              <option value="nutrition_advice">🥗 Nutrition Advice</option>
+              <option value="fitness_guidance">💪 Fitness Guidance</option>
+              <option value="meal_planning">🍽️ Meal Planning</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -154,6 +243,10 @@ export default function ChatPage() {
           <ApiDisclaimer 
             mode={isUsingMockData() ? 'mock' : 'real'} 
             className="mb-0"
+            customMessage={isUsingMockData() 
+              ? "AI Chat is using intelligent fallback responses. Connect to backend for real AI integration."
+              : "✅ Connected to real AI Chat API with domain-scoped health expertise"
+            }
           />
         </div>
       </div>
@@ -166,23 +259,48 @@ export default function ChatPage() {
               <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                 message.role === 'user' 
                   ? 'bg-primary-600 text-white' 
-                  : 'bg-white text-gray-900 border border-gray-200'
+                  : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
               }`}>
-                <p className="text-sm">{message.content}</p>
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                
+                {/* AI Metadata */}
+                {message.role === 'assistant' && message.metadata && (
+                  <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
+                    <div className="flex items-center justify-between">
+                      <span>
+                        {message.metadata.aiProvider && (
+                          <>🤖 {message.metadata.aiProvider}</>
+                        )}
+                        {message.metadata.processingTime && (
+                          <> • ⏱️ {message.metadata.processingTime}ms</>
+                        )}
+                      </span>
+                      {message.metadata.domainClassification && (
+                        <span className={`px-1 py-0.5 rounded text-xs ${
+                          message.metadata.domainClassification.isInScope
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {message.metadata.domainClassification.domain}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
           
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-white text-gray-900 border border-gray-200 max-w-xs lg:max-w-md px-4 py-2 rounded-lg">
+              <div className="bg-white text-gray-900 border border-gray-200 max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm">
                 <div className="flex items-center space-x-1">
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                   </div>
-                  <span className="text-sm text-gray-500 ml-2">AI is thinking...</span>
+                  <span className="text-sm text-gray-500 ml-2">AI is analyzing...</span>
                 </div>
               </div>
             </div>
@@ -196,9 +314,11 @@ export default function ChatPage() {
       {messages.length <= 1 && (
         <div className="flex-shrink-0 px-4 py-2">
           <div className="max-w-3xl mx-auto">
-            <p className="text-sm text-gray-500 mb-2">Try asking:</p>
+            <p className="text-sm text-gray-500 mb-2 flex items-center">
+              {getSessionTypeIcon(currentSessionType)} Try asking about {getSessionTypeLabel(currentSessionType).toLowerCase()}:
+            </p>
             <div className="flex flex-wrap gap-2">
-              {suggestedQuestions.map((question, index) => (
+              {suggestedQuestions[currentSessionType].map((question, index) => (
                 <button
                   key={index}
                   onClick={() => setInputValue(question)}
@@ -220,10 +340,11 @@ export default function ChatPage() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask about nutrition, fitness, or health..."
+              placeholder={`Ask about ${getSessionTypeLabel(currentSessionType).toLowerCase()}...`}
               rows={1}
               className="block w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               style={{ minHeight: '40px', maxHeight: '120px' }}
+              disabled={isLoading}
             />
           </div>
           <button

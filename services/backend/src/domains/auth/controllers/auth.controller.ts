@@ -10,6 +10,7 @@ import {
   HttpStatus,
   Delete,
   Param,
+  Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ThrottlerGuard } from '@nestjs/throttler';
@@ -29,6 +30,8 @@ import { AuthenticatedRequest } from '../guards/optional-auth.guard';
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(private readonly authService: AuthService) {}
 
   @Post('otp/send')
@@ -301,14 +304,30 @@ export class AuthController {
       context,
     );
 
-    return {
+    // Enhanced SSO response with onboarding information
+    const response: LoginResponseDto = {
       tokens: {
         ...result.tokens,
         tokenType: 'Bearer',
       },
-      user: result.user,
+      user: {
+        ...result.user,
+        profileCompleted: result.user.profileCompleted || false,
+      },
       isNewUser: result.isNewUser,
     };
+
+    // Add onboarding status for new users
+    if (result.isNewUser) {
+      this.logger.log(`New SSO user ${result.user.id} registered via ${dto.provider}`);
+      // You can add additional onboarding metadata here
+      (response as any).onboardingRequired = true;
+      (response as any).nextStep = 'basic';
+      (response as any).welcomeMessage =
+        `Welcome to HealthCoach AI! Let's set up your health profile.`;
+    }
+
+    return response;
   }
 
   @Post('oauth/connect')
