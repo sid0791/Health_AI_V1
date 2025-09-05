@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   MagnifyingGlassIcon,
   PlusIcon,
@@ -10,6 +10,8 @@ import {
   ScaleIcon,
   FaceSmileIcon
 } from '@heroicons/react/24/outline'
+import { foodDatabaseService, type FoodItem, type DailyNutritionSummary, type FoodLogEntry } from '../../services/foodDatabaseService'
+import { useAuth } from '../../hooks/useAuth'
 
 const logTabs = [
   { id: 'food', name: 'Food', icon: BeakerIcon },
@@ -18,51 +20,124 @@ const logTabs = [
   { id: 'mood', name: 'Mood', icon: FaceSmileIcon },
 ]
 
-const recentFoods = [
-  { name: 'Banana', calories: 105, carbs: 27, protein: 1, fat: 0, serving: '1 medium' },
-  { name: 'Greek Yogurt', calories: 130, carbs: 9, protein: 23, fat: 0, serving: '1 cup' },
-  { name: 'Almonds', calories: 162, carbs: 6, protein: 6, fat: 14, serving: '1 oz (23 nuts)' },
-  { name: 'Apple', calories: 95, carbs: 25, protein: 0, fat: 0, serving: '1 medium' },
-  { name: 'Chicken Breast', calories: 231, carbs: 0, protein: 43, fat: 5, serving: '100g' },
-  { name: 'Brown Rice', calories: 216, carbs: 44, protein: 5, fat: 2, serving: '1 cup cooked' },
-]
-
-const quickAddFoods = [
-  { name: 'Chapati', calories: 120, emoji: '🫓' },
-  { name: 'Dal', calories: 180, emoji: '🍲' },
-  { name: 'Rice', calories: 205, emoji: '🍚' },
-  { name: 'Sabzi', calories: 80, emoji: '🥬' },
-  { name: 'Chai', calories: 50, emoji: '☕' },
-  { name: 'Fruits', calories: 60, emoji: '🍎' },
-]
-
-const todaysLog = [
-  { time: '8:00 AM', food: 'Oatmeal with Berries', calories: 340, meal: 'Breakfast' },
-  { time: '10:30 AM', food: 'Green Tea', calories: 0, meal: 'Snack' },
-  { time: '1:00 PM', food: 'Quinoa Bowl', calories: 485, meal: 'Lunch' },
-  { time: '4:00 PM', food: 'Greek Yogurt', calories: 150, meal: 'Snack' },
-]
-
-const nutritionGoals = {
-  calories: { current: 975, target: 2000 },
-  protein: { current: 45, target: 150 },
-  carbs: { current: 120, target: 250 },
-  fat: { current: 35, target: 67 },
-}
-
 export default function LogPage() {
   const [activeTab, setActiveTab] = useState('food')
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState<FoodItem[]>([])
+  const [recentFoods, setRecentFoods] = useState<FoodItem[]>([])
+  const [popularFoods, setPopularFoods] = useState<FoodItem[]>([])
+  const [dailyNutrition, setDailyNutrition] = useState<DailyNutritionSummary | null>(null)
+  const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-    setIsSearching(query.length > 0)
+  // Load initial data
+  useEffect(() => {
+    loadInitialData()
+  }, [user])
+
+  const loadInitialData = async () => {
+    if (!user) return
+
+    try {
+      setLoading(true)
+      const [recentFoodsData, popularFoodsData, nutritionData] = await Promise.all([
+        foodDatabaseService.getRecentFoods(user.id),
+        foodDatabaseService.getPopularFoods(),
+        foodDatabaseService.getDailyNutrition(new Date().toISOString().split('T')[0], user.id)
+      ])
+
+      setRecentFoods(recentFoodsData)
+      setPopularFoods(popularFoodsData.slice(0, 6)) // Get 6 for quick add
+      setDailyNutrition(nutritionData)
+    } catch (error) {
+      console.error('Failed to load initial data:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const filteredFoods = recentFoods.filter(food =>
-    food.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query)
+    setIsSearching(query.length > 0)
+
+    if (query.length >= 3) {
+      try {
+        const results = await foodDatabaseService.searchFoodsWithNutrition(query)
+        setSearchResults(results)
+      } catch (error) {
+        console.error('Search failed:', error)
+        setSearchResults([])
+      }
+    } else {
+      setSearchResults([])
+    }
+  }
+
+  const handleAddFood = async (food: FoodItem, servingMultiplier: number = 1, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack' = 'snack') => {
+    if (!user) return
+
+    try {
+      const logEntry = await foodDatabaseService.logFood({
+        userId: user.id,
+        foodId: food.id,
+        food,
+        quantity: 1,
+        servingMultiplier,
+        mealType,
+        actualCalories: food.calories * servingMultiplier,
+        actualNutrition: {
+          protein: food.nutrition.protein * servingMultiplier,
+          carbs: food.nutrition.carbs * servingMultiplier,
+          fat: food.nutrition.fat * servingMultiplier,
+          fiber: (food.nutrition.fiber || 0) * servingMultiplier
+        }
+      })
+
+      // Refresh daily nutrition
+      const updatedNutrition = await foodDatabaseService.getDailyNutrition(
+        new Date().toISOString().split('T')[0], 
+        user.id
+      )
+      setDailyNutrition(updatedNutrition)
+
+      // Add to recent foods if not already there
+      if (!recentFoods.some(f => f.id === food.id)) {
+        setRecentFoods([food, ...recentFoods.slice(0, 9)])
+      }
+
+      console.log('Food logged successfully:', logEntry)
+    } catch (error) {
+      console.error('Failed to log food:', error)
+    }
+  }
+
+  const filteredFoods = isSearching ? searchResults : recentFoods
+
+  const quickAddFoods = popularFoods.map(food => ({
+    name: food.name,
+    calories: food.calories,
+    emoji: getFoodEmoji(food.category, food.name),
+    food
+  }))
+
+  function getFoodEmoji(category: string, name: string): string {
+    const lowerName = name.toLowerCase()
+    if (lowerName.includes('rice')) return '🍚'
+    if (lowerName.includes('chapati') || lowerName.includes('bread')) return '🫓'
+    if (lowerName.includes('dal') || lowerName.includes('lentil')) return '🍲'
+    if (lowerName.includes('chicken')) return '🍗'
+    if (lowerName.includes('paneer')) return '🧀'
+    if (lowerName.includes('banana')) return '🍌'
+    if (lowerName.includes('apple')) return '🍎'
+    if (lowerName.includes('egg')) return '🥚'
+    if (category === 'Vegetables') return '🥬'
+    if (category === 'Fruits') return '🍎'
+    if (category === 'Dairy') return '🥛'
+    if (category === 'Meat') return '🍖'
+    if (category === 'Grains') return '🌾'
+    return '🍽️'
+  }
 
   const NutritionRing = ({ label, current, target, color }: { 
     label: string, 
@@ -156,26 +231,26 @@ export default function LogPage() {
                 <div className="grid grid-cols-4 gap-6">
                   <NutritionRing 
                     label="Calories" 
-                    current={nutritionGoals.calories.current} 
-                    target={nutritionGoals.calories.target}
+                    current={dailyNutrition?.totalCalories || 0} 
+                    target={dailyNutrition?.goals.calories || 2000}
                     color="text-blue-500"
                   />
                   <NutritionRing 
                     label="Protein" 
-                    current={nutritionGoals.protein.current} 
-                    target={nutritionGoals.protein.target}
+                    current={dailyNutrition?.totalProtein || 0} 
+                    target={dailyNutrition?.goals.protein || 150}
                     color="text-red-500"
                   />
                   <NutritionRing 
                     label="Carbs" 
-                    current={nutritionGoals.carbs.current} 
-                    target={nutritionGoals.carbs.target}
+                    current={dailyNutrition?.totalCarbs || 0} 
+                    target={dailyNutrition?.goals.carbs || 250}
                     color="text-yellow-500"
                   />
                   <NutritionRing 
                     label="Fat" 
-                    current={nutritionGoals.fat.current} 
-                    target={nutritionGoals.fat.target}
+                    current={dailyNutrition?.totalFat || 0} 
+                    target={dailyNutrition?.goals.fat || 67}
                     color="text-green-500"
                   />
                 </div>
@@ -188,15 +263,16 @@ export default function LogPage() {
                   Quick Add
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {quickAddFoods.map((food, index) => (
+                  {quickAddFoods.map((item, index) => (
                     <button
                       key={index}
+                      onClick={() => handleAddFood(item.food)}
                       className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left"
                     >
-                      <span className="text-2xl">{food.emoji}</span>
+                      <span className="text-2xl">{item.emoji}</span>
                       <div>
-                        <p className="font-medium text-gray-900 text-sm">{food.name}</p>
-                        <p className="text-xs text-gray-600">{food.calories} cal</p>
+                        <p className="font-medium text-gray-900 text-sm">{item.name}</p>
+                        <p className="text-xs text-gray-600">{item.calories} cal</p>
                       </div>
                     </button>
                   ))}
@@ -229,22 +305,37 @@ export default function LogPage() {
 
                 {/* Search Results or Recent Foods */}
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {isSearching ? (
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+                      <p className="text-gray-500">Loading foods...</p>
+                    </div>
+                  ) : isSearching ? (
                     searchQuery.length > 2 ? (
                       filteredFoods.length > 0 ? (
                         filteredFoods.map((food, index) => (
                           <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                             <div className="flex-1">
                               <p className="font-medium text-gray-900">{food.name}</p>
-                              <p className="text-sm text-gray-600">{food.serving}</p>
+                              <p className="text-sm text-gray-600">{food.servingSize}</p>
                               <div className="flex space-x-4 text-xs text-gray-500 mt-1">
                                 <span>{food.calories} cal</span>
-                                <span>{food.protein}g protein</span>
-                                <span>{food.carbs}g carbs</span>
-                                <span>{food.fat}g fat</span>
+                                <span>{Math.round(food.nutrition.protein)}g protein</span>
+                                <span>{Math.round(food.nutrition.carbs)}g carbs</span>
+                                <span>{Math.round(food.nutrition.fat)}g fat</span>
                               </div>
+                              {food.source && (
+                                <span className={`inline-block mt-1 px-2 py-1 text-xs rounded ${
+                                  food.verified ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {food.verified ? 'Verified' : food.source}
+                                </span>
+                              )}
                             </div>
-                            <button className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500">
+                            <button 
+                              onClick={() => handleAddFood(food)}
+                              className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500"
+                            >
                               <PlusIcon className="h-4 w-4" />
                             </button>
                           </div>
@@ -260,28 +351,38 @@ export default function LogPage() {
                     ) : (
                       <div className="text-center py-8">
                         <p className="text-gray-500">Type at least 3 characters to search</p>
+                        <p className="text-xs text-gray-400 mt-1">Try &quot;white rice&quot;, &quot;chicken&quot;, &quot;dal&quot;</p>
                       </div>
                     )
                   ) : (
                     <>
                       <div className="text-sm font-medium text-gray-900 mb-2">Recent Foods</div>
-                      {recentFoods.map((food, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{food.name}</p>
-                            <p className="text-sm text-gray-600">{food.serving}</p>
-                            <div className="flex space-x-4 text-xs text-gray-500 mt-1">
-                              <span>{food.calories} cal</span>
-                              <span>{food.protein}g protein</span>
-                              <span>{food.carbs}g carbs</span>
-                              <span>{food.fat}g fat</span>
+                      {filteredFoods.length > 0 ? (
+                        filteredFoods.map((food, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900">{food.name}</p>
+                              <p className="text-sm text-gray-600">{food.servingSize}</p>
+                              <div className="flex space-x-4 text-xs text-gray-500 mt-1">
+                                <span>{food.calories} cal</span>
+                                <span>{Math.round(food.nutrition.protein)}g protein</span>
+                                <span>{Math.round(food.nutrition.carbs)}g carbs</span>
+                                <span>{Math.round(food.nutrition.fat)}g fat</span>
+                              </div>
                             </div>
+                            <button 
+                              onClick={() => handleAddFood(food)}
+                              className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500"
+                            >
+                              <PlusIcon className="h-4 w-4" />
+                            </button>
                           </div>
-                          <button className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500">
-                            <PlusIcon className="h-4 w-4" />
-                          </button>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">No recent foods. Search to add your first meal!</p>
                         </div>
-                      ))}
+                      )}
                     </>
                   )}
                 </div>
@@ -294,35 +395,57 @@ export default function LogPage() {
                 Today&apos;s Log
               </h3>
               <div className="space-y-4">
-                {todaysLog.map((entry, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex flex-col items-center">
-                        <ClockIcon className="h-4 w-4 text-gray-400" />
-                        <span className="text-xs text-gray-500 mt-1">{entry.time}</span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{entry.food}</p>
-                        <div className="flex items-center space-x-2">
-                          <span className="px-2 py-1 bg-primary-100 text-primary-800 rounded text-xs">
-                            {entry.meal}
-                          </span>
-                          <span className="text-sm text-gray-600">{entry.calories} cal</span>
+                {dailyNutrition && Object.values(dailyNutrition.meals).flat().length > 0 ? (
+                  Object.entries(dailyNutrition.meals).map(([mealType, entries]) => 
+                    entries.map((entry, index) => (
+                      <div key={`${mealType}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex flex-col items-center">
+                            <ClockIcon className="h-4 w-4 text-gray-400" />
+                            <span className="text-xs text-gray-500 mt-1">
+                              {new Date(entry.loggedAt).toLocaleTimeString('en-US', { 
+                                hour: 'numeric', 
+                                minute: '2-digit' 
+                              })}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{entry.food.name}</p>
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                mealType === 'breakfast' ? 'bg-yellow-100 text-yellow-800' :
+                                mealType === 'lunch' ? 'bg-green-100 text-green-800' :
+                                mealType === 'dinner' ? 'bg-blue-100 text-blue-800' :
+                                'bg-purple-100 text-purple-800'
+                              }`}>
+                                {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
+                              </span>
+                              <span className="text-sm text-gray-600">{Math.round(entry.actualCalories)} cal</span>
+                              {entry.servingMultiplier !== 1 && (
+                                <span className="text-xs text-gray-500">({entry.servingMultiplier}x)</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
+                        <button className="text-gray-400 hover:text-gray-600">
+                          <CalculatorIcon className="h-4 w-4" />
+                        </button>
                       </div>
-                    </div>
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <CalculatorIcon className="h-4 w-4" />
-                    </button>
+                    ))
+                  )
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No foods logged today</p>
+                    <p className="text-xs text-gray-400 mt-1">Search and add foods to start tracking</p>
                   </div>
-                ))}
+                )}
               </div>
               
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <div className="flex justify-between items-center">
                   <span className="font-medium text-gray-900">Total Calories:</span>
                   <span className="text-lg font-bold text-primary-600">
-                    {todaysLog.reduce((sum, entry) => sum + entry.calories, 0)}
+                    {Math.round(dailyNutrition?.totalCalories || 0)}
                   </span>
                 </div>
               </div>

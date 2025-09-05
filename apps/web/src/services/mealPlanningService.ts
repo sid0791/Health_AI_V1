@@ -380,6 +380,9 @@ class MealPlanningService {
 
 export const mealPlanningService = new MealPlanningService()
 export default mealPlanningService
+
+export interface Recipe {
+  id: string
   name: string
   description?: string
   ingredients: (string | Ingredient)[]
@@ -392,6 +395,7 @@ export default mealPlanningService
   tags: string[]
   nutrition: NutritionInfo
   image?: string
+  healthBenefits?: string[]
 }
 
 export interface MealPlanEntry {
@@ -447,129 +451,3 @@ export interface MealSwapRequest {
   }
 }
 
-class MealPlanningService {
-  /**
-   * Generate a personalized meal plan using AI
-   */
-  async generateMealPlan(request: GenerateMealPlanRequest): Promise<WeeklyMealPlan> {
-    return apiRequest<WeeklyMealPlan>('/meal-plans/generate', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    })
-  }
-
-  /**
-   * Get existing meal plan by ID
-   */
-  async getMealPlan(planId: string): Promise<WeeklyMealPlan> {
-    return apiRequest<WeeklyMealPlan>(`/meal-plans/${planId}`)
-  }
-
-  /**
-   * Get user's current/latest meal plan
-   */
-  async getCurrentMealPlan(userId: string): Promise<WeeklyMealPlan | null> {
-    try {
-      return await apiRequest<WeeklyMealPlan>(`/meal-plans/current/${userId}`)
-    } catch (error) {
-      if (error instanceof APIError && error.status === 404) {
-        return null
-      }
-      throw error
-    }
-  }
-
-  /**
-   * Swap a meal with alternative options
-   */
-  async swapMeal(request: MealSwapRequest): Promise<Recipe[]> {
-    return apiRequest<Recipe[]>('/meal-plans/swap-meal', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    })
-  }
-
-  /**
-   * Apply a meal swap to the plan
-   */
-  async applyMealSwap(
-    planId: string,
-    dayIndex: number,
-    mealType: string,
-    newRecipeId: string
-  ): Promise<WeeklyMealPlan> {
-    return apiRequest<WeeklyMealPlan>(`/meal-plans/${planId}/apply-swap`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        dayIndex,
-        mealType,
-        newRecipeId,
-      }),
-    })
-  }
-
-  /**
-   * Get nutrition analysis for a specific day
-   */
-  async getDayNutritionAnalysis(
-    planId: string,
-    dayIndex: number
-  ): Promise<{
-    nutrition: NutritionInfo
-    deficiencies: string[]
-    excesses: string[]
-    recommendations: string[]
-  }> {
-    return apiRequest(`/meal-plans/${planId}/days/${dayIndex}/nutrition`)
-  }
-
-  /**
-   * Search recipes by criteria
-   */
-  async searchRecipes(criteria: {
-    query?: string
-    cuisine?: string
-    dietaryRestrictions?: string[]
-    maxPrepTime?: number
-    difficulty?: string
-    nutrition?: {
-      maxCalories?: number
-      minProtein?: number
-    }
-  }): Promise<Recipe[]> {
-    const params = new URLSearchParams()
-    Object.entries(criteria).forEach(([key, value]) => {
-      if (value !== undefined) {
-        if (Array.isArray(value)) {
-          value.forEach(v => params.append(key, v))
-        } else if (typeof value === 'object') {
-          params.append(key, JSON.stringify(value))
-        } else {
-          params.append(key, value.toString())
-        }
-      }
-    })
-
-    return apiRequest<Recipe[]>(`/recipes/search?${params.toString()}`)
-  }
-
-  /**
-   * Get recipe details by ID
-   */
-  async getRecipe(recipeId: string): Promise<Recipe> {
-    return apiRequest<Recipe>(`/recipes/${recipeId}`)
-  }
-
-  /**
-   * Save user preferences for future meal planning
-   */
-  async saveUserPreferences(userId: string, preferences: Partial<UserProfile>): Promise<void> {
-    await apiRequest(`/users/${userId}/meal-preferences`, {
-      method: 'PATCH',
-      body: JSON.stringify(preferences),
-    })
-  }
-}
-
-export const mealPlanningService = new MealPlanningService()
-export default mealPlanningService

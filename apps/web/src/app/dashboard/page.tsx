@@ -15,6 +15,8 @@ import {
   HeartIcon as HeartIconSolid, 
   ChartBarIcon as ChartBarIconSolid 
 } from '@heroicons/react/24/solid'
+import { useAuth } from '../../hooks/useAuth'
+import Link from 'next/link'
 
 const stats = [
   { name: 'Daily Calories', value: '1,847', target: '2,000', icon: FireIcon, change: '+5%', changeType: 'positive' },
@@ -36,12 +38,36 @@ const todaysPlan = [
 ]
 
 export default function Dashboard() {
+  const { user, loading, isAuthenticated } = useAuth(true) // Require authentication
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If not authenticated, the useAuth hook will redirect, but show loading state
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 font-display">
-          Good morning, Alex! 👋
+          Good morning, {user?.name || 'User'}! 👋
         </h1>
         <p className="text-gray-600 mt-1">
           You&apos;re on track to meet your health goals today. Keep up the great work!
@@ -136,18 +162,18 @@ export default function Dashboard() {
       <div className="mt-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 font-display">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500 flex items-center justify-center space-x-2">
+          <Link href="/log" className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500 flex items-center justify-center space-x-2">
             <ClipboardDocumentListIcon className="h-5 w-5" />
             <span>Log Meal</span>
-          </button>
-          <button className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-secondary-500 text-white hover:bg-secondary-600 focus:ring-secondary-500 flex items-center justify-center space-x-2">
+          </Link>
+          <Link href="/fitness" className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-secondary-500 text-white hover:bg-secondary-600 focus:ring-secondary-500 flex items-center justify-center space-x-2">
             <HeartIcon className="h-5 w-5" />
             <span>Start Workout</span>
-          </button>
-          <button className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary-500 flex items-center justify-center space-x-2">
+          </Link>
+          <Link href="/analytics" className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary-500 flex items-center justify-center space-x-2">
             <ChartBarIcon className="h-5 w-5" />
             <span>View Analytics</span>
-          </button>
+          </Link>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   ClockIcon,
   FireIcon,
@@ -14,6 +14,8 @@ import {
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { mealPlanningService, type MealPlan, type MealSwapRequest } from '../../services/mealPlanningService'
 import { authService } from '../../services/authService'
+import { getApiStatus, isUsingMockData } from '../../services/api'
+import ApiDisclaimer from '../../components/ApiDisclaimer'
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -79,15 +81,20 @@ export default function MealPlanPage() {
     }
   }
 
-  const handleSwapMeal = async (mealId: string) => {
+  const handleSwapMeal = async (mealType: string, dayIndex: number) => {
+    if (!currentMealPlan) return
+
+    const currentMeal = selectedDayPlan?.meals.find(m => m.mealType === mealType)
+    if (!currentMeal) return
+
     try {
-      setSwappingMeal(mealId)
+      setSwappingMeal(currentMeal.id)
       setError(null)
       
       console.log('🔄 Finding alternative meals...')
       
       const swapRequest: MealSwapRequest = {
-        mealId,
+        mealId: currentMeal.id,
         reason: 'User requested swap',
         constraints: {
           similarNutrition: true,
@@ -99,23 +106,19 @@ export default function MealPlanPage() {
       const result = await mealPlanningService.swapMeal(swapRequest)
       
       if (result.success && result.alternatives.length > 0) {
-        // For now, automatically use the first alternative
-        // In a full implementation, show alternatives to user for selection
         console.log(`✅ Found ${result.alternatives.length} alternatives`)
         
         // Update the meal plan with the new recipe
-        if (currentMealPlan) {
-          const updatedPlan = { ...currentMealPlan }
-          updatedPlan.days.forEach(day => {
-            day.meals.forEach(meal => {
-              if (meal.id === mealId) {
-                meal.recipe = result.alternatives[0]
-                meal.alternatives = result.alternatives.slice(1)
-              }
-            })
+        const updatedPlan = { ...currentMealPlan }
+        updatedPlan.days.forEach(day => {
+          day.meals.forEach(meal => {
+            if (meal.id === currentMeal.id) {
+              meal.recipe = result.alternatives[0]
+              meal.alternatives = result.alternatives.slice(1)
+            }
           })
-          setCurrentMealPlan(updatedPlan)
-        }
+        })
+        setCurrentMealPlan(updatedPlan)
       } else {
         throw new Error('No suitable alternatives found')
       }
@@ -205,105 +208,6 @@ export default function MealPlanPage() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    )
-  }
-  useEffect(() => {
-    const initializeMealPlan = async () => {
-      if (!mealPlanState.loading && !mealPlanState.data && !mealPlanState.error) {
-        await handleGeneratePlan()
-      }
-    }
-    initializeMealPlan()
-  }, [mealPlanState.loading, mealPlanState.data, mealPlanState.error, handleGeneratePlan])
-
-  // Update API mode when status changes
-  useEffect(() => {
-    const updateApiMode = () => {
-      setApiMode(getApiStatus())
-    }
-    
-    // Check immediately and set up periodic checks
-    updateApiMode()
-    const interval = setInterval(updateApiMode, 1000)
-    
-    return () => clearInterval(interval)
-  }, [])
-
-  const handleSwapMeal = async (mealType: string, dayIndex: number) => {
-    if (!currentMealPlan) return
-
-    const currentMeal = selectedDayPlan?.meals.find(m => m.mealType === mealType)
-    if (!currentMeal) return
-
-    const swapOptions = await swapMeal({
-      mealPlanId: currentMealPlan.id,
-      dayIndex,
-      mealType: mealType as 'breakfast' | 'lunch' | 'snack' | 'dinner',
-      currentRecipeId: currentMeal.recipe.id,
-      preferences: {
-        maxPrepTime: 30,
-        difficulty: 'Easy'
-      }
-    })
-
-    if (swapOptions) {
-      setShowSwapOptions({ mealType, dayIndex })
-    }
-  }
-
-  // TODO: Connect to swap selection UI - currently being prepared
-  const handleApplySwap = async (newRecipeId: string) => {
-    if (!currentMealPlan || !showSwapOptions) return
-
-    const result = await applyMealSwap(
-      currentMealPlan.id,
-      showSwapOptions.dayIndex,
-      showSwapOptions.mealType,
-      newRecipeId
-    )
-
-    if (result) {
-      await refetchMealPlan()
-      setShowSwapOptions(null)
-    }
-  }
-
-  // Show loading state while generating or fetching
-  if (mealPlanState.loading || isGeneratingPlan || generateState.loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            {isGeneratingPlan ? 'Generating Your Personalized Meal Plan...' : 'Loading Meal Plan...'}
-          </h2>
-          <p className="text-gray-600">
-            {isGeneratingPlan 
-              ? 'Our AI is creating a plan based on your goals, preferences, and health profile.'
-              : 'Please wait while we fetch your meal plan.'
-            }
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  // Show error state
-  if (mealPlanState.error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto">
-          <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Load Meal Plan</h2>
-          <p className="text-gray-600 mb-4">{mealPlanState.error}</p>
-          <button
-            onClick={handleGeneratePlan}
-            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700"
-          >
-            Generate New Plan
-          </button>
         </div>
       </div>
     )
@@ -420,7 +324,7 @@ export default function MealPlanPage() {
                   <p className="text-sm text-gray-600">{mealEntry.time}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {swapState.loading && showSwapOptions?.mealType === mealEntry.mealType ? (
+                  {swappingMeal === mealEntry.id ? (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
                       Finding alternatives...
@@ -428,7 +332,7 @@ export default function MealPlanPage() {
                   ) : (
                     <button
                       onClick={() => handleSwapMeal(mealEntry.mealType, selectedDay)}
-                      disabled={swapState.loading}
+                      disabled={swappingMeal === mealEntry.id}
                       className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary-500"
                     >
                       <ArrowPathIcon className="h-4 w-4 mr-1" />
