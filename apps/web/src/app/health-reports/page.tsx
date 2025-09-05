@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   DocumentPlusIcon,
   CloudArrowUpIcon,
@@ -13,82 +13,87 @@ import {
   FunnelIcon,
   ArrowDownTrayIcon
 } from '@heroicons/react/24/outline'
+import healthReportsService, { HealthReport, HealthReportUpload } from '../../services/healthReportsService'
+import { getApiStatus, isUsingMockData } from '../../services/api'
+import ApiDisclaimer from '../../components/ApiDisclaimer'
 
 const reportCategories = [
   { id: 'all', name: 'All Reports' },
-  { id: 'blood', name: 'Blood Tests' },
-  { id: 'imaging', name: 'Imaging' },
-  { id: 'cardio', name: 'Cardio' },
-  { id: 'general', name: 'General' },
+  { id: 'blood_test', name: 'Blood Tests' },
+  { id: 'lipid_profile', name: 'Lipid Profile' },
+  { id: 'diabetes_panel', name: 'Diabetes Panel' },
+  { id: 'thyroid', name: 'Thyroid' },
+  { id: 'vitamin_levels', name: 'Vitamins' },
+  { id: 'other', name: 'Other' },
 ]
 
-const recentReports = [
+// Mock data as fallback
+const mockReports: HealthReport[] = [
   {
-    id: 1,
-    name: 'Complete Blood Count (CBC)',
-    date: '2024-08-20',
-    type: 'Blood Test',
-    status: 'analyzed',
-    file: 'cbc_report_aug2024.pdf',
-    size: '2.3 MB',
-    insights: [
-      { type: 'normal', text: 'Hemoglobin levels are within normal range' },
-      { type: 'attention', text: 'Vitamin D levels are below optimal range' },
-      { type: 'normal', text: 'White blood cell count is healthy' }
-    ],
-    keyMetrics: {
-      hemoglobin: { value: '14.2', unit: 'g/dL', range: '12.0-16.0', status: 'normal' },
-      vitaminD: { value: '18', unit: 'ng/mL', range: '30-100', status: 'low' },
-      cholesterol: { value: '185', unit: 'mg/dL', range: '<200', status: 'normal' }
+    id: '1',
+    userId: 'demo-user',
+    fileName: 'cbc_report_aug2024.pdf',
+    fileType: 'application/pdf',
+    uploadDate: '2024-08-20T10:00:00Z',
+    analysisStatus: 'completed',
+    reportType: 'blood_test',
+    extractedData: {
+      parameters: [
+        { name: 'Hemoglobin', value: 14.2, unit: 'g/dL', normalRange: '12.0-16.0', status: 'normal' },
+        { name: 'Vitamin D', value: 18, unit: 'ng/mL', normalRange: '30-100', status: 'low' },
+        { name: 'Total Cholesterol', value: 185, unit: 'mg/dL', normalRange: '<200', status: 'normal' }
+      ],
+      reportDate: '2024-08-20',
+      labName: 'City Medical Lab'
+    },
+    analysis: {
+      summary: 'Overall blood work shows good health with some areas for improvement.',
+      insights: [
+        { category: 'Blood Health', finding: 'Hemoglobin levels are within normal range', severity: 'low', recommendation: 'Maintain current diet and exercise' },
+        { category: 'Vitamin Deficiency', finding: 'Vitamin D levels are below optimal range', severity: 'medium', recommendation: 'Consider vitamin D supplementation' }
+      ],
+      redFlags: [
+        { parameter: 'Vitamin D', value: '18 ng/mL', concern: 'Vitamin D deficiency may affect bone health and immune function', urgency: 'medium', recommendedAction: 'Supplement with 2000 IU daily and retest in 3 months' }
+      ]
     }
   },
   {
-    id: 2,
-    name: 'Lipid Profile',
-    date: '2024-08-15',
-    type: 'Blood Test',
-    status: 'analyzed',
-    file: 'lipid_profile_aug2024.pdf',
-    size: '1.8 MB',
-    insights: [
-      { type: 'normal', text: 'Total cholesterol within healthy limits' },
-      { type: 'good', text: 'HDL cholesterol levels are excellent' },
-      { type: 'attention', text: 'Triglycerides slightly elevated' }
-    ],
-    keyMetrics: {
-      totalCholesterol: { value: '185', unit: 'mg/dL', range: '<200', status: 'normal' },
-      hdl: { value: '55', unit: 'mg/dL', range: '>40', status: 'good' },
-      triglycerides: { value: '165', unit: 'mg/dL', range: '<150', status: 'elevated' }
+    id: '2',
+    userId: 'demo-user',
+    fileName: 'lipid_profile_aug2024.pdf',
+    fileType: 'application/pdf',
+    uploadDate: '2024-08-15T09:30:00Z',
+    analysisStatus: 'completed',
+    reportType: 'lipid_profile',
+    extractedData: {
+      parameters: [
+        { name: 'Total Cholesterol', value: 185, unit: 'mg/dL', normalRange: '<200', status: 'normal' },
+        { name: 'HDL Cholesterol', value: 55, unit: 'mg/dL', normalRange: '>40', status: 'normal' },
+        { name: 'Triglycerides', value: 165, unit: 'mg/dL', normalRange: '<150', status: 'high' }
+      ],
+      reportDate: '2024-08-15',
+      labName: 'City Medical Lab'
+    },
+    analysis: {
+      summary: 'Lipid profile shows excellent HDL levels with slightly elevated triglycerides.',
+      insights: [
+        { category: 'Cardiovascular', finding: 'HDL cholesterol levels are excellent', severity: 'low', recommendation: 'Continue current healthy lifestyle' },
+        { category: 'Lipids', finding: 'Triglycerides slightly elevated', severity: 'medium', recommendation: 'Reduce simple carbohydrates and increase omega-3 intake' }
+      ],
+      redFlags: []
     }
-  },
-  {
-    id: 3,
-    name: 'Thyroid Function Test',
-    date: '2024-07-28',
-    type: 'Blood Test',
-    status: 'processing',
-    file: 'thyroid_test_jul2024.pdf',
-    size: '1.5 MB',
-    insights: [],
-    keyMetrics: {}
-  },
-  {
-    id: 4,
-    name: 'Chest X-Ray',
-    date: '2024-07-10',
-    type: 'Imaging',
-    status: 'analyzed',
-    file: 'chest_xray_jul2024.jpg',
-    size: '8.2 MB',
-    insights: [
-      { type: 'normal', text: 'Chest X-ray shows clear lungs' },
-      { type: 'normal', text: 'Heart size appears normal' }
-    ],
-    keyMetrics: {}
   }
 ]
 
-const aiInsights = [
+interface AIInsight {
+  title: string
+  description: string
+  recommendation: string
+  urgency: 'low' | 'medium' | 'high'
+  reports: string[]
+}
+
+const mockAiInsights: AIInsight[] = [
   {
     title: 'Vitamin D Deficiency Pattern',
     description: 'Your vitamin D levels have been consistently low across multiple reports. Consider increasing sun exposure and supplementation.',
@@ -164,17 +169,138 @@ export default function HealthReportsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showUpload, setShowUpload] = useState(false)
   const [showRedFlagModal, setShowRedFlagModal] = useState(false)
+  const [reports, setReports] = useState<HealthReport[]>([])
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUsingMock, setIsUsingMock] = useState(true)
 
-  const filteredReports = recentReports.filter(report => {
-    const matchesCategory = selectedCategory === 'all' || report.type.toLowerCase().includes(selectedCategory)
-    const matchesSearch = report.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         report.type.toLowerCase().includes(searchQuery.toLowerCase())
+  // Load reports from API or use mock data
+  useEffect(() => {
+    const loadReports = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // Check if we're using real API
+        if (!isUsingMockData()) {
+          // Try to fetch from real API
+          const userId = 'current-user' // This would come from auth context
+          const userReports = await healthReportsService.getUserReports(userId)
+          const insights = await healthReportsService.getHealthInsights(userId)
+          
+          setReports(userReports)
+          setAiInsights([
+            {
+              title: 'Health Analysis Summary',
+              description: `Based on ${userReports.length} reports, your overall health score is ${insights.overallScore}/100.`,
+              recommendation: insights.recommendations[0]?.recommendation || 'Continue monitoring your health',
+              urgency: insights.riskFactors.length > 0 ? 'medium' : 'low',
+              reports: userReports.map(r => r.fileName)
+            }
+          ])
+          setIsUsingMock(false)
+        } else {
+          // Use mock data
+          setReports(mockReports)
+          setAiInsights(mockAiInsights)
+          setIsUsingMock(true)
+        }
+      } catch (err) {
+        console.error('Error loading reports:', err)
+        setError('Failed to load reports. Using demo data.')
+        // Fallback to mock data
+        setReports(mockReports)
+        setAiInsights(mockAiInsights)
+        setIsUsingMock(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadReports()
+  }, [])
+
+  // Handle file upload
+  const handleFileUpload = async (file: File, reportType: string) => {
+    try {
+      setUploadProgress(0)
+      
+      const uploadData: HealthReportUpload = {
+        file,
+        reportType,
+        notes: 'Uploaded via web interface'
+      }
+
+      if (!isUsingMockData()) {
+        // Upload to real API
+        const newReport = await healthReportsService.uploadReport(uploadData)
+        setReports(prev => [newReport, ...prev])
+        
+        // Simulate progress
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 100) {
+              clearInterval(progressInterval)
+              return 100
+            }
+            return prev + 10
+          })
+        }, 200)
+      } else {
+        // Simulate upload with mock data
+        const newReport: HealthReport = {
+          id: `${Date.now()}`,
+          userId: 'demo-user',
+          fileName: file.name,
+          fileType: file.type,
+          uploadDate: new Date().toISOString(),
+          analysisStatus: 'processing',
+          reportType: reportType as any
+        }
+        
+        setReports(prev => [newReport, ...prev])
+        
+        // Simulate progress
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 100) {
+              clearInterval(progressInterval)
+              // Simulate analysis completion
+              setTimeout(() => {
+                setReports(prevReports => 
+                  prevReports.map(r => 
+                    r.id === newReport.id 
+                      ? { ...r, analysisStatus: 'completed' as const }
+                      : r
+                  )
+                )
+              }, 2000)
+              return 100
+            }
+            return prev + 20
+          })
+        }, 500)
+      }
+      
+      setShowUpload(false)
+    } catch (err) {
+      console.error('Error uploading report:', err)
+      setError('Failed to upload report. Please try again.')
+    }
+  }
+
+  const filteredReports = reports.filter(report => {
+    const matchesCategory = selectedCategory === 'all' || report.reportType === selectedCategory
+    const matchesSearch = report.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         report.reportType.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCategory && matchesSearch
   })
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'analyzed':
+      case 'completed':
         return 'bg-green-100 text-green-800'
       case 'processing':
         return 'bg-yellow-100 text-yellow-800'
@@ -185,19 +311,39 @@ export default function HealthReportsPage() {
     }
   }
 
-  const getInsightColor = (type: string) => {
-    switch (type) {
-      case 'good':
-        return 'text-green-700 bg-green-50 border-green-200'
-      case 'normal':
+  const getInsightColor = (severity: string) => {
+    switch (severity) {
+      case 'low':
         return 'text-blue-700 bg-blue-50 border-blue-200'
-      case 'attention':
+      case 'medium':
         return 'text-yellow-700 bg-yellow-50 border-yellow-200'
-      case 'warning':
+      case 'high':
+        return 'text-red-700 bg-red-50 border-red-200'
+      case 'critical':
         return 'text-red-700 bg-red-50 border-red-200'
       default:
         return 'text-gray-700 bg-gray-50 border-gray-200'
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-xl p-6 border">
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -207,7 +353,7 @@ export default function HealthReportsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 font-display mb-2">
-              Health Reports
+              Health Reports Analysis
             </h1>
             <p className="text-gray-600">
               Upload, analyze, and track your health reports with AI-powered insights
@@ -233,6 +379,25 @@ export default function HealthReportsPage() {
         </div>
       </div>
 
+      {/* API Status Disclaimer */}
+      <div className="mb-6">
+        <ApiDisclaimer 
+          mode={isUsingMock ? 'mock' : 'real'} 
+          className="mb-0"
+          customMessage={isUsingMock 
+            ? "Health reports are using demo data. Connect to backend API for real report analysis."
+            : "✅ Connected to real Health Reports API with AI-powered analysis"
+          }
+        />
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
       {/* Upload Modal */}
       {showUpload && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -247,8 +412,31 @@ export default function HealthReportsPage() {
                   Upload PDF files, images, or scan reports directly. Our AI will analyze and extract key insights.
                 </p>
                 
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="mb-4">
+                    <div className="bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-primary-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">Uploading... {uploadProgress}%</p>
+                  </div>
+                )}
+                
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-4">
-                  <input type="file" className="hidden" id="report-upload" accept=".pdf,.jpg,.jpeg,.png" />
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    id="report-upload" 
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        handleFileUpload(file, 'blood_test') // Default to blood test
+                      }
+                    }}
+                  />
                   <label htmlFor="report-upload" className="cursor-pointer">
                     <div className="text-center">
                       <DocumentTextIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
@@ -256,6 +444,21 @@ export default function HealthReportsPage() {
                       <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG up to 10MB</p>
                     </div>
                   </label>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
+                  <select 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    id="report-type"
+                  >
+                    <option value="blood_test">Blood Test</option>
+                    <option value="lipid_profile">Lipid Profile</option>
+                    <option value="diabetes_panel">Diabetes Panel</option>
+                    <option value="thyroid">Thyroid Function</option>
+                    <option value="vitamin_levels">Vitamin Levels</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
                 
                 <div className="flex space-x-3">
@@ -266,10 +469,18 @@ export default function HealthReportsPage() {
                     Cancel
                   </button>
                   <button
-                    onClick={() => setShowUpload(false)}
+                    onClick={() => {
+                      const fileInput = document.getElementById('report-upload') as HTMLInputElement
+                      const reportTypeSelect = document.getElementById('report-type') as HTMLSelectElement
+                      const file = fileInput.files?.[0]
+                      if (file) {
+                        handleFileUpload(file, reportTypeSelect.value)
+                      }
+                    }}
+                    disabled={uploadProgress > 0 && uploadProgress < 100}
                     className="flex-1 inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500"
                   >
-                    Upload
+                    {uploadProgress > 0 && uploadProgress < 100 ? 'Uploading...' : 'Upload & Analyze'}
                   </button>
                 </div>
               </div>
@@ -352,29 +563,29 @@ export default function HealthReportsPage() {
                   <DocumentTextIcon className="h-6 w-6 text-primary-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">{report.name}</h3>
+                  <h3 className="font-semibold text-gray-900 mb-1">{report.fileName}</h3>
                   <div className="flex items-center space-x-4 text-sm text-gray-600">
-                    <span>{report.date}</span>
-                    <span>{report.type}</span>
-                    <span>{report.size}</span>
+                    <span>{new Date(report.uploadDate).toLocaleDateString()}</span>
+                    <span className="capitalize">{report.reportType.replace('_', ' ')}</span>
+                    <span>{report.fileType}</span>
                   </div>
                 </div>
               </div>
               
               <div className="flex items-center space-x-3">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
-                  {report.status === 'processing' ? (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.analysisStatus)}`}>
+                  {report.analysisStatus === 'processing' ? (
                     <>
                       <ClockIcon className="h-3 w-3 inline mr-1" />
                       Processing
                     </>
-                  ) : report.status === 'analyzed' ? (
+                  ) : report.analysisStatus === 'completed' ? (
                     <>
                       <CheckCircleIcon className="h-3 w-3 inline mr-1" />
                       Analyzed
                     </>
                   ) : (
-                    report.status
+                    report.analysisStatus
                   )}
                 </span>
                 <button className="p-2 text-gray-400 hover:text-gray-600">
@@ -386,45 +597,46 @@ export default function HealthReportsPage() {
               </div>
             </div>
 
-            {report.status === 'analyzed' && report.insights.length > 0 && (
+            {report.analysisStatus === 'completed' && report.analysis?.insights && report.analysis.insights.length > 0 && (
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-gray-900 mb-2">AI Insights:</h4>
                 <div className="space-y-2">
-                  {report.insights.map((insight, index) => (
-                    <div key={index} className={`p-2 rounded-lg border text-sm ${getInsightColor(insight.type)}`}>
-                      {insight.text}
+                  {report.analysis.insights.map((insight, index) => (
+                    <div key={index} className={`p-2 rounded-lg border text-sm ${getInsightColor(insight.severity)}`}>
+                      <div className="font-medium">{insight.category}:</div>
+                      <div>{insight.finding}</div>
+                      <div className="text-xs mt-1 font-medium">Recommendation: {insight.recommendation}</div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {Object.keys(report.keyMetrics).length > 0 && (
+            {report.extractedData?.parameters && report.extractedData.parameters.length > 0 && (
               <div>
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Key Metrics:</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {Object.entries(report.keyMetrics).map(([key, metric]: [string, { value: string, unit: string, range: string, status: string }]) => (
-                    <div key={key} className="bg-gray-50 rounded-lg p-3">
+                  {report.extractedData.parameters.map((param, index) => (
+                    <div key={index} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 capitalize">
-                          {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                        <span className="text-sm text-gray-600">
+                          {param.name}
                         </span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          metric.status === 'normal' ? 'bg-green-100 text-green-800' :
-                          metric.status === 'good' ? 'bg-blue-100 text-blue-800' :
-                          metric.status === 'low' || metric.status === 'elevated' ? 'bg-yellow-100 text-yellow-800' :
+                          param.status === 'normal' ? 'bg-green-100 text-green-800' :
+                          param.status === 'low' || param.status === 'high' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-red-100 text-red-800'
                         }`}>
-                          {metric.status}
+                          {param.status}
                         </span>
                       </div>
                       <div className="mt-1">
                         <span className="text-lg font-bold text-gray-900">
-                          {metric.value} {metric.unit}
+                          {param.value} {param.unit}
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        Normal: {metric.range}
+                        Normal: {param.normalRange}
                       </div>
                     </div>
                   ))}
