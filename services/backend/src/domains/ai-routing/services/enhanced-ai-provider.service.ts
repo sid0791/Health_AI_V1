@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import axios, { AxiosInstance } from 'axios';
 
 /**
  * Enhanced AI Provider Service - Production Ready Implementation
@@ -16,18 +17,92 @@ export class EnhancedAIProviderService {
   private readonly logger = new Logger(EnhancedAIProviderService.name);
   private readonly openaiClient: OpenAI;
   private readonly geminiClient: GoogleGenerativeAI;
+  private readonly groqClient: AxiosInstance;
+  private readonly togetherClient: AxiosInstance;
+  private readonly huggingfaceClient: AxiosInstance;
+  private readonly cohereClient: AxiosInstance;
 
   constructor(private readonly configService: ConfigService) {
     // Initialize AI clients only if API keys are available
     const openaiKey = this.configService.get<string>('OPENAI_API_KEY');
     const geminiKey = this.configService.get<string>('GOOGLE_AI_API_KEY');
+    const groqKey = this.configService.get<string>('GROQ_API_KEY');
+    const togetherKey = this.configService.get<string>('TOGETHER_API_KEY');
+    const huggingfaceKey = this.configService.get<string>('HUGGINGFACE_API_KEY');
+    const cohereKey = this.configService.get<string>('COHERE_API_KEY');
 
-    if (openaiKey && openaiKey !== 'demo_key') {
+    // OpenAI Client
+    if (openaiKey && openaiKey !== 'demo_key' && openaiKey !== 'sk-demo-openai-key-for-development-only') {
       this.openaiClient = new OpenAI({ apiKey: openaiKey });
+      this.logger.log('✅ OpenAI client initialized');
     }
 
-    if (geminiKey && geminiKey !== 'demo_key') {
+    // Google Gemini Client
+    if (geminiKey && geminiKey !== 'demo_key' && geminiKey !== 'YOUR_GOOGLE_GEMINI_API_KEY_HERE') {
       this.geminiClient = new GoogleGenerativeAI(geminiKey);
+      this.logger.log('✅ Google Gemini client initialized');
+    }
+
+    // Groq Client (Free ultra-fast inference)
+    if (groqKey && groqKey !== 'YOUR_GROQ_API_KEY_HERE') {
+      this.groqClient = axios.create({
+        baseURL: 'https://api.groq.com/openai/v1',
+        headers: {
+          'Authorization': `Bearer ${groqKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      });
+      this.logger.log('✅ Groq client initialized - Ultra-fast free inference ready');
+    }
+
+    // Together AI Client (Affordable open source models)
+    if (togetherKey && togetherKey !== 'YOUR_TOGETHER_API_KEY_HERE') {
+      this.togetherClient = axios.create({
+        baseURL: 'https://api.together.xyz/v1',
+        headers: {
+          'Authorization': `Bearer ${togetherKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      });
+      this.logger.log('✅ Together AI client initialized - Open source models ready');
+    }
+
+    // Hugging Face Client (Free inference API)
+    if (huggingfaceKey && huggingfaceKey !== 'YOUR_HUGGINGFACE_API_KEY_HERE') {
+      this.huggingfaceClient = axios.create({
+        baseURL: 'https://api-inference.huggingface.co/models',
+        headers: {
+          'Authorization': `Bearer ${huggingfaceKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 45000,
+      });
+      this.logger.log('✅ Hugging Face client initialized - Free inference API ready');
+    }
+
+    // Cohere Client (Trial credits available)
+    if (cohereKey && cohereKey !== 'YOUR_COHERE_API_KEY_HERE') {
+      this.cohereClient = axios.create({
+        baseURL: 'https://api.cohere.ai/v1',
+        headers: {
+          'Authorization': `Bearer ${cohereKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 45000,
+      });
+      this.logger.log('✅ Cohere client initialized - Trial credits ready');
+    }
+
+    // Log initialization status
+    const activeProviders = this.getActiveProviders();
+    if (activeProviders.length > 0) {
+      this.logger.log(`🚀 FREE AI PROVIDERS ACTIVATED: ${activeProviders.join(', ')}`);
+      this.logger.log('🎯 System will use real AI APIs instead of mock responses');
+    } else {
+      this.logger.warn('⚠️  No AI API keys configured - using enhanced mock responses');
+      this.logger.log('💡 Add free API keys to .env to activate real AI providers');
     }
   }
 
@@ -39,32 +114,34 @@ export class EnhancedAIProviderService {
     const { provider, model } = routingResult;
 
     try {
-      // Check if we're in production mode with real API keys
-      const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+      // Check if we have valid API configuration for this provider
       const hasValidConfig = this.hasValidApiConfig(provider);
 
-      // Try real API first if available and in production
-      if (isProduction && hasValidConfig) {
-        this.logger.log(`Making real API call to ${provider} with model ${model}`);
-        return await this.makeRealAPICall(provider, model, prompt, routingResult);
+      // Try real API first if available
+      if (hasValidConfig) {
+        this.logger.log(`🚀 Making REAL API call to ${provider} with model ${model}`);
+        const realApiResult = await this.makeRealAPICall(provider, model, prompt, routingResult);
+        this.logger.log(`✅ SUCCESS: ${provider} API call completed - Cost: $${realApiResult.cost?.toFixed(4) || 'N/A'}`);
+        return realApiResult;
       }
 
       // Enhanced fallback with more realistic mock data
       this.logger.log(
-        `Using enhanced fallback mock data for ${provider} - ${!isProduction ? 'Development mode' : 'API key not configured'}`,
+        `🔄 Using enhanced fallback mock data for ${provider} - API key not configured`,
       );
       return this.getEnhancedMockResponse(prompt, routingResult);
     } catch (error) {
-      this.logger.error(`AI Provider ${provider} failed: ${error.message}`);
+      this.logger.error(`❌ AI Provider ${provider} failed: ${error.message}`);
 
       // Fallback chain: try next provider or enhanced mock
       if (routingResult.fallbackOptions?.length > 0) {
         const fallbackProvider = routingResult.fallbackOptions[0];
-        this.logger.log(`Attempting fallback to ${fallbackProvider.provider}`);
+        this.logger.log(`🔄 Attempting fallback to ${fallbackProvider.provider}`);
         return await this.callAIProvider(fallbackProvider, prompt);
       }
 
       // Final fallback to enhanced mock
+      this.logger.log(`🛡️ Final fallback to enhanced mock response`);
       return this.getEnhancedMockResponse(prompt, routingResult);
     }
   }
@@ -86,14 +163,20 @@ export class EnhancedAIProviderService {
       case 'gemini':
         return await this.callGemini(model, prompt);
 
-      case 'anthropic':
-        return await this.callClaude(model, prompt);
+      case 'groq':
+        return await this.callGroq(model, prompt);
+
+      case 'together':
+        return await this.callTogether(model, prompt);
+
+      case 'huggingface':
+        return await this.callHuggingFace(model, prompt);
 
       case 'cohere':
         return await this.callCohere(model, prompt);
 
-      case 'together':
-        return await this.callTogether(model, prompt);
+      case 'anthropic':
+        return await this.callClaude(model, prompt);
 
       case 'fireworks':
         return await this.callFireworks(model, prompt);
@@ -175,67 +258,167 @@ export class EnhancedAIProviderService {
   }
 
   /**
+   * Groq API Integration - Ultra-fast free inference
+   */
+  private async callGroq(model: string, prompt: string): Promise<any> {
+    if (!this.groqClient) {
+      throw new Error('Groq client not initialized - API key missing');
+    }
+
+    const response = await this.groqClient.post('/chat/completions', {
+      model: model || 'llama-3.1-8b-instant',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are HealthCoachAI, an expert nutritionist and meal planning assistant.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 3000,
+      response_format: { type: 'json_object' },
+    });
+
+    const data = response.data;
+    const content = data.choices[0]?.message?.content || '{}';
+
+    return {
+      content,
+      confidence: 0.94,
+      usage: data.usage || {
+        prompt_tokens: this.estimateTokens(prompt),
+        completion_tokens: this.estimateTokens(content),
+        total_tokens: this.estimateTokens(prompt + content),
+      },
+      model: data.model || model,
+      cost: this.calculateGroqCost(data.usage?.total_tokens || this.estimateTokens(prompt + content)),
+    };
+  }
+
+  /**
+   * Together AI API Integration - Open source models
+   */
+  private async callTogether(model: string, prompt: string): Promise<any> {
+    if (!this.togetherClient) {
+      throw new Error('Together AI client not initialized - API key missing');
+    }
+
+    const response = await this.togetherClient.post('/chat/completions', {
+      model: model || 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are HealthCoachAI, an expert nutritionist and meal planning assistant.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 3000,
+      response_format: { type: 'json_object' },
+    });
+
+    const data = response.data;
+    const content = data.choices[0]?.message?.content || '{}';
+
+    return {
+      content,
+      confidence: 0.92,
+      usage: data.usage || {
+        prompt_tokens: this.estimateTokens(prompt),
+        completion_tokens: this.estimateTokens(content),
+        total_tokens: this.estimateTokens(prompt + content),
+      },
+      model: data.model || model,
+      cost: this.calculateTogetherCost(data.usage?.total_tokens || this.estimateTokens(prompt + content)),
+    };
+  }
+
+  /**
+   * Hugging Face API Integration - Free inference API
+   */
+  private async callHuggingFace(model: string, prompt: string): Promise<any> {
+    if (!this.huggingfaceClient) {
+      throw new Error('Hugging Face client not initialized - API key missing');
+    }
+
+    const modelName = model || 'microsoft/DialoGPT-medium';
+    const enhancedPrompt = `You are HealthCoachAI, an expert nutritionist. ${prompt}\n\nPlease respond with valid JSON format.`;
+
+    const response = await this.huggingfaceClient.post(`/${modelName}`, {
+      inputs: enhancedPrompt,
+      parameters: {
+        max_new_tokens: 2000,
+        temperature: 0.7,
+        return_full_text: false,
+      },
+      options: {
+        wait_for_model: true,
+      },
+    });
+
+    const data = response.data;
+    const content = Array.isArray(data) ? data[0]?.generated_text || '{}' : data.generated_text || '{}';
+
+    return {
+      content,
+      confidence: 0.89,
+      usage: {
+        prompt_tokens: this.estimateTokens(prompt),
+        completion_tokens: this.estimateTokens(content),
+        total_tokens: this.estimateTokens(prompt + content),
+      },
+      model: modelName,
+      cost: 0, // Free tier
+    };
+  }
+
+  /**
+   * Cohere API Integration - Trial credits
+   */
+  private async callCohere(model: string, prompt: string): Promise<any> {
+    if (!this.cohereClient) {
+      throw new Error('Cohere client not initialized - API key missing');
+    }
+
+    const enhancedPrompt = `You are HealthCoachAI, an expert nutritionist. ${prompt}\n\nPlease respond with valid JSON format.`;
+
+    const response = await this.cohereClient.post('/generate', {
+      model: model || 'command',
+      prompt: enhancedPrompt,
+      max_tokens: 2000,
+      temperature: 0.7,
+      return_likelihoods: 'GENERATION',
+    });
+
+    const data = response.data;
+    const content = data.generations[0]?.text || '{}';
+
+    return {
+      content,
+      confidence: 0.96,
+      usage: {
+        prompt_tokens: this.estimateTokens(prompt),
+        completion_tokens: this.estimateTokens(content),
+        total_tokens: this.estimateTokens(prompt + content),
+      },
+      model: data.meta?.api_version?.version || model,
+      cost: this.calculateCohereApiCost(this.estimateTokens(content)),
+    };
+  }
+
+  /**
    * Anthropic Claude API Integration (placeholder - would require Claude SDK)
    */
   private async callClaude(model: string, prompt: string): Promise<any> {
     // Would implement Claude API here
     // For now, throw error to trigger fallback
-    throw new Error('Claude API not yet implemented');
-  }
-
-  /**
-   * Cohere API Integration
-   */
-  private async callCohere(model: string, prompt: string): Promise<any> {
-    // Would implement Cohere API here
-    const enhancedPrompt = `You are HealthCoachAI, an expert nutritionist. ${prompt}\n\nPlease respond with valid JSON format.`;
-
-    // Simulate Cohere API response with high accuracy
-    return {
-      content: JSON.stringify({
-        response:
-          'Cohere provides excellent reasoning capabilities for health and nutrition analysis.',
-        reasoning: 'Advanced language model with strong enterprise features',
-        recommendations: [
-          'Personalized meal planning based on health goals',
-          'Evidence-based nutrition advice',
-          'Dietary restriction accommodations',
-        ],
-      }),
-      confidence: 0.96,
-      usage: {
-        prompt_tokens: this.estimateTokens(prompt),
-        completion_tokens: 300,
-        total_tokens: this.estimateTokens(prompt) + 300,
-      },
-      model: model || 'command-r-plus-v2',
-      cost: this.calculateCohereApiCost(300),
-    };
-  }
-
-  /**
-   * Together AI API Integration
-   */
-  private async callTogether(model: string, prompt: string): Promise<any> {
-    // Would implement Together AI API here
-    const enhancedPrompt = `You are HealthCoachAI, an expert nutritionist. ${prompt}\n\nPlease respond with valid JSON format.`;
-
-    return {
-      content: JSON.stringify({
-        response:
-          'Together AI provides access to the latest open source models with excellent cost efficiency.',
-        model_info: `Using ${model || 'qwen-2.5-72b'} for optimal performance and cost`,
-        health_advice: 'Utilizing advanced open source AI for personalized health recommendations',
-      }),
-      confidence: 0.94,
-      usage: {
-        prompt_tokens: this.estimateTokens(prompt),
-        completion_tokens: 400,
-        total_tokens: this.estimateTokens(prompt) + 400,
-      },
-      model: model || 'qwen-2.5-72b',
-      cost: this.calculateTogetherApiCost(400),
-    };
+    throw new Error('Claude API not yet implemented - try Groq or Gemini instead');
   }
 
   /**
@@ -321,12 +504,16 @@ export class EnhancedAIProviderService {
       case 'google':
       case 'gemini':
         return !!this.geminiClient;
+      case 'groq':
+        return !!this.groqClient;
+      case 'together':
+        return !!this.togetherClient;
+      case 'huggingface':
+        return !!this.huggingfaceClient;
+      case 'cohere':
+        return !!this.cohereClient;
       case 'anthropic':
         return false; // Not implemented yet
-      case 'cohere':
-        return !!this.configService.get<string>('COHERE_API_KEY');
-      case 'together':
-        return !!this.configService.get<string>('TOGETHER_API_KEY');
       case 'fireworks':
         return !!this.configService.get<string>('FIREWORKS_API_KEY');
       case 'perplexity':
@@ -615,14 +802,19 @@ export class EnhancedAIProviderService {
     return responseLength > 1000 ? 0.002 : 0.001;
   }
 
+  private calculateGroqCost(tokens: number): number {
+    // Groq API pricing (very competitive and free tier available)
+    return (tokens / 1000) * 0.00027; // $0.27 per 1M tokens
+  }
+
+  private calculateTogetherCost(tokens: number): number {
+    // Together AI pricing (very competitive)
+    return (tokens / 1000) * 0.002; // $2 per 1M tokens average
+  }
+
   private calculateCohereApiCost(tokens: number): number {
     // Cohere API pricing (estimated)
     return (tokens / 1000) * 0.008; // $8 per 1M tokens
-  }
-
-  private calculateTogetherApiCost(tokens: number): number {
-    // Together AI pricing (very competitive)
-    return (tokens / 1000) * 0.004; // $4 per 1M tokens average
   }
 
   private calculateFireworksApiCost(tokens: number): number {
@@ -646,18 +838,36 @@ export class EnhancedAIProviderService {
   }
 
   /**
+   * Get list of active providers
+   */
+  private getActiveProviders(): string[] {
+    const providers = [];
+    if (this.openaiClient) providers.push('OpenAI');
+    if (this.geminiClient) providers.push('Google Gemini');
+    if (this.groqClient) providers.push('Groq');
+    if (this.togetherClient) providers.push('Together AI');
+    if (this.huggingfaceClient) providers.push('Hugging Face');
+    if (this.cohereClient) providers.push('Cohere');
+    return providers;
+  }
+
+  /**
    * Health check for API providers
    */
   async checkProviderHealth(): Promise<Record<string, boolean>> {
     const health = {
       openai: false,
       gemini: false,
+      groq: false,
+      together: false,
+      huggingface: false,
+      cohere: false,
       anthropic: false,
     };
 
+    // Test OpenAI connection
     try {
       if (this.openaiClient) {
-        // Test OpenAI connection
         await this.openaiClient.models.list();
         health.openai = true;
       }
@@ -665,15 +875,63 @@ export class EnhancedAIProviderService {
       this.logger.warn('OpenAI health check failed:', error.message);
     }
 
+    // Test Gemini connection
     try {
       if (this.geminiClient) {
-        // Test Gemini connection
         const model = this.geminiClient.getGenerativeModel({ model: 'gemini-pro' });
         await model.generateContent('Health check');
         health.gemini = true;
       }
     } catch (error) {
       this.logger.warn('Gemini health check failed:', error.message);
+    }
+
+    // Test Groq connection
+    try {
+      if (this.groqClient) {
+        await this.groqClient.get('/models');
+        health.groq = true;
+      }
+    } catch (error) {
+      this.logger.warn('Groq health check failed:', error.message);
+    }
+
+    // Test Together AI connection
+    try {
+      if (this.togetherClient) {
+        await this.togetherClient.get('/models');
+        health.together = true;
+      }
+    } catch (error) {
+      this.logger.warn('Together AI health check failed:', error.message);
+    }
+
+    // Test Hugging Face connection
+    try {
+      if (this.huggingfaceClient) {
+        // Simple test call to a small model
+        await this.huggingfaceClient.post('/microsoft/DialoGPT-small', {
+          inputs: 'test',
+          parameters: { max_new_tokens: 10 },
+        });
+        health.huggingface = true;
+      }
+    } catch (error) {
+      this.logger.warn('Hugging Face health check failed:', error.message);
+    }
+
+    // Test Cohere connection
+    try {
+      if (this.cohereClient) {
+        await this.cohereClient.post('/generate', {
+          model: 'command',
+          prompt: 'test',
+          max_tokens: 10,
+        });
+        health.cohere = true;
+      }
+    } catch (error) {
+      this.logger.warn('Cohere health check failed:', error.message);
     }
 
     return health;

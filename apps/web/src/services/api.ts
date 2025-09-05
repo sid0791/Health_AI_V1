@@ -516,7 +516,47 @@ async function handleMockRequest<T>(endpoint: string, options: RequestInit = {})
         id: 'user-123',
         email: 'demo@healthcoachai.com',
         name: 'Alex Johnson',
-        profileCompleted: true
+        profileCompleted: false, // Force onboarding for new users
+        onboardingCompleted: false
+      },
+      isNewUser: true
+    } as T
+  }
+
+  // Onboarding endpoints
+  if (endpoint.includes('/onboarding/progress')) {
+    return {
+      currentStep: 1,
+      onboardingCompleted: false,
+      totalSteps: 5,
+      completionPercentage: 20,
+      completedSteps: [],
+      skippedSteps: [],
+      profileCompleted: false,
+      lastUpdated: new Date().toISOString()
+    } as T
+  }
+
+  if (endpoint.includes('/onboarding/basic-info') || 
+      endpoint.includes('/onboarding/lifestyle') ||
+      endpoint.includes('/onboarding/health') ||
+      endpoint.includes('/onboarding/preferences') ||
+      endpoint.includes('/onboarding/goals')) {
+    return {
+      success: true,
+      nextStep: 2
+    } as T
+  }
+
+  if (endpoint.includes('/onboarding/complete')) {
+    return {
+      success: true,
+      user: {
+        id: 'user-123',
+        email: 'demo@healthcoachai.com',
+        name: 'Alex Johnson',
+        profileCompleted: true,
+        onboardingCompleted: true
       }
     } as T
   }

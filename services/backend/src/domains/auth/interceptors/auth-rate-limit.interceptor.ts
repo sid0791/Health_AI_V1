@@ -46,7 +46,7 @@ export class AuthRateLimitInterceptor implements NestInterceptor {
     },
   ) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> | Promise<Observable<any>> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const ipAddress = request.ip || request.connection.remoteAddress;
     const userAgent = request.headers['user-agent'];
