@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,7 +6,11 @@ export const metadata: Metadata = {
   description: "AI-powered health coaching platform with personalized nutrition, fitness planning, and health report analysis. India-first with global scalability.",
   keywords: ["health", "nutrition", "AI", "fitness", "meal planning", "health reports"],
   authors: [{ name: "HealthCoach AI Team" }],
-  viewport: "width=device-width, initial-scale=1",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

@@ -82,7 +82,7 @@ export interface Recipe {
   instructions: string[]
   nutrition: NutritionInfo
   tags: string[]
-  healthBenefits: string[]
+  healthBenefits?: string[]
   image?: string
   videoUrl?: string
   cost?: number
@@ -155,16 +155,6 @@ export interface MealPlanRequest {
   }
 }
 
-export interface MealSwapRequest {
-  mealId: string
-  reason?: string
-  constraints?: {
-    similarNutrition?: boolean
-    sameMealType?: boolean
-    maxPrepTime?: number
-    ingredientSubstitutions?: { [key: string]: string }
-  }
-}
 
 class MealPlanningService {
   /**
@@ -216,7 +206,7 @@ class MealPlanningService {
    */
   async swapMeal(request: MealSwapRequest): Promise<{ success: boolean; alternatives: Recipe[] }> {
     try {
-      console.log('Requesting meal swap for:', request.mealId)
+      console.log('Requesting meal swap for:', request.currentRecipeId)
       
       const response = await apiRequest<{ success: boolean; alternatives: Recipe[] }>('/meal-planning/ai/swap-meal', {
         method: 'POST',
@@ -385,12 +375,12 @@ export interface Recipe {
   id: string
   name: string
   description?: string
-  ingredients: (string | Ingredient)[]
+  ingredients: Ingredient[]
   instructions: string[]
   prepTime: number
   cookTime: number
   servings: number
-  difficulty: 'Easy' | 'Medium' | 'Hard'
+  difficulty: 'easy' | 'medium' | 'hard'
   cuisine: string
   tags: string[]
   nutrition: NutritionInfo

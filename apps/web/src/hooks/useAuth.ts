@@ -44,7 +44,7 @@ export function useAuth(requireAuth: boolean = false) {
     checkAuth()
   }, [requireAuth, router])
 
-  const login = async (credentials: any) => {
+  const login = async (credentials: { email: string; password: string }) => {
     try {
       const response = await authService.login(credentials)
       if (response.success && response.user) {

@@ -46,13 +46,6 @@ const features = [
   },
 ]
 
-const stats = [
-  { name: 'Health reports analyzed', value: '10,000+' },
-  { name: 'Personalized meal plans', value: '50,000+' },
-  { name: 'User satisfaction', value: '98%' },
-  { name: 'Countries supported', value: '15+' },
-]
-
 export default function Home() {
   return (
     <div className="bg-white">
@@ -253,50 +246,84 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Stats section */}
-      <div className="bg-gradient-to-r from-primary-600 to-secondary-600 py-24 sm:py-32">
+      {/* Testimonials/Social Proof section */}
+      <div className="bg-gradient-to-r from-gray-50 to-primary-50 py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl lg:max-w-none">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl font-display">
+              Join our growing community of health-conscious individuals transforming their lives with AI.
+            </h2>
+          </div>
+          
+          {/* Success metrics */}
+          <div className="mx-auto mt-16 grid max-w-lg grid-cols-4 items-center gap-x-8 gap-y-10 sm:max-w-xl sm:grid-cols-6 sm:gap-x-10 lg:mx-0 lg:max-w-none lg:grid-cols-4">
             <div className="text-center">
-              <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl font-display">
-                Trusted by thousands of users worldwide
-              </h2>
-              <p className="mt-4 text-lg leading-8 text-primary-100">
-                Join our growing community of health-conscious individuals transforming their lives with AI.
-              </p>
+              <div className="text-3xl font-bold text-primary-600">10K+</div>
+              <div className="mt-1 text-sm text-gray-600">Health reports analyzed</div>
             </div>
-            <dl className="mt-16 grid grid-cols-1 gap-0.5 overflow-hidden rounded-2xl text-center sm:grid-cols-2 lg:grid-cols-4">
-              {stats.map((stat, index) => (
-                <div key={stat.name} className="flex flex-col bg-white/10 backdrop-blur-sm p-8 border border-white/20">
-                  <dt className="text-sm font-semibold leading-6 text-primary-100">{stat.name}</dt>
-                  <dd className="order-first text-3xl font-bold tracking-tight text-white">
-                    {stat.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-secondary-600">50K+</div>
+              <div className="mt-1 text-sm text-gray-600">Personalized meal plans</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600">98%</div>
+              <div className="mt-1 text-sm text-gray-600">User satisfaction</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600">15+</div>
+              <div className="mt-1 text-sm text-gray-600">Countries supported</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* CTA section */}
-      <div className="bg-white">
+      {/* Enhanced CTA section */}
+      <div className="relative isolate overflow-hidden bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-600">
+        {/* Background pattern */}
+        <div className="absolute inset-0 -z-10 opacity-20">
+          <svg className="absolute inset-0 h-full w-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+                <path d="M0 32V0h32" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+        
         <div className="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl font-display">
+            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl font-display">
               Ready to transform your health?
             </h2>
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-600">
+            <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-primary-100">
               Start your personalized health journey today. Get AI-powered insights, meal plans, 
               and fitness coaching tailored just for you.
             </p>
-            <div className="mt-10 flex items-center justify-center gap-x-6">
-              <Link href="/dashboard" className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500">
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/dashboard" className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-8 py-4 text-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-white text-primary-600 hover:bg-gray-50 focus:ring-white shadow-lg hover:shadow-xl transform hover:scale-105">
+                <SparklesIcon className="h-6 w-6 mr-2" />
                 Start Free Trial
               </Link>
-              <Link href="/auth/login" className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary-500">
+              <Link href="/auth/login" className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-8 py-4 text-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none border-2 border-white/30 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 focus:ring-white">
                 Sign In
               </Link>
+            </div>
+            
+            {/* Trust indicators */}
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-primary-100">
+              <div className="flex items-center space-x-2">
+                <ShieldCheckIcon className="h-5 w-5" />
+                <span className="text-sm">100% Secure</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <HeartIcon className="h-5 w-5" />
+                <span className="text-sm">GDPR Compliant</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <SparklesIcon className="h-5 w-5" />
+                <span className="text-sm">AI-Powered</span>
+              </div>
             </div>
           </div>
         </div>

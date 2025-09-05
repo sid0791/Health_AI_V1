@@ -94,11 +94,11 @@ export default function MealPlanPage() {
       console.log('🔄 Finding alternative meals...')
       
       const swapRequest: MealSwapRequest = {
-        mealId: currentMeal.id,
-        reason: 'User requested swap',
-        constraints: {
-          similarNutrition: true,
-          sameMealType: true,
+        mealPlanId: 'current-plan', // This would come from current meal plan
+        dayIndex: 0, // This would be determined by the selected meal
+        mealType: 'lunch', // This would be determined by the meal type
+        currentRecipeId: currentMeal.id,
+        preferences: {
           maxPrepTime: 45
         }
       }

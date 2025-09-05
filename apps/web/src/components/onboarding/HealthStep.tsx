@@ -32,7 +32,7 @@ export default function HealthStep({ onNext, onSkip, loading, error }: HealthSte
     onNext(formData)
   }
 
-  const handleInputChange = (field: keyof HealthInfo, value: any) => {
+  const handleInputChange = (field: keyof HealthInfo, value: string | string[] | number | boolean | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 

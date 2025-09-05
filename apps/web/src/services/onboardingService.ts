@@ -282,12 +282,12 @@ class OnboardingService {
   /**
    * Complete onboarding and generate initial meal plan
    */
-  async completeOnboarding(): Promise<{ success: boolean; user: any; mealPlan?: any }> {
+  async completeOnboarding(): Promise<{ success: boolean; user: Record<string, unknown>; mealPlan?: Record<string, unknown> }> {
     try {
       // Complete onboarding first
       const onboardingResult = await apiRequest('/onboarding/complete', {
         method: 'POST'
-      })
+      }) as { success: boolean; user: Record<string, unknown> }
 
       if (onboardingResult.success) {
         console.log('✅ Onboarding completed successfully')
@@ -296,7 +296,7 @@ class OnboardingService {
         try {
           const { mealPlanningService } = await import('./mealPlanningService')
           const mealPlan = await mealPlanningService.generateMealPlan({
-            userId: onboardingResult.user.id,
+            userId: onboardingResult.user.id as string,
             preferences: {
               startDate: new Date().toISOString().split('T')[0],
               duration: 7, // 7-day plan
@@ -308,7 +308,7 @@ class OnboardingService {
           
           return {
             ...onboardingResult,
-            mealPlan
+            mealPlan: mealPlan as unknown as Record<string, unknown>
           }
         } catch (mealPlanError) {
           console.error('Failed to generate initial meal plan:', mealPlanError)
@@ -386,7 +386,7 @@ class OnboardingService {
   /**
    * Validate step data
    */
-  validateStepData(step: number, data: any): { valid: boolean; errors: string[] } {
+  validateStepData(step: number, data: Record<string, unknown>): { valid: boolean; errors: string[] } {
     const errors: string[] = []
 
     switch (step) {
@@ -395,19 +395,19 @@ class OnboardingService {
         if (!data.lastName) errors.push('Last name is required')
         if (!data.dateOfBirth) errors.push('Date of birth is required')
         if (!data.gender) errors.push('Gender is required')
-        if (!data.height || data.height < 100 || data.height > 250) errors.push('Valid height is required (100-250 cm)')
-        if (!data.weight || data.weight < 30 || data.weight > 300) errors.push('Valid weight is required (30-300 kg)')
+        if (!data.height || (data.height as number) < 100 || (data.height as number) > 250) errors.push('Valid height is required (100-250 cm)')
+        if (!data.weight || (data.weight as number) < 30 || (data.weight as number) > 300) errors.push('Valid weight is required (30-300 kg)')
         if (!data.activityLevel) errors.push('Activity level is required')
         break
 
       case 4: // Food Preferences
         if (!data.dietaryPreference) errors.push('Dietary preference is required')
-        if (!data.cuisinePreferences || data.cuisinePreferences.length === 0) errors.push('At least one cuisine preference is required')
-        if (!data.mealsPerDay || data.mealsPerDay < 2 || data.mealsPerDay > 6) errors.push('Valid meals per day is required (2-6)')
+        if (!data.cuisinePreferences || (data.cuisinePreferences as unknown[]).length === 0) errors.push('At least one cuisine preference is required')
+        if (!data.mealsPerDay || (data.mealsPerDay as number) < 2 || (data.mealsPerDay as number) > 6) errors.push('Valid meals per day is required (2-6)')
         break
 
       case 5: // Health Goals
-        if (!data.primaryGoals || data.primaryGoals.length === 0) errors.push('At least one primary goal is required')
+        if (!data.primaryGoals || (data.primaryGoals as unknown[]).length === 0) errors.push('At least one primary goal is required')
         if (!data.motivation) errors.push('Motivation is required')
         break
     }

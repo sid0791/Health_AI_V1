@@ -29,7 +29,7 @@ export default function LifestyleStep({ onNext, onSkip, loading, error }: Lifest
     onNext(formData)
   }
 
-  const handleInputChange = (field: keyof LifestyleInfo, value: any) => {
+  const handleInputChange = (field: keyof LifestyleInfo, value: string | string[] | number | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 

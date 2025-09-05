@@ -31,7 +31,7 @@ export default function BasicInfoStep({ onNext, loading, error }: BasicInfoStepP
     onNext(formData)
   }
 
-  const handleInputChange = (field: keyof BasicInfo, value: any) => {
+  const handleInputChange = (field: keyof BasicInfo, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 

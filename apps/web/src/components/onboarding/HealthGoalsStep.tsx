@@ -29,7 +29,7 @@ export default function HealthGoalsStep({ onNext, loading, error }: HealthGoalsS
     onNext(formData)
   }
 
-  const handleInputChange = (field: keyof HealthGoals, value: any) => {
+  const handleInputChange = (field: keyof HealthGoals, value: string | string[] | number | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 

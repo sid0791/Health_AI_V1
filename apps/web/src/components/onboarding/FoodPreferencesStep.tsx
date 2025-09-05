@@ -28,7 +28,7 @@ export default function FoodPreferencesStep({ onNext, loading, error }: FoodPref
     onNext(formData)
   }
 
-  const handleInputChange = (field: keyof FoodPreferences, value: any) => {
+  const handleInputChange = (field: keyof FoodPreferences, value: string | string[] | number) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
