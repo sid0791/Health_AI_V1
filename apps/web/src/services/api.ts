@@ -3,8 +3,8 @@
  * Provides integration between frontend and backend services
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || false
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
+const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || false
 
 // Track API status globally
 let apiStatus: 'real' | 'mock' | 'fallback' = USE_MOCK_API ? 'mock' : 'real'

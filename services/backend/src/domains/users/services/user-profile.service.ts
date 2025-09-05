@@ -24,4 +24,19 @@ export class UserProfileService {
     await this.userProfileRepository.update({ userId }, data);
     return this.findByUserId(userId);
   }
+
+  /**
+   * Get user profile for meal planning
+   */
+  async getUserProfile(userId: string): Promise<any> {
+    const profile = await this.findByUserId(userId);
+    return profile || {
+      age: 30,
+      gender: 'female',
+      weight: 65,
+      height: 165,
+      activityLevel: 'moderate',
+      healthConditions: []
+    };
+  }
 }

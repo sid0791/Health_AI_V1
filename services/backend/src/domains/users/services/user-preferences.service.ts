@@ -19,4 +19,33 @@ export class UserPreferencesService {
     const preferences = this.userPreferencesRepository.create(data);
     return this.userPreferencesRepository.save(preferences);
   }
+
+  /**
+   * Save user preferences for onboarding
+   */
+  async savePreferences(userId: string, preferencesData: any): Promise<UserPreferences> {
+    const existingPreferences = await this.findByUserId(userId);
+    
+    if (existingPreferences) {
+      // Update existing preferences
+      Object.assign(existingPreferences, preferencesData);
+      return this.userPreferencesRepository.save(existingPreferences);
+    } else {
+      // Create new preferences
+      return this.create({ userId, ...preferencesData });
+    }
+  }
+
+  /**
+   * Get user preferences for meal planning
+   */
+  async getUserPreferences(userId: string): Promise<any> {
+    const preferences = await this.findByUserId(userId);
+    return preferences || {
+      dietaryPreferences: ['vegetarian'],
+      cuisinePreferences: ['indian'],
+      allergies: [],
+      mealFrequency: 3
+    };
+  }
 }
