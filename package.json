@@ -30,6 +30,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "security:scan": "gitleaks detect --source .",
+    "production:validate": "./scripts/validate-production-env.sh",
+    "production:check": "npm run production:validate && npm run typecheck && npm run lint",
     "prepare": "husky install"
   },
   "devDependencies": {
