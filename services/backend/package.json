@@ -61,7 +61,7 @@
     "@types/passport-local": "^1.0.38",
     "@types/passport-oauth2": "^1.8.0",
     "@types/twilio": "^3.19.2",
-    "axios": "^1.6.5",
+    "axios": "^1.12.0",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.58.4",
